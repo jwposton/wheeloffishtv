@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.api.deps import get_current_user, get_db
 from wheeloffish.api.schemas.playlists import (
+    AppendRowRequest,
+    PatchRowRequest,
     PlaylistCreateRequest,
     PlaylistDetailResponse,
     PlaylistListItem,
@@ -293,6 +295,102 @@ def delete_playlist(
     playlist = _get_owned_playlist(db, playlist_id, user.id)
     db.delete(playlist)
     db.commit()
+
+
+def _get_playlist_row(
+    db: Session,
+    playlist_id: str,
+    series_id: str,
+) -> PlaylistSeriesRowOrm:
+    row = (
+        db.query(PlaylistSeriesRowOrm)
+        .filter(
+            PlaylistSeriesRowOrm.playlist_id == playlist_id,
+            PlaylistSeriesRowOrm.series_id == series_id,
+        )
+        .one_or_none()
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Row not found")
+    return row
+
+
+@router.post("/{playlist_id}/rows", response_model=PlaylistDetailResponse)
+def append_playlist_row(
+    playlist_id: str,
+    body: AppendRowRequest,
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+) -> PlaylistDetailResponse:
+    """Append one series row without full PUT replacement (D-20)."""
+    playlist = _get_owned_playlist(db, playlist_id, user.id)
+
+    existing = (
+        db.query(PlaylistSeriesRowOrm)
+        .filter(
+            PlaylistSeriesRowOrm.playlist_id == playlist_id,
+            PlaylistSeriesRowOrm.series_id == body.series_id,
+        )
+        .one_or_none()
+    )
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Row already exists")
+
+    max_sort = max((r.sort_order for r in playlist.rows), default=-1)
+    row = PlaylistSeriesRowOrm(
+        id=str(uuid.uuid4()),
+        playlist_id=playlist_id,
+        series_id=body.series_id,
+        mode=body.mode.value,
+        completion_policy=body.completion_policy.value,
+        completion_event=body.completion_event.value,
+        sort_order=max_sort + 1,
+    )
+    db.add(row)
+    playlist.updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(playlist)
+    return _playlist_to_detail(db, playlist, user.id)
+
+
+@router.delete("/{playlist_id}/rows/{series_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_playlist_row(
+    playlist_id: str,
+    series_id: str,
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+) -> None:
+    """Remove one series row without full PUT replacement (D-20)."""
+    playlist = _get_owned_playlist(db, playlist_id, user.id)
+    row = _get_playlist_row(db, playlist_id, series_id)
+    db.delete(row)
+    playlist.updated_at = datetime.now(UTC)
+    db.commit()
+
+
+@router.patch("/{playlist_id}/rows/{series_id}", response_model=PlaylistDetailResponse)
+def patch_playlist_row(
+    playlist_id: str,
+    series_id: str,
+    body: PatchRowRequest,
+    db: Session = Depends(get_db),
+    user: AppUser = Depends(get_current_user),
+) -> PlaylistDetailResponse:
+    """Update mode/completion fields on one row (D-16 backend support)."""
+    playlist = _get_owned_playlist(db, playlist_id, user.id)
+    row = _get_playlist_row(db, playlist_id, series_id)
+
+    if body.mode is not None:
+        row.mode = body.mode.value
+    if body.completion_policy is not None:
+        row.completion_policy = body.completion_policy.value
+    if body.completion_event is not None:
+        row.completion_event = body.completion_event.value
+
+    playlist.updated_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(playlist)
+    return _playlist_to_detail(db, playlist, user.id)
 
 
 @router.post("/{playlist_id}/rebuild", response_model=RebuildRunSummary)

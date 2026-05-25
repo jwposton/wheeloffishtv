@@ -52,6 +52,31 @@ class PlaylistUpdateRequest(BaseModel):
         return self
 
 
+class AppendRowRequest(BaseModel):
+    series_id: str = Field(..., min_length=1)
+    mode: RowMode = RowMode.ORDERED
+    completion_policy: CompletionPolicy = CompletionPolicy.REMOVE
+    completion_event: CompletionEvent = CompletionEvent.SERIES_COMPLETE
+
+
+class PatchRowRequest(BaseModel):
+    mode: RowMode | None = None
+    completion_policy: CompletionPolicy | None = None
+    completion_event: CompletionEvent | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> PatchRowRequest:
+        if (
+            self.mode is None
+            and self.completion_policy is None
+            and self.completion_event is None
+        ):
+            raise ValueError(
+                "At least one of mode, completion_policy, or completion_event required"
+            )
+        return self
+
+
 class RebuildRunSummary(BaseModel):
     id: str
     status: str
