@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 04-06 — PlaylistBuilder integration (PLT-01–06)
+current_plan: 05-01 — Phase 5 orchestration (pending planning)
 status: ready
-last_updated: "2026-05-25T21:00:00.000Z"
+last_updated: "2026-05-25T20:55:00.000Z"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 26
-  completed_plans: 25
-  percent: 48
+  completed_plans: 26
+  percent: 57
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 4 plan 05 complete)
+**Updated:** 2026-05-25 (Phase 4 complete)
 
 ## Project reference
 
@@ -25,14 +25,14 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **4 — Playlist mathematics** — **in progress** (5/6 plans complete).
+Phase **4 — Playlist mathematics** — **complete** (6/6 plans).
 
-**Current plan:** 04-06 — PlaylistBuilder integration (PLT-01–06)
+**Next phase:** Phase **5 — Orchestration & scheduling**
 
 ## Immediate next actions
 
-1. Execute 04-06-PLAN.md — PlaylistBuilder integration + end-to-end golden vectors
-2. Continue Phase 4 Wave 3 via `/gsd-execute-phase 4`
+1. Plan Phase 5 via `/gsd-plan-phase 5` or `/gsd-execute-phase 5` when plans exist
+2. Wire Phase 5 scheduler to call `PlaylistBuilder.build()` with live MediaProvider snapshots
 
 ## Decisions (Phase 4)
 
@@ -50,6 +50,9 @@ Phase **4 — Playlist mathematics** — **in progress** (5/6 plans complete).
 - Malformed provider timestamps map to None via try/except — no ingestion exceptions
 - Wave 3 builder must add every block member id to emitted_ids before next disordered pick (D-04, D-09)
 - LAST_VIEWED_EXCLUSION_SIZE=15; tie-break equal last_viewed_at by id ascending
+- SlotAllocation WILD/BALANCED/ROUND_ROBIN on Playlist; builder is stateless single entry point (D-23)
+- PlaylistBuildResult.day_key stores opaque rebuild_seed; RNG from sha256(playlist.id:rebuild_seed) (D-24)
+- episode_count defaults to 20; slot_allocation defaults to WILD (D-01, D-19)
 
 ## Decisions (Phase 3)
 
@@ -60,6 +63,7 @@ Phase **4 — Playlist mathematics** — **in progress** (5/6 plans complete).
 
 ## Working notes
 
+- Phase 4 plan 06: `.planning/phases/04-playlist-mathematics/04-06-SUMMARY.md`
 - Phase 4 plan 05: `.planning/phases/04-playlist-mathematics/04-05-SUMMARY.md`
 - Phase 4 plan 04: `.planning/phases/04-playlist-mathematics/04-04-SUMMARY.md`
 - Phase 4 plan 03: `.planning/phases/04-playlist-mathematics/04-03-SUMMARY.md`
