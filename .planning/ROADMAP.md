@@ -14,7 +14,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 1 | Foundations & packaging | Dockerized API, health, migrations, secrets scaffold | DEP-01, INT-01 (structural) | Complete 2026-05-25 |
 | 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 | Complete |
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
-| 4 | 1/6 | In Progress|  |
+| 4 | 2/6 | In Progress|  |
 | 5 | Orchestration jobs | Persistence for playlists outputs, transactional rebuild, SCH daily trigger + SCH multipart enforcement | SCH-01, SCH-02, PLT/INT glue |
 | 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
@@ -100,7 +100,7 @@ Requirements: WEB-01 (foundation)
 
 **Goal:** Deterministic nightly builder respecting ordered vs disordered, completion policies, multipart adjacency proofs via property tests where feasible.  
 **Mode:** mvp  
-**Plans:** 1/6 plans executed
+**Plans:** 2/6 plans executed
 
 **Success criteria**
 
@@ -116,7 +116,7 @@ Requirements: WEB-01 (foundation)
 
 **Wave 1**
 
-- [ ] 04-02-PLAN.md — Multipart grouping and adjacency helpers (SCH-02)
+- [x] 04-02-PLAN.md — Multipart grouping and adjacency helpers (SCH-02)
 - [ ] 04-03-PLAN.md — Completion policies (PLT-06)
 
 **Wave 2**
