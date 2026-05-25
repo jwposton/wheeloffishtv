@@ -59,7 +59,7 @@ Requirements: INT-01, INT-02, INT-03
 **Goal:** As a self-host operator, I want to sign in via Plex/Jellyfin OAuth and browse scoped TV libraries with resume preview, so that I can verify catalog data before playlist authoring.  
 **Mode:** mvp  
 **UI hint:** yes  
-**Plans:** 3/7 plans executed
+**Plans:** 7/7 complete (2026-05-25)
 
 **Success criteria**
 
@@ -78,19 +78,19 @@ Requirements: INT-01, INT-02, INT-03
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-04-PLAN.md — Login wall, admin discovery, read-only settings
+- [x] 03-04-PLAN.md — Login wall, admin discovery, read-only settings
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-05-PLAN.md — Library scope admin UI, first-run checklist, holding page
+- [x] 03-05-PLAN.md — Library scope admin UI, first-run checklist, holding page
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03-06-PLAN.md — Series browse: infinite scroll, search, sync banner, grid/list
+- [x] 03-06-PLAN.md — Series browse: infinite scroll, search, sync banner, grid/list
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03-07-PLAN.md — Series detail + resume preview, docs, UAT checklist
+- [x] 03-07-PLAN.md — Series detail + resume preview, docs, UAT checklist
 
 Requirements: WEB-01 (foundation)
 
