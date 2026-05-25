@@ -113,7 +113,14 @@ class PlexProvider:
         ]
         return PagedSeries(items=items, page=page, limit=limit, total=total)
 
-    async def _rating_key_for_series(self, series_composite_id: str) -> str:
+    async def _rating_key_for_series(
+        self,
+        series_composite_id: str,
+        *,
+        rating_key: str | None = None,
+    ) -> str:
+        if rating_key is not None:
+            return rating_key
         _, provider, guid = parse_series_guid(series_composite_id)
         if provider != PROVIDER:
             raise ProviderError("wrong_type")
@@ -127,17 +134,33 @@ class PlexProvider:
                 guid,
             )
 
-    async def list_episodes(self, series_composite_id: str) -> list[Episode]:
-        rating_key = await self._rating_key_for_series(series_composite_id)
-        response = await self._request("GET", f"/library/metadata/{rating_key}/allLeaves")
+    async def list_episodes(
+        self,
+        series_composite_id: str,
+        *,
+        rating_key: str | None = None,
+    ) -> list[Episode]:
+        resolved_key = await self._rating_key_for_series(
+            series_composite_id,
+            rating_key=rating_key,
+        )
+        response = await self._request("GET", f"/library/metadata/{resolved_key}/allLeaves")
         metadata = response.json().get("MediaContainer", {}).get("Metadata") or []
         return [map_episode(self.connection_id, item) for item in metadata]
 
-    async def get_on_deck_episode(self, series_composite_id: str) -> Episode | None:
-        rating_key = await self._rating_key_for_series(series_composite_id)
+    async def get_on_deck_episode(
+        self,
+        series_composite_id: str,
+        *,
+        rating_key: str | None = None,
+    ) -> Episode | None:
+        resolved_key = await self._rating_key_for_series(
+            series_composite_id,
+            rating_key=rating_key,
+        )
         response = await self._request(
             "GET",
-            f"/library/metadata/{rating_key}",
+            f"/library/metadata/{resolved_key}",
             params={"includeOnDeck": 1},
         )
         metadata_list = response.json().get("MediaContainer", {}).get("Metadata") or []
@@ -147,3 +170,29 @@ class PlexProvider:
         if not on_deck:
             return None
         return map_episode(self.connection_id, on_deck)
+
+    async def fetch_artwork(self, path: str) -> tuple[bytes, str]:
+        if not path.startswith("/library/"):
+            raise ProviderError("invalid_path")
+        url = f"{self.base_url}{path}"
+        try:
+            async with self._client() as client:
+                response = await client.get(
+                    url,
+                    headers={**self._headers(), "Accept": "image/*"},
+                )
+        except httpx.ConnectError as err:
+            raise ProviderUnreachable() from err
+        except httpx.TimeoutException as err:
+            raise ProviderUnreachable() from err
+        except httpx.RequestError as err:
+            if "ssl" in str(err).lower():
+                raise ProviderSSLError() from err
+            raise ProviderUnreachable() from err
+
+        if response.status_code == 401:
+            raise ProviderUnauthorized()
+        if response.status_code >= 400:
+            raise ProviderError("not_found")
+        media_type = response.headers.get("content-type", "image/jpeg")
+        return response.content, media_type

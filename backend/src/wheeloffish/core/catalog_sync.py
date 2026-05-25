@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.connections import build_provider_for_connection
+from wheeloffish.core.media_artwork import public_artwork_url
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.cached_library import CachedLibrary
 from wheeloffish.db.models.cached_series import CachedSeries
@@ -105,7 +106,7 @@ def cached_series_to_dto(row: CachedSeries, provider: str) -> Series:
         connection_id=row.connection_id,
         provider=provider,
         year=row.year,
-        thumb_url=row.thumb_url,
+        thumb_url=public_artwork_url(row.connection_id, row.thumb_url),
         provider_metadata=row.provider_metadata,
     )
 
