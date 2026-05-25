@@ -37,13 +37,20 @@ Self-hosted Dockerized Plex/Jellyfin random TV playlist builder. Users connect a
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `WOF_SECRET_KEY` | Yes | — | 64-char hex key from `openssl rand -hex 32`; encrypts stored secrets |
+| `WOF_PROVIDER` | Yes | `plex` | Media provider for this install: `plex` or `jellyfin` |
+| `WOF_MEDIA_SERVER_URL` | Yes | — | Media server base URL (no trailing slash) |
+| `WOF_MEDIA_SERVER_DISPLAY_NAME` | No | `Media Server` | Display name in Settings |
+| `WOF_VERIFY_SSL` | No | `true` | Verify TLS when connecting to media server |
+| `WOF_ADMIN_PROVIDER_USER_ID` | No | — | Admin provider user ID (set after first OAuth login) |
+| `WOF_ADMIN_USERNAME` | No | — | Optional secondary admin match on username/email |
+| `WOF_OAUTH_CALLBACK_BASE` | No | `http://localhost:8000` | Base URL for OAuth callback redirects |
+| `WOF_SESSION_DAYS` | No | — | Session cookie TTL in days; unset = long-lived |
 | `DATABASE_URL` | No | `sqlite:////data/wheeloffish.db` | SQLAlchemy database URL |
 | `LOG_LEVEL` | No | `INFO` | Log level |
 | `LOG_FORMAT` | No | `json` | `json` for production; `console` for local dev |
 | `ENVIRONMENT` | No | `production` | Environment label in logs and health |
-| `WOF_ENABLED_PROVIDERS` | No | `plex,jellyfin` | Comma-separated media providers to expose |
+| `WOF_ENABLED_PROVIDERS` | No | `plex,jellyfin` | **Deprecated for operators** — use `WOF_PROVIDER` instead; retained for multi-provider test fixtures |
 | `WOF_PLEX_PRODUCT_NAME` | No | `Wheel of Fish TV` | Product name shown during Plex PIN flow |
-| `WOF_OAUTH_CALLBACK_BASE` | No | `http://localhost:8000` | Base URL for OAuth callback redirects |
 | `WOF_CATALOG_SYNC_CHUNK_SIZE` | No | `100` | Series fetched per sync chunk |
 | `WOF_CATALOG_PAGE_DEFAULT` | No | `50` | Default page size for series browse |
 | `WOF_SCOPED_LIBRARY_IDS` | No | — | Optional comma-separated library IDs to auto-scope |
@@ -121,6 +128,55 @@ Use `POST /api/v1/connections/{id}/test` to verify connectivity.
 
 Compare resume output to Plex On Deck or Jellyfin Next Up. See `.planning/phases/02-media-ingestion-catalogs/02-UAT-CHECKLIST.md` for manual verification steps.
 
+## Phase 3 — Operator SPA
+
+Phase 3 ships the React/Vite SPA served from the same container as the API. Users sign in via media-server OAuth only — there is no standalone local username/password login and no in-app server setup wizard.
+
+### Operator setup (before `docker compose up`)
+
+Configure connection settings in `.env` (D-06, D-09). The runtime reads env on boot and upserts the single `connections` row; changing server URL or provider requires editing `.env` and restarting the container (D-08).
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `WOF_PROVIDER` | Yes | `plex` or `jellyfin` — one provider per install (D-02) |
+| `WOF_MEDIA_SERVER_URL` | Yes | Base URL of your Plex or Jellyfin server |
+| `WOF_MEDIA_SERVER_DISPLAY_NAME` | No | Friendly label shown in Settings |
+| `WOF_VERIFY_SSL` | No | Verify TLS when connecting to the media server |
+| `WOF_ADMIN_PROVIDER_USER_ID` | After first login | Provider user ID for admin RBAC (D-03) |
+| `WOF_ADMIN_USERNAME` | No | Optional secondary admin match on username/email |
+| `WOF_OAUTH_CALLBACK_BASE` | Yes | Public base URL for OAuth redirects |
+| `WOF_SESSION_DAYS` | No | Session cookie TTL in days; unset = long-lived (D-05) |
+
+Copy `.env.example` to `.env`, set `WOF_SECRET_KEY`, provider, and media server URL before starting the stack.
+
+### Admin discovery (D-04)
+
+If `WOF_ADMIN_PROVIDER_USER_ID` is unset on first OAuth login, the app enters **setup mode**: users may browse once libraries are scoped, but admin actions (library scope) are blocked until the operator copies the signed-in provider user ID from **Setup → Admin** (`/setup/admin`) into `.env` and restarts.
+
+### Local frontend development
+
+With the backend running on port 8000:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Vite proxies `/api` to the backend. Use `npm run test -- --run` for unit tests and `npm run build` for production assets (bundled into the backend image via multi-stage Docker build).
+
+### SPA features (Phase 3 scope)
+
+- Login wall: Plex PIN OAuth or Jellyfin username/password
+- Admin library scope UI with first-run checklist and Settings → Libraries
+- Series browse: grid/list toggle, infinite scroll, debounced search, sync banner
+- Series detail at `/series/{composite_id}` with read-only resume/up-next preview (D-16)
+- Light/dark theme toggle with `prefers-color-scheme` default (D-18)
+
+**Storybook** is explicitly deferred to Phase 7 (D-20) — no Storybook config in this phase.
+
+Manual keyboard, OAuth, and theme verification steps: `.planning/phases/03-minimal-operator-spa-shell/03-UAT-CHECKLIST.md`.
+
 ## Development
 
 ```bash
@@ -135,6 +191,6 @@ uv run uvicorn wheeloffish.main:app --reload
 
 ```
 backend/          FastAPI application, Alembic migrations, Docker context
-frontend/         SPA placeholder (Phase 3)
+frontend/         React/Vite SPA (Phase 3 operator shell)
 compose.yml       Default API-only stack with SQLite volume
 ```

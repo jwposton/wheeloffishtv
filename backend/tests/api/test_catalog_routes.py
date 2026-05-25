@@ -42,7 +42,11 @@ async def catalog_client(db_engine, db_session, monkeypatch: pytest.MonkeyPatch)
     get_settings.cache_clear()
 
     admin_user = AppUser(provider_user_id="catalog-test-admin", provider_username="admin")
-    regular_user = AppUser(id=APP_USER_ID, provider_user_id="catalog-user", provider_username="viewer")
+    regular_user = AppUser(
+        id=APP_USER_ID,
+        provider_user_id="catalog-user",
+        provider_username="viewer",
+    )
     db_session.add(admin_user)
     db_session.add(regular_user)
     db_session.commit()

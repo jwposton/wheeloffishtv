@@ -199,6 +199,7 @@ def test_dto_shape_matches_plex() -> None:
         "native_id",
         "connection_id",
         "provider",
+        "in_scope",
     }
     assert set(Episode.model_fields) == {
         "id",
