@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.api.deps import get_app_user_id, get_db, get_settings_dep, get_vault
 from wheeloffish.api.schemas.oauth import JellyfinAuthRequest
+from wheeloffish.core.catalog_sync import trigger_sync
 from wheeloffish.core.config import Settings
 from wheeloffish.core.connections import create_connection
 from wheeloffish.core.secrets import SecretsVault
@@ -48,6 +49,7 @@ async def jellyfin_auth(
             provider_user_id=user_id,
             provider_username=username,
         )
+        trigger_sync(db, connection.id, app_user_id)
     except ProviderError as err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

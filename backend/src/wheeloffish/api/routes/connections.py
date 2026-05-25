@@ -11,12 +11,10 @@ from wheeloffish.core.config import Settings
 from wheeloffish.core.connections import (
     create_connection,
     delete_connection,
-    list_connection_libraries,
     list_connections,
     test_connection,
 )
 from wheeloffish.core.secrets import SecretsVault
-from wheeloffish.domain.dto import Library
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -47,19 +45,6 @@ async def post_connection(
         plex_client_identifier=body.plex_client_identifier,
     )
     return ConnectionResponse.model_validate(connection)
-
-
-@router.get("/{connection_id}/libraries", response_model=list[Library])
-async def get_connection_libraries(
-    connection_id: str,
-    db: Session = Depends(get_db),
-    vault: SecretsVault = Depends(get_vault),
-    settings: Settings = Depends(get_settings_dep),
-    app_user_id: str = Depends(get_app_user_id),
-) -> list[Library]:
-    return await list_connection_libraries(
-        db, vault, connection_id, app_user_id, settings=settings
-    )
 
 
 @router.post("/{connection_id}/test", response_model=ConnectionTestResponse)

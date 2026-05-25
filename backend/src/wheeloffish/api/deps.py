@@ -27,3 +27,8 @@ def get_vault(
 
 def get_app_user_id() -> str:
     return STUB_APP_USER_ID
+
+
+def require_admin() -> None:
+    """Stub admin gate until Phase 3 auth ships."""
+    return None

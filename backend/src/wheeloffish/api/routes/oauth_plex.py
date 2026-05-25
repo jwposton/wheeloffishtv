@@ -10,6 +10,7 @@ from wheeloffish.api.schemas.oauth import (
     PlexOAuthStartResponse,
     PlexOAuthStatusResponse,
 )
+from wheeloffish.core.catalog_sync import trigger_sync
 from wheeloffish.core.config import Settings
 from wheeloffish.core.connections import create_connection
 from wheeloffish.core.secrets import SecretsVault
@@ -123,6 +124,7 @@ async def plex_oauth_callback(
             provider_user_id=str(user.get("id", "unknown")),
             provider_username=user.get("username") or user.get("email"),
         )
+        trigger_sync(db, connection.id, state.app_user_id)
     except ProviderError as err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

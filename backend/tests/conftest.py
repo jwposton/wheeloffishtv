@@ -101,7 +101,6 @@ def db_session(db_engine):
 
 @pytest.fixture
 def connection_factory(db_session, settings, vault, app_user_id):
-    """Create a test connection with mocked provider ping."""
     from unittest.mock import AsyncMock, MagicMock, patch
 
     from wheeloffish.core.connections import create_connection
@@ -118,6 +117,7 @@ def connection_factory(db_session, settings, vault, app_user_id):
         provider = MagicMock()
         provider.ping = AsyncMock(return_value=None)
         provider.provider_user_id = "test-provider-user"
+        provider.provider_username = None
         with patch(
             "wheeloffish.core.connections.build_provider_for_connection",
             return_value=provider,
@@ -131,3 +131,68 @@ def connection_factory(db_session, settings, vault, app_user_id):
             )
 
     return _factory
+
+
+def seed_cached_libraries(
+    db_session,
+    connection_id: str,
+    libraries: list[dict],
+) -> list:
+    """Seed cached_libraries rows. Each dict: native_id, title, in_scope."""
+    from datetime import UTC, datetime
+
+    from wheeloffish.db.models.cached_library import CachedLibrary
+
+    now = datetime.now(UTC)
+    rows = []
+    for spec in libraries:
+        row = CachedLibrary(
+            connection_id=connection_id,
+            native_id=spec["native_id"],
+            title=spec["title"],
+            in_scope=spec.get("in_scope", True),
+            synced_at=now,
+        )
+        db_session.add(row)
+        rows.append(row)
+    db_session.commit()
+    for row in rows:
+        db_session.refresh(row)
+    return rows
+
+
+def seed_cached_series(
+    db_session,
+    connection_id: str,
+    count: int,
+    *,
+    provider: str = "plex",
+    library_native_id: str = "1",
+    title_prefix: str = "Series",
+    start_index: int = 0,
+) -> list:
+    """Seed cached_series rows for browse/sync tests."""
+    from datetime import UTC, datetime
+
+    from wheeloffish.db.models.cached_series import CachedSeries
+    from wheeloffish.domain.ids import format_composite_id
+
+    now = datetime.now(UTC)
+    rows = []
+    for offset in range(count):
+        index = start_index + offset
+        native_id = f"guid-{index}"
+        row = CachedSeries(
+            id=format_composite_id(connection_id, provider, native_id),
+            connection_id=connection_id,
+            library_native_id=library_native_id,
+            native_id=native_id,
+            title=f"{title_prefix} {index}",
+            synced_at=now,
+        )
+        db_session.add(row)
+        rows.append(row)
+    db_session.commit()
+    for row in rows:
+        db_session.refresh(row)
+    return rows

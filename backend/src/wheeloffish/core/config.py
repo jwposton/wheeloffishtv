@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     WOF_OAUTH_CALLBACK_BASE: str = "http://localhost:8000"
     WOF_CATALOG_SYNC_CHUNK_SIZE: int = 100
     WOF_CATALOG_PAGE_DEFAULT: int = 50
+    WOF_SCOPED_LIBRARY_IDS: str = ""
 
     @computed_field  # type: ignore[prop-decorator]
     @property
