@@ -45,3 +45,19 @@ def test_playlist_build_result_fields() -> None:
     assert result.day_key == "2026-05-25"
     assert result.slots_requested == 5
     assert result.slots_filled == 3
+
+
+def test_playlist_default_completion_policy_defaults_to_remove() -> None:
+    playlist = Playlist(id="p1", name="Test", episode_count=5, rows=[])
+    assert playlist.default_completion_policy == CompletionPolicy.REMOVE
+
+
+def test_playlist_default_completion_policy_accepts_override() -> None:
+    playlist = Playlist(
+        id="p1",
+        name="Test",
+        episode_count=5,
+        default_completion_policy=CompletionPolicy.DISORDERED,
+        rows=[],
+    )
+    assert playlist.default_completion_policy == CompletionPolicy.DISORDERED
