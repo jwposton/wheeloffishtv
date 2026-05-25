@@ -41,6 +41,12 @@ Self-hosted Dockerized Plex/Jellyfin random TV playlist builder. Users connect a
 | `LOG_LEVEL` | No | `INFO` | Log level |
 | `LOG_FORMAT` | No | `json` | `json` for production; `console` for local dev |
 | `ENVIRONMENT` | No | `production` | Environment label in logs and health |
+| `WOF_ENABLED_PROVIDERS` | No | `plex,jellyfin` | Comma-separated media providers to expose |
+| `WOF_PLEX_PRODUCT_NAME` | No | `Wheel of Fish TV` | Product name shown during Plex PIN flow |
+| `WOF_OAUTH_CALLBACK_BASE` | No | `http://localhost:8000` | Base URL for OAuth callback redirects |
+| `WOF_CATALOG_SYNC_CHUNK_SIZE` | No | `100` | Series fetched per sync chunk |
+| `WOF_CATALOG_PAGE_DEFAULT` | No | `50` | Default page size for series browse |
+| `WOF_SCOPED_LIBRARY_IDS` | No | — | Optional comma-separated library IDs to auto-scope |
 
 Optional bind-mount for host backups:
 
@@ -72,6 +78,48 @@ Main-branch CI runs a Postgres profile smoke test to guard portability.
 ## Reverse proxy
 
 This repository ships the API service only — no bundled HTTPS reverse proxy. Terminate TLS with your own infrastructure (Caddy, Traefik, nginx, etc.) upstream of the app HTTP port when the SPA lands in Phase 3.
+
+## Phase 2 — Connections and catalog
+
+Phase 2 adds Plex and Jellyfin connectors with cached series browse, background sync, and resume preview. Set `WOF_ENABLED_PROVIDERS` to gate which providers appear in `GET /api/v1/providers`.
+
+### Connection setup
+
+**Plex (OAuth PIN flow)**
+
+1. `POST /api/v1/connections/plex/oauth/start` — returns PIN and auth URL
+2. Authorize at plex.tv, then poll `GET /api/v1/connections/plex/oauth/status/{pin_id}`
+3. Callback creates the connection and stores the token in the secrets vault
+
+**Jellyfin (username/password)**
+
+1. `POST /api/v1/connections/jellyfin/auth` with `base_url`, `username`, and `password`
+2. Connection is created and the access token is stored per user
+
+**Direct token (either provider)**
+
+- `POST /api/v1/connections` with `provider_type`, `base_url`, and `token`
+
+Use `POST /api/v1/connections/{id}/test` to verify connectivity.
+
+### Catalog browse and sync
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/connections/{id}/libraries` | TV libraries (cached, in-scope only) |
+| `GET /api/v1/connections/{id}/series` | Paginated cached series browse (`page`, `limit`, `q`) |
+| `POST /api/v1/connections/{id}/sync` | Trigger background series sync (202) |
+| `GET /api/v1/connections/{id}/sync/status` | Poll sync progress |
+| `PUT /api/v1/admin/connections/{id}/library-scope` | Admin: set in-scope library IDs |
+
+### Resume preview (UAT)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/connections/{id}/series/{series_id}/episodes` | Live episode list from provider |
+| `GET /api/v1/connections/{id}/series/{series_id}/resume` | Computed resume pointer for a series |
+
+Compare resume output to Plex On Deck or Jellyfin Next Up. See `.planning/phases/02-media-ingestion-catalogs/02-UAT-CHECKLIST.md` for manual verification steps.
 
 ## Development
 
