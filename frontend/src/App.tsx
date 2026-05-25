@@ -7,6 +7,7 @@ import { LoginPage } from "@/pages/LoginPage"
 import { SettingsLibrariesPage } from "@/pages/SettingsLibrariesPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { AdminRoute } from "@/routes/AdminRoute"
+import { LibraryScopeGuard } from "@/routes/LibraryScopeGuard"
 import { ProtectedRoute } from "@/routes/ProtectedRoute"
 
 function HomePage() {
@@ -25,7 +26,7 @@ function BrowsePlaceholderPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-2">
       <h2 className="text-xl font-semibold">Browse</h2>
       <p className="text-muted-foreground text-sm">
-        Catalog browser ships in plan 03-05.
+        Catalog browser ships in a later plan.
       </p>
     </div>
   )
@@ -38,7 +39,9 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/browse" element={<BrowsePlaceholderPage />} />
+          <Route element={<LibraryScopeGuard />}>
+            <Route path="/browse" element={<BrowsePlaceholderPage />} />
+          </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/setup/admin" element={<AdminSetupPage />} />
           <Route element={<AdminRoute />}>
