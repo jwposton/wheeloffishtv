@@ -14,7 +14,7 @@ progress:
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 2 context gathered)
+**Updated:** 2026-05-25 (Phase 3 context gathered)
 
 ## Project reference
 
@@ -24,13 +24,13 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **2 — Media ingestion & catalogs** (context complete, ready to plan).
+Phase **3 — Minimal operator SPA shell** (context complete, ready to plan).
 
 ## Immediate next actions
 
-1. `/gsd-plan-phase 2` — research + plan Phase 2 from `02-CONTEXT.md`  
-2. `/gsd-execute-phase 2` — after plans are approved  
-3. `/gsd-secure-phase 1` — optional security review before execution  
+1. `/gsd-plan-phase 3` — research + plan Phase 3 from `03-CONTEXT.md`  
+2. `/gsd-execute-phase 3` — after plans are approved  
+3. Review/edit `03-CONTEXT.md` if anything needs adjustment before planning  
 
 ## Open questions (deferred to later phases)
 
@@ -38,15 +38,18 @@ Phase **2 — Media ingestion & catalogs** (context complete, ready to plan).
 - Exact definition of “season complete” trigger per backend metadata → Phase 4  
 - Multipart adjacency heuristics when provider metadata insufficient → Phase 4  
 
-## Resolved this session (Phase 2 discuss)
+## Resolved this session (Phase 3 discuss)
 
-- Full Plex + Jellyfin parity; OAuth early; composite IDs; show-metadata cache only  
-- Per-user watch state via OAuth-linked media accounts  
-- Episode/watch fetched live at rebuild; resume preview API in Phase 2 for INT-03 UAT  
+- Media-server OAuth only; one provider per install (`WOF_PROVIDER`)  
+- Env-only connection config; library scope in UI  
+- Admin via `WOF_ADMIN_PROVIDER_USER_ID` + first-login discovery screen  
+- Series browser: grid/list toggle, infinite scroll, detail with up-next preview  
+- shadcn/ui stack; light+dark day one; utilitarian tone; Storybook deferred Phase 7  
 
 ## Working notes
 
-- Phase 2 context: `.planning/phases/02-media-ingestion-catalogs/02-CONTEXT.md`  
+- Phase 3 context: `.planning/phases/03-minimal-operator-spa-shell/03-CONTEXT.md`  
+- Phase 2 complete: 7/7 plans  
 - Phase 1 complete: 5/5 plans, 9/9 UAT passed  
 
 ---
