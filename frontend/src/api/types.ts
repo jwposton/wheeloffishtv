@@ -48,3 +48,30 @@ export interface LibraryScopeUpdate {
 export interface LibraryScopeResponse {
   libraries: Library[]
 }
+
+export interface SyncStatusEmbed {
+  status: string
+  progress_pct: number | null
+  library_native_id: string | null
+  error_message: string | null
+}
+
+export interface Series {
+  id: string
+  title: string
+  native_id: string
+  library_native_id: string
+  connection_id: string
+  provider: string
+  year: number | null
+  thumb_url: string | null
+  provider_metadata: Record<string, unknown> | null
+}
+
+export interface SeriesBrowseResponse {
+  items: Series[]
+  page: number
+  limit: number
+  total: number
+  sync: SyncStatusEmbed
+}
