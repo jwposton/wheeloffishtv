@@ -213,4 +213,5 @@ def test_dto_shape_matches_plex() -> None:
         "multipart_group_id",
         "is_special",
         "special_for_season",
+        "last_viewed_at",
     }

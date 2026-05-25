@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -48,6 +49,7 @@ class Episode(BaseModel):
     multipart_group_id: str | None = None
     is_special: bool = False
     special_for_season: int | None = None
+    last_viewed_at: datetime | None = None
 
 
 ResumeSource = Literal["earliest_unfinished", "on_deck"]

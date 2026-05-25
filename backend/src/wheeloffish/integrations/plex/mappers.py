@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -55,6 +56,14 @@ def map_episode(connection_id: str, metadata: dict[str, Any]) -> Episode:
     if multipart_group_id is not None:
         multipart_group_id = str(multipart_group_id)
 
+    last_viewed_at: datetime | None = None
+    raw_last_viewed = metadata.get("lastViewedAt")
+    if raw_last_viewed not in (None, 0):
+        try:
+            last_viewed_at = datetime.fromtimestamp(int(raw_last_viewed), tz=UTC)
+        except (TypeError, ValueError):
+            last_viewed_at = None
+
     return Episode(
         id=format_composite_id(connection_id, PROVIDER, guid),
         title=str(metadata["title"]),
@@ -65,6 +74,7 @@ def map_episode(connection_id: str, metadata: dict[str, Any]) -> Episode:
         provider_marked_played=view_count > 0,
         part_index=int(part_index) if part_index is not None else None,
         multipart_group_id=multipart_group_id,
+        last_viewed_at=last_viewed_at,
     )
 
 

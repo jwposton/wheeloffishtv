@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from wheeloffish.domain.dto import Episode, Library, Series
@@ -69,6 +70,14 @@ def map_episode(connection_id: str, item: dict[str, Any]) -> Episode:
     if multipart_group_id is not None:
         multipart_group_id = str(multipart_group_id)
 
+    last_viewed_at: datetime | None = None
+    last_played = user_data.get("LastPlayedDate")
+    if last_played:
+        try:
+            last_viewed_at = datetime.fromisoformat(str(last_played).replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            last_viewed_at = None
+
     return Episode(
         id=format_composite_id(connection_id, PROVIDER, native_id),
         title=str(item["Name"]),
@@ -79,6 +88,7 @@ def map_episode(connection_id: str, item: dict[str, Any]) -> Episode:
         provider_marked_played=bool(user_data.get("Played")),
         part_index=int(part_index) if part_index is not None else None,
         multipart_group_id=multipart_group_id,
+        last_viewed_at=last_viewed_at,
     )
 
 
