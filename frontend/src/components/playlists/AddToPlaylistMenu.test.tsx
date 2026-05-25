@@ -21,6 +21,7 @@ import {
 } from "@/api/playlists"
 import { AddToPlaylistMenu } from "@/components/playlists/AddToPlaylistMenu"
 import { QuickCreatePlaylistDialog } from "@/components/playlists/QuickCreatePlaylistDialog"
+import { Button } from "@/components/ui/button"
 
 const mockUsePlaylists = vi.mocked(usePlaylists)
 const mockUseAppendPlaylistRow = vi.mocked(useAppendPlaylistRow)
@@ -55,7 +56,7 @@ function renderMenu() {
       <MemoryRouter>
         <AddToPlaylistMenu
           seriesId="series-abc"
-          trigger={<button type="button">Open menu</button>}
+          trigger={<Button type="button">Open menu</Button>}
         />
       </MemoryRouter>
     </QueryClientProvider>,
