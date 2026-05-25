@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect their **Plex** or **Jellyfin** library, configure **multiple playlists**, pick which shows feed each playlist, set **episode count per refresh**, and get a rebuilt list daily. For **ordered** shows, playback respects **(series order)** starting from **up-next / earliest unwatched / in-progress**. For **disordered** show entries, episodes from that show are **feathered in randomly**. Admins maintain a fixed **server-wide** **WheelOfFish** playlist (**all disordered**). **Multipart** arcs keep **continuation parts contiguous** within a refresh.
+Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect their **Plex** or **Jellyfin** library, configure **multiple playlists**, pick which shows feed each playlist (from a **Library** browse experience), set **episode count per refresh**, and get a rebuilt list daily. For **ordered** shows, playback respects **(series order)** starting from **up-next / earliest unwatched / in-progress**. For **disordered** show entries, episodes from that show are **feathered in randomly**. **Multipart** arcs keep **continuation parts contiguous** within a refresh.
 
 ## Core Value
 
@@ -20,7 +20,7 @@ Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect
 ### Active
 
 - [ ] Connect user-configured Plex and/or Jellyfin; list libraries & shows user can attach to playlists
-- [ ] Multiple playlists per user + admin **WheelOfFish** playlist
+- [ ] Library-centric playlist membership UX (add from catalog tiles + two-pane editor) — Phase 6
 - [ ] Ordered vs disordered per **playlist × show**
 - [ ] Policies when a show’s season (or library rules) completes: remove on next refresh vs restart vs switch to disordered
 - [ ] Daily full rebuild scheduler; multipart episodes grouped back-to-back (ordered flows)
@@ -55,7 +55,7 @@ Technical notes for later phases:
 |----------|-----------|---------|
 | Python backend | User preference + strong async HTTP client story | — Pending |
 | Daily batch rebuild | Predictable load; simpler than continuous mutation | — Pending |
-| WheelOfFish = server-wide disordered pool | Distinct product promise for household random mode | — Pending |
+| No global WheelOfFish playlist | User creates their own mixed playlists; admin global pool cancelled (2026-05-25) | — Decided |
 
 ## Evolution
 
@@ -77,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 after Phase 4 (playlist mathematics)*
+*Last updated: 2026-05-25 after Phase 6 context (Library & playlist assignment; WheelOfFish cancelled)*

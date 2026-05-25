@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T22:41:22.825Z"
+last_updated: "2026-05-25T23:12:28.483Z"
 progress:
   total_phases: 7
   completed_phases: 5
@@ -24,15 +24,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **5 — Orchestration & scheduling** — **complete** (6/6 plans, 6/6 executed).
+Phase **6 — Library & playlist assignment** — **context gathered** (0 plans).
 
-**Stopped at:** 05-06 complete. Phase 5 fully done.
+**Stopped at:** Phase 6 context gathered
 
-**Next action:** Begin Phase 6
+**Next action:** `/gsd-plan-phase 6`
 
 ## Immediate next actions
 
-1. Begin Phase 6
+1. `/gsd-plan-phase 6` — plan Library assignment UX + metadata enrichment
+2. `/gsd-verify-work 5` — optional: Phase 5 human UAT (cron + badges)
 
 ## Decisions (Phase 4)
 
@@ -60,6 +61,14 @@ Phase **5 — Orchestration & scheduling** — **complete** (6/6 plans, 6/6 exec
 - Session cookie https_only only when ENVIRONMENT=production
 - ProtectedRoute requires has_media_link (not just session bootstrap)
 - Storybook deferred to Phase 7 (D-20)
+
+## Decisions (Phase 6 — planning)
+
+- **WheelOfFish admin playlist cancelled** — ADM-01/ADM-02 removed; users manage own playlists
+- **Browse nav → Library**; tiles get ⋯ + context menu / long-press for add-to-playlist
+- **Series detail:** primary Add button + shared menu; enrich with provider metadata (summary, genres, rating) — no external IMDb API
+- **Quick create:** inline name + Advanced… link to full form
+- **Playlist edit:** two-pane tile picker (In | Available); row settings via bottom sheet; mobile tabs
 
 ## Decisions (Phase 5 — planning)
 

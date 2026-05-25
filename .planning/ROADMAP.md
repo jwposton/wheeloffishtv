@@ -16,7 +16,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
 | 4 | 6/6 | Complete    | 2026-05-25 |
 | 5 | 6/6 | Complete   | 2026-05-25 |
-| 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
+| 6 | Library & playlist assignment | Library-centric add-to-playlist UX + enriched series detail + two-pane editor | PLT-03 (UX) |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
 
 *(Phase numbers align with REQ traceability columns — adjust if phasedown needed later.)*
@@ -177,18 +177,23 @@ Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 
 ---
 
-### Phase 6: Admin WheelOfFish
+### Phase 6: Library & playlist assignment
 
-**Goal:** Specialized global playlist surfaced only to admins, always disordered semantics.  
+**Goal:** As a self-host operator, I want to add shows to playlists from my Library and tune membership in a visual two-pane editor, **so that** playlist authoring feels like browsing my catalog—not filling out a search box.  
 **Mode:** mvp  
+**UI hint:** yes  
 
 **Success criteria**
 
-1. WheelOfFish visible & editable exclusively for admin cohort  
-2. Non-admins consume output if entitled but cannot mutate definition  
-3. Auditable change log minimal (who/when mutated membership)  
+1. Nav reads **Library**; tiles expose add-to-playlist (⋯ + context menu / long-press)  
+2. Series detail shows provider metadata (summary, genres, rating) plus primary add-to-playlist action  
+3. Playlist create/edit uses **In playlist | Available** tile panes with name search; row settings via sheet  
+4. Quick-create playlist from Library with inline name + Advanced form link  
+5. ADM-01/ADM-02 (global WheelOfFish) **cancelled** — no admin-only global playlist  
 
-Requirements: ADM-01, ADM-02
+Requirements: PLT-03 (membership UX completion), WEB-01 (Library assignment slice)
+
+**Supersedes:** Former Phase 6 “Admin WheelOfFish” scope (2026-05-25 decision)
 
 ---
 
@@ -213,8 +218,8 @@ Requirements: WEB-01 (completion), residual polish tying earlier gaps
 - INT-\* covered Phases **1–2**  
 - PLT-\* **4** primarily  
 - SCH-\* **5**  
-- ADM-\* **6**  
-- WEB-\* **3 + 7**  
+- PLT-03 UX completion **6**  
+- WEB-\* **3 + 6 + 7**  
 - DEP-\* **1**  
 
 Everything mapped ✓  

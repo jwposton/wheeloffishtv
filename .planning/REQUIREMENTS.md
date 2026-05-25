@@ -27,8 +27,8 @@
 
 ### Administration
 
-- [ ] **ADM-01**: **WheelOfFish** exists as a predefined **global** playlist (name fixed) assembling **random disordered episodes** from an admin-declared universe of libraries/shows usable by household accounts per policy finalized in PLAN  
-- [ ] **ADM-02**: Only designated **admin principals** mutate WheelOfFish membership & parameters (role model finalized in PLAN)  
+- ~~**ADM-01**~~ **Cancelled (2026-05-25):** Global WheelOfFish playlist — user creates own playlists instead  
+- ~~**ADM-02**~~ **Cancelled (2026-05-25):** Admin-only WheelOfFish mutation — scope removed with ADM-01  
 
 ### Presentation (Web UI)
 
@@ -54,6 +54,7 @@ Deferred (not in roadmap v1):
 | First-class in-app playback | Consume via Plex/Jellyfin clients; MVP targets playlist authoring / export contract |
 | Licensed content scraping outside configured servers | Compliance & scope |
 | Hosted multi-tenant SaaS billing | Explicit self-host persona |
+| Global WheelOfFish admin playlist (ADM-01/02) | Cancelled 2026-05-25 — users manage their own playlists via Library UX (Phase 6) |
 
 ## Traceability
 
@@ -70,8 +71,9 @@ Deferred (not in roadmap v1):
 | PLT-06 | Phase 4 | Complete |
 | SCH-01 | Phase 5 | Complete |
 | SCH-02 | Phase 5 | Complete |
-| ADM-01 | Phase 6 | Pending |
-| ADM-02 | Phase 6 | Pending |
+| ADM-01 | — | Cancelled (2026-05-25) |
+| ADM-02 | — | Cancelled (2026-05-25) |
+| PLT-03 UX | Phase 6 | Pending (Library assignment + two-pane editor) |
 | WEB-01 | Phase 3 (+ Phase 7 polish tie-in) | Complete |
 | DEP-01 | Phase 1 | Pending |
 
@@ -86,4 +88,4 @@ Deferred (not in roadmap v1):
 ---
 
 *Requirements defined: 2026-05-24*  
-*Last updated: 2026-05-24 after initialization*
+*Last updated: 2026-05-25 after Phase 6 context (ADM cancelled, PLT-03 UX → Phase 6)*
