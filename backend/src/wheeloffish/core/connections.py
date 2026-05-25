@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.secrets import SecretsVault
+from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Library
@@ -203,6 +204,53 @@ async def create_connection(
         raise
 
     return connection
+
+
+def link_media_user(
+    db: Session,
+    vault: SecretsVault,
+    connection: Connection,
+    app_user: AppUser,
+    *,
+    provider_user_id: str,
+    provider_username: str | None,
+    token: str,
+) -> UserMediaLink:
+    """Upsert user_media_link and store the provider token in the vault."""
+    link = (
+        db.query(UserMediaLink)
+        .filter(
+            UserMediaLink.connection_id == connection.id,
+            UserMediaLink.app_user_id == app_user.id,
+        )
+        .one_or_none()
+    )
+    now = datetime.now(UTC)
+    if link is None:
+        link = UserMediaLink(
+            id=str(uuid.uuid4()),
+            app_user_id=app_user.id,
+            connection_id=connection.id,
+            provider_user_id=provider_user_id,
+            provider_username=provider_username,
+            linked_at=now,
+        )
+        db.add(link)
+    else:
+        link.provider_user_id = provider_user_id
+        link.provider_username = provider_username
+        link.linked_at = now
+
+    try:
+        db.flush()
+        vault.store_media_user_token(connection.id, app_user.id, token, commit=False)
+        db.commit()
+        db.refresh(link)
+    except Exception:
+        db.rollback()
+        raise
+
+    return link
 
 
 def _get_user_media_link(

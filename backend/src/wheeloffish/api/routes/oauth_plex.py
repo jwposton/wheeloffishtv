@@ -1,19 +1,23 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from wheeloffish.api.deps import get_app_user_id, get_db, get_settings_dep, get_vault
+from wheeloffish.api.deps import get_current_user, get_db, get_settings_dep, get_vault
 from wheeloffish.api.schemas.oauth import (
     PlexOAuthStartRequest,
     PlexOAuthStartResponse,
     PlexOAuthStatusResponse,
 )
+from wheeloffish.core.auth import is_setup_mode, upsert_app_user
+from wheeloffish.core.boot import sync_connection_from_env
 from wheeloffish.core.catalog_sync import trigger_sync
 from wheeloffish.core.config import Settings
-from wheeloffish.core.connections import create_connection
+from wheeloffish.core.connections import link_media_user
 from wheeloffish.core.secrets import SecretsVault
+from wheeloffish.db.models.app_user import AppUser
+from wheeloffish.db.models.connection import Connection
 from wheeloffish.integrations.errors import ProviderError
 from wheeloffish.integrations.plex.auth import (
     clear_pin_state,
@@ -30,16 +34,18 @@ router = APIRouter(prefix="/connections/plex/oauth", tags=["plex-oauth"])
 
 @router.post("/start", response_model=PlexOAuthStartResponse)
 async def plex_oauth_start(
-    body: PlexOAuthStartRequest,
+    _body: PlexOAuthStartRequest | None = None,
+    db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
-    app_user_id: str = Depends(get_app_user_id),
+    user: AppUser = Depends(get_current_user),
 ) -> PlexOAuthStartResponse:
-    if "plex" not in settings.enabled_providers_set:
+    if settings.WOF_PROVIDER != "plex":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"code": "provider_disabled", "message": "Plex is not enabled"},
         )
 
+    connection = sync_connection_from_env(db, settings)
     client_identifier = str(uuid.uuid4())
     pin_id, _, auth_url = await create_pin_with_auth_url(
         client_identifier,
@@ -48,11 +54,11 @@ async def plex_oauth_start(
     )
     store_pin_state(
         pin_id,
-        display_name=body.display_name,
-        base_url=body.base_url,
-        verify_ssl=body.verify_ssl,
+        connection_id=connection.id,
+        base_url=connection.base_url,
+        verify_ssl=connection.verify_ssl,
         client_identifier=client_identifier,
-        app_user_id=app_user_id,
+        app_user_id=user.id,
     )
     return PlexOAuthStartResponse(pin_id=pin_id, auth_url=auth_url)
 
@@ -78,10 +84,11 @@ async def plex_oauth_status(
 @router.get("/callback")
 async def plex_oauth_callback(
     pin_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     vault: SecretsVault = Depends(get_vault),
     settings: Settings = Depends(get_settings_dep),
-) -> JSONResponse:
+) -> RedirectResponse:
     state = get_pin_state(pin_id)
     if state is None:
         raise HTTPException(
@@ -89,16 +96,32 @@ async def plex_oauth_callback(
             detail="PIN not found or expired",
         )
 
+    session_user_id = request.session.get("app_user_id")
+    if session_user_id != state.app_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "session_mismatch", "message": "PIN session does not match"},
+        )
+
     product_name = settings.WOF_PLEX_PRODUCT_NAME
     token = await poll_pin(pin_id, state.client_identifier, product_name)
     if not token:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_202_ACCEPTED,
-            content={"status": "pending", "auth_token_present": False},
+            detail={"status": "pending", "auth_token_present": False},
+        )
+
+    connection = (
+        db.query(Connection).filter(Connection.id == state.connection_id).one_or_none()
+    )
+    if connection is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Connection not found",
         )
 
     try:
-        user = await validate_token(token, state.client_identifier, product_name)
+        user_info = await validate_token(token, state.client_identifier, product_name)
         if not await discover_server(
             token, state.base_url, state.client_identifier, product_name
         ):
@@ -110,21 +133,24 @@ async def plex_oauth_callback(
                 },
             )
 
-        connection = await create_connection(
+        provider_user_id = str(user_info.get("id", "unknown"))
+        provider_username = user_info.get("username") or user_info.get("email")
+        app_user = upsert_app_user(
+            db,
+            provider_user_id=provider_user_id,
+            provider_username=provider_username,
+        )
+        link_media_user(
             db,
             vault,
-            settings,
-            provider_type="plex",
-            display_name=state.display_name,
-            base_url=state.base_url,
-            verify_ssl=state.verify_ssl,
+            connection,
+            app_user,
+            provider_user_id=provider_user_id,
+            provider_username=provider_username,
             token=token,
-            app_user_id=state.app_user_id,
-            plex_client_identifier=state.client_identifier,
-            provider_user_id=str(user.get("id", "unknown")),
-            provider_username=user.get("username") or user.get("email"),
         )
-        trigger_sync(db, connection.id, state.app_user_id)
+        request.session["app_user_id"] = app_user.id
+        trigger_sync(db, connection.id, app_user.id)
     except ProviderError as err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -133,11 +159,6 @@ async def plex_oauth_callback(
     finally:
         clear_pin_state(pin_id)
 
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content={
-            "status": "connected",
-            "connection_id": connection.id,
-            "auth_token_present": True,
-        },
-    )
+    redirect_path = "/setup" if is_setup_mode(settings) else "/"
+    redirect_url = f"{settings.WOF_OAUTH_CALLBACK_BASE.rstrip('/')}{redirect_path}"
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)

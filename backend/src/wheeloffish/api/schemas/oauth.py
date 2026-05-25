@@ -1,10 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PlexOAuthStartRequest(BaseModel):
-    display_name: str = Field(..., min_length=1, max_length=255)
-    base_url: str = Field(..., min_length=1, max_length=512)
-    verify_ssl: bool = True
+    model_config = ConfigDict(extra="forbid")
 
 
 class PlexOAuthStartResponse(BaseModel):
@@ -18,8 +16,5 @@ class PlexOAuthStatusResponse(BaseModel):
 
 
 class JellyfinAuthRequest(BaseModel):
-    base_url: str = Field(..., min_length=1, max_length=512)
     username: str = Field(..., min_length=1, max_length=255)
     password: str = Field(..., min_length=1, max_length=512)
-    display_name: str = Field(..., min_length=1, max_length=255)
-    verify_ssl: bool = True

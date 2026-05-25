@@ -14,7 +14,7 @@ PIN_STATE_TTL_SECONDS = 15 * 60
 
 @dataclass
 class PinState:
-    display_name: str
+    connection_id: str
     base_url: str
     verify_ssl: bool
     client_identifier: str
@@ -48,7 +48,7 @@ def _normalize_url(url: str) -> str:
 def store_pin_state(
     pin_id: int,
     *,
-    display_name: str,
+    connection_id: str,
     base_url: str,
     verify_ssl: bool,
     client_identifier: str,
@@ -56,7 +56,7 @@ def store_pin_state(
 ) -> None:
     _purge_expired_pin_state()
     _pin_state[pin_id] = PinState(
-        display_name=display_name,
+        connection_id=connection_id,
         base_url=base_url,
         verify_ssl=verify_ssl,
         client_identifier=client_identifier,
