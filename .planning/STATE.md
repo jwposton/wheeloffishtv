@@ -14,7 +14,7 @@ progress:
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 1 context gathered)
+**Updated:** 2026-05-25 (Phase 1 planned — 5 plans, 4 waves)
 
 ## Project reference
 
@@ -24,12 +24,12 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current phase
 
-Phase **1 — Foundations & packaging** (context gathered; ready for planning).
+Phase **1 — Foundations & packaging** (planned; ready to execute).
 
 ## Immediate next actions
 
-1. `/gsd-plan-phase 1` — produce executable plans + verification hooks  
-2. `/gsd-execute-phase 1` — begin implementation  
+1. `/gsd-execute-phase 1` — run all 5 plans  
+2. `/gsd-verify-work` — after execution, validate against must_haves  
 
 ## Open questions (deferred to later phases)
 
