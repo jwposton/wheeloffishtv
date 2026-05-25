@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_execute
-last_updated: "2026-05-25T22:00:00.000Z"
+status: executing
+last_updated: "2026-05-25T22:30:00.000Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
-  completed_plans: 26
-  percent: 57
+  completed_plans: 27
+  percent: 59
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 5 planned)
+**Updated:** 2026-05-25 (Phase 5 plan 01 complete)
 
 ## Project reference
 
@@ -24,13 +24,15 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **5 — Orchestration & scheduling** — **planned** (6/6 plans, 0 executed).
+Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 1/6 executed).
 
-**Next action:** Execute Phase 5 via `/gsd-execute-phase 5`
+**Stopped at:** 05-01 complete. Next: 05-02.
+
+**Next action:** Execute 05-02 (rebuild orchestrator)
 
 ## Immediate next actions
 
-1. `/gsd-execute-phase 5` — run Wave 1 (05-01 schema + ORM)
+1. Execute 05-02 — rebuild orchestrator (live fetch + builder wiring)
 2. Wave 2–6 follow dependency order in ROADMAP
 
 ## Decisions (Phase 4)
@@ -64,8 +66,14 @@ Phase **5 — Orchestration & scheduling** — **planned** (6/6 plans, 0 execute
 
 - **Install timezone (D-01 amendment 2026-05-25):** `WOF_INSTALL_TIMEZONE` (IANA, default UTC) + `WOF_REBUILD_CRON` (HH:MM local). Single cron job; weekly DOW in same TZ. Per-user timezone deferred.
 
+## Decisions (Phase 5 — plan 01)
+
+- SQLAlchemy proper constructors required in tests — `__new__` bypasses instance state initialization; use `Model(col=val, ...)` instead
+- `rebuild_run.created_at` always-present; `started_at` nullable for queued state (job created before it begins)
+
 ## Working notes
 
+- Phase 5 plan 01: `.planning/phases/05-orchestration-scheduling/05-01-SUMMARY.md`
 - Phase 4 plan 06: `.planning/phases/04-playlist-mathematics/04-06-SUMMARY.md`
 - Phase 4 plan 05: `.planning/phases/04-playlist-mathematics/04-05-SUMMARY.md`
 - Phase 4 plan 04: `.planning/phases/04-playlist-mathematics/04-04-SUMMARY.md`
