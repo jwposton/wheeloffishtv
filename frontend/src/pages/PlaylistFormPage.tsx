@@ -1,6 +1,8 @@
-import { useParams } from "react-router-dom"
+import { useMemo } from "react"
+import { useParams, useSearchParams } from "react-router-dom"
 
 import { PlaylistForm } from "@/components/playlists/PlaylistForm"
+import type { SeriesRow } from "@/components/playlists/TwoPanePicker"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePlaylist } from "@/api/playlists"
 
@@ -29,16 +31,34 @@ function EditPlaylistForm({ id }: { id: string }) {
 
 export function PlaylistFormPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const isNew = id === "new" || !id
 
+  const seriesId = searchParams.get("seriesId")
+
+  const initialRows = useMemo<SeriesRow[] | undefined>(() => {
+    if (!isNew || !seriesId) {
+      return undefined
+    }
+    return [
+      {
+        series_id: seriesId,
+        series_title: seriesId,
+        thumb_url: null,
+        mode: "ordered",
+        completion_policy: "remove",
+      },
+    ]
+  }, [isNew, seriesId])
+
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <h2 className="text-xl font-semibold">
         {isNew ? "New playlist" : "Edit playlist"}
       </h2>
 
       {isNew ? (
-        <PlaylistForm mode="create" />
+        <PlaylistForm mode="create" initialRows={initialRows} />
       ) : (
         <EditPlaylistForm id={id} />
       )}

@@ -5,7 +5,10 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { SeriesPicker, type SeriesRow } from "@/components/playlists/SeriesPicker"
+import {
+  TwoPanePicker,
+  type SeriesRow,
+} from "@/components/playlists/TwoPanePicker"
 import {
   SLOT_ALLOCATION_LABELS,
   useCreatePlaylist,
@@ -38,9 +41,10 @@ const DOW_OPTIONS = [
 interface PlaylistFormProps {
   mode: "create" | "edit"
   playlist?: PlaylistDetailResponse
+  initialRows?: SeriesRow[]
 }
 
-export function PlaylistForm({ mode, playlist }: PlaylistFormProps) {
+export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps) {
   const navigate = useNavigate()
   const createMutation = useCreatePlaylist()
   const updateMutation = useUpdatePlaylist()
@@ -64,7 +68,9 @@ export function PlaylistForm({ mode, playlist }: PlaylistFormProps) {
       thumb_url: null,
       mode: r.mode,
       completion_policy: r.completion_policy,
-    })) ?? [],
+    })) ??
+      initialRows ??
+      [],
   )
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -237,15 +243,10 @@ export function PlaylistForm({ mode, playlist }: PlaylistFormProps) {
       <section className="flex flex-col gap-4 rounded-xl border bg-card p-4">
         <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Series</h3>
 
-        <SeriesPicker
+        <TwoPanePicker
           rows={rows}
-          onAdd={(row) => setRows((prev) => [...prev, row])}
-          onRemove={(id) => setRows((prev) => prev.filter((r) => r.series_id !== id))}
-          onUpdateRow={(id, updates) =>
-            setRows((prev) =>
-              prev.map((r) => (r.series_id === id ? { ...r, ...updates } : r)),
-            )
-          }
+          onRowsChange={setRows}
+          playlistId={playlist?.id}
         />
         {errors.rows && <p className="text-xs text-destructive">{errors.rows}</p>}
       </section>
