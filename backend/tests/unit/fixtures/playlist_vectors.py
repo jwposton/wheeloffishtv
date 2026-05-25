@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.playlist import Playlist, PlaylistSeriesRow, RowMode
 
@@ -13,6 +15,7 @@ def episode(
     multipart_group_id: str | None = None,
     is_special: bool = False,
     special_for_season: int | None = None,
+    last_viewed_at: datetime | None = None,
 ) -> Episode:
     return Episode(
         id=episode_id,
@@ -26,6 +29,7 @@ def episode(
         multipart_group_id=multipart_group_id,
         is_special=is_special,
         special_for_season=special_for_season,
+        last_viewed_at=last_viewed_at,
     )
 
 
