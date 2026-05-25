@@ -291,3 +291,115 @@ def test_weekly_cadence_with_day_succeeds(base_client: TestClient, db_session) -
     )
     assert resp.status_code == 201
     assert resp.json()["refresh_day_of_week"] == 5
+
+
+# ---------------------------------------------------------------------------
+# Row append / remove / patch (Phase 06 Plan 02 — D-20)
+# ---------------------------------------------------------------------------
+
+
+def _create_empty_playlist(base_client: TestClient) -> str:
+    resp = base_client.post(
+        "/api/v1/playlists",
+        json={"name": "Row Ops", "rows": []},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["id"]
+
+
+def test_append_row(base_client: TestClient, db_session) -> None:
+    """POST /rows appends one series row with create defaults."""
+    user = _make_user(db_session)
+    _set_user(user)
+    playlist_id = _create_empty_playlist(base_client)
+
+    append = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert append.status_code in (200, 201), append.text
+    body = append.json()
+    assert len(body["rows"]) == 1
+    assert body["rows"][0]["series_id"] == SERIES_ID_A
+    assert body["rows"][0]["mode"] == "ordered"
+    assert body["rows"][0]["completion_policy"] == "remove"
+
+    detail = base_client.get(f"/api/v1/playlists/{playlist_id}")
+    assert detail.status_code == 200
+    assert len(detail.json()["rows"]) == 1
+
+
+def test_append_row_duplicate_409(base_client: TestClient, db_session) -> None:
+    user = _make_user(db_session)
+    _set_user(user)
+    playlist_id = _create_empty_playlist(base_client)
+
+    first = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert first.status_code in (200, 201), first.text
+
+    second = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert second.status_code == 409
+
+
+def test_remove_row(base_client: TestClient, db_session) -> None:
+    user = _make_user(db_session)
+    _set_user(user)
+    playlist_id = _create_empty_playlist(base_client)
+
+    append = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert append.status_code in (200, 201), append.text
+
+    delete = base_client.delete(f"/api/v1/playlists/{playlist_id}/rows/{SERIES_ID_A}")
+    assert delete.status_code == 204
+
+    detail = base_client.get(f"/api/v1/playlists/{playlist_id}")
+    assert detail.status_code == 200
+    assert detail.json()["rows"] == []
+
+
+def test_patch_row_mode(base_client: TestClient, db_session) -> None:
+    user = _make_user(db_session)
+    _set_user(user)
+    playlist_id = _create_empty_playlist(base_client)
+
+    append = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert append.status_code in (200, 201), append.text
+
+    patch = base_client.patch(
+        f"/api/v1/playlists/{playlist_id}/rows/{SERIES_ID_A}",
+        json={"mode": "disordered"},
+    )
+    assert patch.status_code == 200, patch.text
+    assert patch.json()["rows"][0]["mode"] == "disordered"
+
+    detail = base_client.get(f"/api/v1/playlists/{playlist_id}")
+    assert detail.status_code == 200
+    assert detail.json()["rows"][0]["mode"] == "disordered"
+
+
+def test_append_row_cross_user_404(base_client: TestClient, db_session) -> None:
+    """D-18: Cross-user row append returns 404."""
+    user_a = _make_user(db_session, "user-a")
+    user_b = _make_user(db_session, "user-b")
+
+    _set_user(user_a)
+    playlist_id = _create_empty_playlist(base_client)
+
+    _set_user(user_b)
+    resp = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert resp.status_code == 404
