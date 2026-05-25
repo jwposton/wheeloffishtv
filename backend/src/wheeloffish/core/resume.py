@@ -1,3 +1,9 @@
+"""Resume pointer computation (INT-03, D-10, D-12).
+
+Reusable by Phase 4 playlist builder — pass live ``Episode`` lists and on-deck
+from ``MediaProvider``; no episode persistence required.
+"""
+
 from enum import StrEnum
 
 from wheeloffish.domain.dto import Episode, ResumeCursor
@@ -98,20 +104,33 @@ def _cursor_from_episode(
     )
 
 
+class ResumeService:
+    """Domain service for hybrid resume pointer computation (D-10)."""
+
+    def compute(
+        self,
+        series_id: str,
+        episodes: list[Episode],
+        on_deck: Episode | None,
+    ) -> ResumeCursor:
+        """Compute resume cursor using hybrid on-deck rule (D-10)."""
+        ordered = order_episodes(episodes)
+        earliest = next((e for e in ordered if classify_watch(e) != WatchState.COMPLETE), None)
+
+        if earliest is None:
+            return ResumeCursor(series_id=series_id, series_complete=True)
+
+        if on_deck is not None and is_ahead_in_sequence(on_deck, earliest, ordered):
+            return _cursor_from_episode(on_deck, source="on_deck", series_id=series_id)
+
+        return _cursor_from_episode(earliest, source="earliest_unfinished", series_id=series_id)
+
+
 def compute_resume(
     episodes: list[Episode],
     on_deck: Episode | None,
     *,
     series_id: str | None = None,
 ) -> ResumeCursor:
-    """Compute resume cursor using hybrid on-deck rule (D-10)."""
-    ordered = order_episodes(episodes)
-    earliest = next((e for e in ordered if classify_watch(e) != WatchState.COMPLETE), None)
-
-    if earliest is None:
-        return ResumeCursor(series_id=series_id, series_complete=True)
-
-    if on_deck is not None and is_ahead_in_sequence(on_deck, earliest, ordered):
-        return _cursor_from_episode(on_deck, source="on_deck", series_id=series_id)
-
-    return _cursor_from_episode(earliest, source="earliest_unfinished", series_id=series_id)
+    """Compute resume cursor; convenience wrapper around :class:`ResumeService`."""
+    return ResumeService().compute(series_id or "", episodes, on_deck)
