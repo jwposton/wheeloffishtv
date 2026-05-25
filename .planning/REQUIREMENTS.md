@@ -32,7 +32,7 @@
 
 ### Presentation (Web UI)
 
-- [ ] **WEB-01**: SPA covers **authentication**, connection setup, playlist CRUD, show membership, tuning flags (`ordered`/`disordered`, completion policies), **manual “rebuild now”** (optional shortcut), and surfaced job status/logs for last refresh  
+- [x] **WEB-01**: SPA covers **authentication**, connection setup, playlist CRUD, show membership, tuning flags (`ordered`/`disordered`, completion policies), **manual “rebuild now”** (optional shortcut), and surfaced job status/logs for last refresh  
 
 ### Packaging
 
@@ -72,7 +72,7 @@ Deferred (not in roadmap v1):
 | SCH-02 | Phase 5 | Complete |
 | ADM-01 | Phase 6 | Pending |
 | ADM-02 | Phase 6 | Pending |
-| WEB-01 | Phase 3 (+ Phase 7 polish tie-in) | Pending |
+| WEB-01 | Phase 3 (+ Phase 7 polish tie-in) | Complete |
 | DEP-01 | Phase 1 | Pending |
 
 **Coverage:**

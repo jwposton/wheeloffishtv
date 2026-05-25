@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T22:32:58.360Z"
+last_updated: "2026-05-25T22:41:22.825Z"
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 32
-  completed_plans: 31
-  percent: 57
+  completed_plans: 32
+  percent: 71
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 5 plan 05 complete)
+**Updated:** 2026-05-25 (Phase 5 plan 06 complete — Phase 5 DONE)
 
 ## Project reference
 
@@ -24,15 +24,15 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 5/6 executed).
+Phase **5 — Orchestration & scheduling** — **complete** (6/6 plans, 6/6 executed).
 
-**Stopped at:** 05-05 complete. Next: 05-06.
+**Stopped at:** 05-06 complete. Phase 5 fully done.
 
-**Next action:** Execute 05-06 — final integration wave
+**Next action:** Begin Phase 6
 
 ## Immediate next actions
 
-1. Execute 05-06 — final integration wave
+1. Begin Phase 6
 
 ## Decisions (Phase 4)
 
@@ -96,8 +96,16 @@ Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 5/6 exe
 - Inline `formatRelativeTime` helper in `PlaylistCard.tsx` — no date-fns dependency added (not in project; plan allowed ISO fallback)
 - Route `/playlists` placed inside `LibraryScopeGuard` + `ProtectedRoute` at same level as `/browse` (D-20)
 
+## Decisions (Phase 5 — plan 06)
+
+- AlertDialog delete copy: 'This removes the playlist and its rebuild history. This cannot be undone.' (D-22, T-05-06-02)
+- RebuildBanner error_message rendered as plain text JSX node only (T-05-06-03 XSS mitigation)
+- SeriesPicker uses connection-scoped /connections/:id/series API with 20-item limit (D-25)
+- Edit link uses Button render={<Link>} — pre-existing project convention (same as PlaylistCard)
+
 ## Working notes
 
+- Phase 5 plan 06: `.planning/phases/05-orchestration-scheduling/05-06-SUMMARY.md`
 - Phase 5 plan 05: `.planning/phases/05-orchestration-scheduling/05-05-SUMMARY.md`
 - Phase 5 plan 04: `.planning/phases/05-orchestration-scheduling/05-04-SUMMARY.md`
 - Phase 5 plan 03: `.planning/phases/05-orchestration-scheduling/05-03-SUMMARY.md`

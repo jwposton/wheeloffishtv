@@ -15,7 +15,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 | Complete |
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
 | 4 | 6/6 | Complete    | 2026-05-25 |
-| 5 | 3/6 | In Progress|  |
+| 5 | 6/6 | Complete   | 2026-05-25 |
 | 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
 
@@ -155,7 +155,7 @@ Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 
 **Wave 3** *(blocked on Waves 1–2)*
 
-- [ ] 05-03-PLAN.md — Rebuild orchestrator, failure isolation, snapshot persist (SCH-02)
+- [x] 05-03-PLAN.md — Rebuild orchestrator, failure isolation, snapshot persist (SCH-02)
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -167,7 +167,7 @@ Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 05-06-PLAN.md — SPA create/edit, series picker, rebuild now, output view (WEB-01, PLT-03)
+- [x] 05-06-PLAN.md — SPA create/edit, series picker, rebuild now, output view (WEB-01, PLT-03)
 
 **Cross-cutting constraints:**
 
