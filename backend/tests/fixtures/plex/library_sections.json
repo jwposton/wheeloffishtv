@@ -1,0 +1,24 @@
+{
+  "MediaContainer": {
+    "size": 2,
+    "allowSync": true,
+    "Directory": [
+      {
+        "key": "1",
+        "type": "show",
+        "title": "Fictional TV Shows",
+        "uuid": "aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee",
+        "agent": "com.plexapp.agents.thetvdb",
+        "scanner": "Plex TV Series"
+      },
+      {
+        "key": "2",
+        "type": "show",
+        "title": "Sample Anime",
+        "uuid": "bbbbbbbb-cccc-4ddd-eeee-ffffffffffff",
+        "agent": "com.plexapp.agents.hama",
+        "scanner": "Plex Anime Series"
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "Items": [
+    {
+      "Name": "Season Two Premiere",
+      "Id": "66666666-7777-4888-8999-aaaaaaaaaaaa",
+      "ParentIndexNumber": 2,
+      "IndexNumber": 1,
+      "SeriesId": "11111111-2222-4333-8444-555555555555",
+      "SeriesName": "Fictional Show",
+      "RunTimeTicks": 36000000000,
+      "UserData": {
+        "Played": false,
+        "PlayCount": 0,
+        "PlayedPercentage": 0,
+        "PlaybackPositionTicks": 0
+      }
+    }
+  ],
+  "TotalRecordCount": 1
+}

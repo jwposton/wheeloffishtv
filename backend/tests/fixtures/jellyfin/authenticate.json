@@ -1,0 +1,18 @@
+{
+  "AccessToken": "SANITIZED_JELLYFIN_TOKEN",
+  "ServerId": "11111111-2222-4333-8444-555555555555",
+  "User": {
+    "Id": "22222222-3333-4444-8555-666666666666",
+    "Name": "testuser",
+    "ServerId": "11111111-2222-4333-8444-555555555555",
+    "HasPassword": true,
+    "HasConfiguredPassword": true
+  },
+  "SessionInfo": {
+    "Id": "33333333-4444-4555-8666-777777777777",
+    "UserId": "22222222-3333-4444-8555-666666666666",
+    "Client": "Wheel of Fish TV",
+    "DeviceName": "Server",
+    "DeviceId": "44444444-5555-4666-8777-888888888888"
+  }
+}

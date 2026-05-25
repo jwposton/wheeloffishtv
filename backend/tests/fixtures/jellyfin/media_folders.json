@@ -1,0 +1,17 @@
+{
+  "Items": [
+    {
+      "Name": "TV Shows",
+      "Id": "aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee",
+      "CollectionType": "tvshows",
+      "IsFolder": true
+    },
+    {
+      "Name": "Movies",
+      "Id": "bbbbbbbb-cccc-4ddd-eeee-ffffffffffff",
+      "CollectionType": "movies",
+      "IsFolder": true
+    }
+  ],
+  "TotalRecordCount": 2
+}

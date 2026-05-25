@@ -1,0 +1,57 @@
+{
+  "Items": [
+    {
+      "Name": "Pilot",
+      "Id": "33333333-4444-4555-8666-777777777777",
+      "ParentIndexNumber": 1,
+      "IndexNumber": 1,
+      "RunTimeTicks": 36000000000,
+      "UserData": {
+        "Played": false,
+        "PlayCount": 0,
+        "PlayedPercentage": 0,
+        "PlaybackPositionTicks": 0
+      }
+    },
+    {
+      "Name": "Second Episode",
+      "Id": "44444444-5555-4666-8777-888888888888",
+      "ParentIndexNumber": 1,
+      "IndexNumber": 2,
+      "RunTimeTicks": 36000000000,
+      "UserData": {
+        "Played": true,
+        "PlayCount": 1,
+        "PlayedPercentage": 100,
+        "PlaybackPositionTicks": 0
+      }
+    },
+    {
+      "Name": "Third Episode",
+      "Id": "55555555-6666-4777-8888-999999999999",
+      "ParentIndexNumber": 1,
+      "IndexNumber": 3,
+      "RunTimeTicks": 36000000000,
+      "UserData": {
+        "Played": false,
+        "PlayCount": 0,
+        "PlayedPercentage": 50,
+        "PlaybackPositionTicks": 18000000000
+      }
+    },
+    {
+      "Name": "Season Two Premiere",
+      "Id": "66666666-7777-4888-8999-aaaaaaaaaaaa",
+      "ParentIndexNumber": 2,
+      "IndexNumber": 1,
+      "RunTimeTicks": 36000000000,
+      "UserData": {
+        "Played": false,
+        "PlayCount": 0,
+        "PlayedPercentage": 0,
+        "PlaybackPositionTicks": 0
+      }
+    }
+  ],
+  "TotalRecordCount": 4
+}

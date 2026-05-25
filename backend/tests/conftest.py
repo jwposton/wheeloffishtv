@@ -1,12 +1,29 @@
+import json
+from pathlib import Path
+
+import httpx
 import pytest
 from alembic.config import Config
+from httpx import ASGITransport
 
 from alembic import command
 from wheeloffish.core.config import Settings, get_settings
+from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.session import get_engine, reset_session_state
+from wheeloffish.main import app
 
 # Valid 32-byte hex key for all tests
 TEST_SECRET_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+APP_USER_ID = "00000000-0000-4000-8000-000000000001"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+def load_fixture(name: str) -> dict:
+    """Load sanitized JSON fixture from tests/fixtures/{plex|jellyfin}/."""
+    path = FIXTURES_DIR / f"{name}.json"
+    if not path.exists():
+        raise FileNotFoundError(f"Fixture not found: {path}")
+    return json.loads(path.read_text())
 
 
 @pytest.fixture(autouse=True)
@@ -19,9 +36,34 @@ def _test_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def settings() -> Settings:
-    """Settings loaded with test secret key."""
+    """Settings loaded with test secret key and in-memory database."""
     get_settings.cache_clear()
-    return Settings(WOF_SECRET_KEY=TEST_SECRET_KEY)
+    return Settings(
+        WOF_SECRET_KEY=TEST_SECRET_KEY,
+        DATABASE_URL="sqlite:///:memory:",
+    )
+
+
+@pytest.fixture
+async def async_client():
+    """Async HTTP client wired to the FastAPI ASGI app."""
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+def vault(db_session, settings: Settings) -> SecretsVault:
+    """SecretsVault backed by the test database session."""
+    return SecretsVault(db_session, settings)
+
+
+@pytest.fixture
+def app_user_id() -> str:
+    """Constant app user UUID for per-user token tests."""
+    return APP_USER_ID
 
 
 @pytest.fixture

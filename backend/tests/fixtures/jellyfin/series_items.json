@@ -1,0 +1,20 @@
+{
+  "Items": [
+    {
+      "Name": "Fictional Show",
+      "Id": "11111111-2222-4333-8444-555555555555",
+      "ProductionYear": 2020,
+      "Type": "Series",
+      "IsFolder": true
+    },
+    {
+      "Name": "Sample Anime",
+      "Id": "22222222-3333-4444-8555-666666666666",
+      "ProductionYear": 2018,
+      "Type": "Series",
+      "IsFolder": true
+    }
+  ],
+  "TotalRecordCount": 2,
+  "StartIndex": 0
+}

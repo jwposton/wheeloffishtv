@@ -1,0 +1,43 @@
+{
+  "MediaContainer": {
+    "size": 4,
+    "Metadata": [
+      {
+        "guid": "com.plexapp.agents.thetvdb://12345/1/1",
+        "title": "Pilot",
+        "parentIndex": 1,
+        "index": 1,
+        "viewCount": 0,
+        "viewOffset": 0,
+        "duration": 3600000
+      },
+      {
+        "guid": "com.plexapp.agents.thetvdb://12345/1/2",
+        "title": "Second Episode",
+        "parentIndex": 1,
+        "index": 2,
+        "viewCount": 1,
+        "viewOffset": 0,
+        "duration": 3600000
+      },
+      {
+        "guid": "com.plexapp.agents.thetvdb://12345/1/3",
+        "title": "Third Episode",
+        "parentIndex": 1,
+        "index": 3,
+        "viewCount": 0,
+        "viewOffset": 1800000,
+        "duration": 3600000
+      },
+      {
+        "guid": "com.plexapp.agents.thetvdb://12345/2/1",
+        "title": "Season Two Premiere",
+        "parentIndex": 2,
+        "index": 1,
+        "viewCount": 0,
+        "viewOffset": 0,
+        "duration": 3600000
+      }
+    ]
+  }
+}

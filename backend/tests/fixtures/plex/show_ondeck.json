@@ -1,0 +1,23 @@
+{
+  "MediaContainer": {
+    "size": 1,
+    "Metadata": [
+      {
+        "guid": "com.plexapp.agents.thetvdb://12345",
+        "title": "Fictional Show",
+        "type": "show",
+        "OnDeck": {
+          "Metadata": {
+            "guid": "com.plexapp.agents.thetvdb://12345/2/1",
+            "title": "Season Two Premiere",
+            "parentIndex": 2,
+            "index": 1,
+            "viewCount": 0,
+            "viewOffset": 0,
+            "duration": 3600000
+          }
+        }
+      }
+    ]
+  }
+}
