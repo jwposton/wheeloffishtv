@@ -1,0 +1,9 @@
+# Merge with compose.yml for Postgres CI smoke: docker compose -f compose.yml -f compose.postgres.yml --profile postgres up --wait
+
+services:
+  app:
+    environment:
+      DATABASE_URL: postgresql+psycopg://wof:wof@postgres:5432/wof
+    depends_on:
+      postgres:
+        condition: service_healthy

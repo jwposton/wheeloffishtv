@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  WOF_SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: cd backend && uv sync
+      - name: Ruff
+        run: cd backend && uv run ruff check .
+      - name: Pytest
+        run: cd backend && uv run pytest -q
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment
+        run: cp .env.example .env
+      - name: Compose up
+        run: docker compose up --wait --build
+      - name: Compose down
+        if: always()
+        run: docker compose down -v
+
+  postgres-smoke:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare environment
+        run: cp .env.example .env
+      - name: Compose up with postgres profile
+        run: docker compose -f compose.yml -f compose.postgres.yml --profile postgres up --wait --build
+      - name: Compose down
+        if: always()
+        run: docker compose -f compose.yml -f compose.postgres.yml --profile postgres down -v

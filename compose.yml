@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite:////data/wheeloffish.db
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+      ENVIRONMENT: production
+    volumes:
+      - wof_data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    profiles: [postgres]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wof
+      POSTGRES_PASSWORD: wof
+      POSTGRES_DB: wof
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wof -d wof"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - wof_pg_data:/var/lib/postgresql/data
+
+volumes:
+  wof_data:
+  wof_pg_data:

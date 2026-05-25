@@ -15,7 +15,7 @@ stopped_at: Phase 01 complete (5/5) — ready to discuss Phase 2
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 1 executed — 5/5 plans complete)
+**Updated:** 2026-05-25 (Phase 1 verified — 9/9 UAT passed)
 
 ## Project reference
 
@@ -25,12 +25,13 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current phase
 
-Phase **1 — Foundations & packaging** (executed; ready for verification).
+Phase **2 — Media ingestion & catalogs** (ready to plan).
 
 ## Immediate next actions
 
-1. `/gsd-verify-work` — validate must_haves against codebase  
+1. `/gsd-secure-phase 1` — security review (recommended before advancing)  
 2. `/gsd-discuss-phase 2` — gather context for media ingestion  
+3. `/gsd-plan-phase 2` — plan Phase 2  
 
 ## Open questions (deferred to later phases)
 
