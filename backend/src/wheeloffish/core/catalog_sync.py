@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.connections import build_provider_for_connection
-from wheeloffish.core.media_artwork import public_artwork_url
+from wheeloffish.core.media_artwork import download_and_cache_artwork, series_artwork_url
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.cached_library import CachedLibrary
 from wheeloffish.db.models.cached_series import CachedSeries
@@ -20,6 +20,7 @@ from wheeloffish.db.session import get_session_factory
 from wheeloffish.domain.dto import Library, Series
 from wheeloffish.domain.ids import format_composite_id
 from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.plex.client import PlexProvider
 
 logger = structlog.get_logger(__name__)
 
@@ -106,7 +107,7 @@ def cached_series_to_dto(row: CachedSeries, provider: str) -> Series:
         connection_id=row.connection_id,
         provider=provider,
         year=row.year,
-        thumb_url=public_artwork_url(row.connection_id, row.thumb_url),
+        thumb_url=series_artwork_url(row.connection_id, row.id),
         provider_metadata=row.provider_metadata,
     )
 
@@ -295,6 +296,14 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
                 for series in page_result.items:
                     _upsert_series_row(db, series, synced_at)
                     total_synced += 1
+                    if isinstance(provider, PlexProvider):
+                        await download_and_cache_artwork(
+                            provider,
+                            cache_dir=settings.WOF_ARTWORK_CACHE_DIR,
+                            connection_id=connection_id,
+                            series_id=series.id,
+                            thumb_url=series.thumb_url,
+                        )
 
                 total_estimated = max(total_estimated, page_result.total)
                 state.page_cursor = total_synced

@@ -44,7 +44,7 @@ COPY --from=builder --chown=app:app /app/alembic.ini /app/alembic.ini
 COPY --from=frontend-build --chown=app:app /frontend/dist /app/static/spa
 COPY --chown=app:app backend/docker-entrypoint.sh /app/docker-entrypoint.sh
 
-RUN mkdir -p /data && chown app:app /data && chmod +x /app/docker-entrypoint.sh
+RUN mkdir -p /data/artwork && chown app:app /data /data/artwork && chmod +x /app/docker-entrypoint.sh
 
 USER app
 

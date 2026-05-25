@@ -25,7 +25,6 @@ from wheeloffish.api.schemas.resume import (
     EpisodesListResponse,
     ResumePreviewResponse,
 )
-from wheeloffish.core.auth import get_admin_app_user
 from wheeloffish.core.catalog_sync import (
     cached_library_to_dto,
     cached_series_to_dto,
@@ -39,6 +38,11 @@ from wheeloffish.core.catalog_sync import (
 )
 from wheeloffish.core.config import Settings
 from wheeloffish.core.connections import build_provider_for_connection
+from wheeloffish.core.media_artwork import (
+    artwork_cache_path,
+    download_and_cache_artwork,
+    read_cached_artwork,
+)
 from wheeloffish.core.resume import ResumeService
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.cached_series import CachedSeries
@@ -47,7 +51,7 @@ from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Episode, Library, ResumeCursor
 from wheeloffish.domain.ids import parse_composite_id
 from wheeloffish.integrations.base import MediaProvider
-from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized
+from wheeloffish.integrations.errors import ProviderError
 from wheeloffish.integrations.plex.client import PlexProvider
 
 router = APIRouter(tags=["catalog"])
@@ -121,18 +125,6 @@ def _build_provider_for_user(
     )
 
 
-def _build_admin_provider(
-    db: Session,
-    vault: SecretsVault,
-    connection: Connection,
-    settings: Settings,
-) -> MediaProvider | None:
-    admin_user = get_admin_app_user(db, settings)
-    if admin_user is None:
-        return None
-    return _build_provider_for_user(db, vault, connection, admin_user.id, settings)
-
-
 def _cached_rating_key(db: Session, series_id: str) -> str | None:
     row = db.query(CachedSeries).filter(CachedSeries.id == series_id).one_or_none()
     if row is None or not row.provider_metadata:
@@ -141,30 +133,29 @@ def _cached_rating_key(db: Session, series_id: str) -> str | None:
     return str(rating_key) if rating_key is not None else None
 
 
-def _provider_access_denied(err: ProviderError) -> bool:
-    return isinstance(err, ProviderUnauthorized) or str(err) == "not_found"
-
-
-async def _fetch_artwork(
-    provider: PlexProvider,
-    path: str,
-    *,
+def _get_cached_series_in_scope(
     db: Session,
-    vault: SecretsVault,
-    connection: Connection,
-    settings: Settings,
-) -> tuple[bytes, str]:
-    try:
-        return await provider.fetch_artwork(path)
-    except ProviderError as err:
-        if not _provider_access_denied(err):
-            raise
-        admin_provider = _build_admin_provider(db, vault, connection, settings)
-        if admin_provider is None or not isinstance(admin_provider, PlexProvider):
-            raise
-        if admin_provider.token == provider.token:
-            raise
-        return await admin_provider.fetch_artwork(path)
+    connection_id: str,
+    series_id: str,
+) -> CachedSeries:
+    _validate_series_connection(series_id, connection_id)
+    row = (
+        db.query(CachedSeries)
+        .filter(
+            CachedSeries.id == series_id,
+            CachedSeries.connection_id == connection_id,
+        )
+        .one_or_none()
+    )
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Series not found")
+
+    in_scope_ids = {
+        library.native_id for library in get_in_scope_libraries(db, connection_id)
+    }
+    if row.library_native_id not in in_scope_ids:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Series not found")
+    return row
 
 
 async def _fetch_resume_data(
@@ -225,27 +216,6 @@ def _resume_cursor(
             episode=on_deck,
         )
     return ResumeService().compute(series_id, episodes, on_deck)
-
-
-async def _fetch_resume_with_fallback(
-    db: Session,
-    vault: SecretsVault,
-    connection: Connection,
-    settings: Settings,
-    app_user_id: str,
-    series_id: str,
-    rating_key: str | None,
-) -> tuple[list[Episode], Episode | None]:
-    provider = _build_provider_for_user(db, vault, connection, app_user_id, settings)
-    try:
-        return await _fetch_resume_data(provider, series_id, rating_key=rating_key)
-    except ProviderError as err:
-        if not _provider_access_denied(err):
-            raise
-        admin_provider = _build_admin_provider(db, vault, connection, settings)
-        if admin_provider is None or admin_provider.token == provider.token:
-            raise
-        return await _fetch_resume_data(admin_provider, series_id, rating_key=rating_key)
 
 
 @router.get("/connections/{connection_id}/libraries", response_model=list[Library])
@@ -351,10 +321,10 @@ def get_connection_series(
     )
 
 
-@router.get("/connections/{connection_id}/artwork")
-async def get_connection_artwork(
+@router.get("/connections/{connection_id}/series/{series_id}/artwork")
+async def get_series_artwork(
     connection_id: str,
-    path: str = Query(..., min_length=1),
+    series_id: str,
     db: Session = Depends(get_db),
     vault: SecretsVault = Depends(get_vault),
     settings: Settings = Depends(get_settings_dep),
@@ -364,28 +334,40 @@ async def get_connection_artwork(
     if connection.provider_type != "plex":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unsupported_provider", "message": "Artwork proxy supports Plex only"},
+            detail={"code": "unsupported_provider", "message": "Artwork supports Plex only"},
         )
+
+    row = _get_cached_series_in_scope(db, connection_id, series_id)
+    cache_path = artwork_cache_path(settings.WOF_ARTWORK_CACHE_DIR, connection_id, series_id)
+    cached = read_cached_artwork(cache_path)
+    if cached is not None:
+        content, media_type = cached
+        return Response(content=content, media_type=media_type)
+
+    if not row.thumb_url:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not available")
 
     provider = _build_provider_for_user(db, vault, connection, app_user_id, settings)
     if not isinstance(provider, PlexProvider):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unsupported_provider", "message": "Artwork proxy supports Plex only"},
+            detail={"code": "unsupported_provider", "message": "Artwork supports Plex only"},
         )
 
-    try:
-        content, media_type = await _fetch_artwork(
-            provider,
-            path,
-            db=db,
-            vault=vault,
-            connection=connection,
-            settings=settings,
-        )
-    except ProviderError as err:
-        raise _provider_error_to_http(err) from err
+    cached_now = await download_and_cache_artwork(
+        provider,
+        cache_dir=settings.WOF_ARTWORK_CACHE_DIR,
+        connection_id=connection_id,
+        series_id=series_id,
+        thumb_url=row.thumb_url,
+    )
+    if not cached_now:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not available")
 
+    cached = read_cached_artwork(cache_path)
+    if cached is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not available")
+    content, media_type = cached
     return Response(content=content, media_type=media_type)
 
 
@@ -470,16 +452,9 @@ async def get_series_resume(
     connection = _get_connection_or_404(db, connection_id)
     _validate_series_connection(series_id, connection_id)
     rating_key = _cached_rating_key(db, series_id)
+    provider = _build_provider_for_user(db, vault, connection, app_user_id, settings)
     try:
-        episodes, on_deck = await _fetch_resume_with_fallback(
-            db,
-            vault,
-            connection,
-            settings,
-            app_user_id,
-            series_id,
-            rating_key,
-        )
+        episodes, on_deck = await _fetch_resume_data(provider, series_id, rating_key=rating_key)
     except ProviderError as err:
         raise _provider_error_to_http(err) from err
     cursor = _resume_cursor(series_id, episodes, on_deck)

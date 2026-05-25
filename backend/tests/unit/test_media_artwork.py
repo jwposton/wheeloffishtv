@@ -1,15 +1,49 @@
-from wheeloffish.core.media_artwork import public_artwork_url
+from wheeloffish.core.media_artwork import (
+    artwork_cache_path,
+    normalize_plex_artwork_path,
+    series_artwork_url,
+    write_cached_artwork,
+)
 
 
-def test_public_artwork_url_rewrites_plex_relative_path() -> None:
-    url = public_artwork_url("conn-1", "/library/metadata/1001/thumb/abc")
-    assert url == "/api/v1/connections/conn-1/artwork?path=/library/metadata/1001/thumb/abc"
+def test_series_artwork_url() -> None:
+    series_id = "conn-1:plex:guid-abc"
+    url = series_artwork_url("conn-1", series_id)
+    assert url == "/api/v1/connections/conn-1/series/conn-1%3Aplex%3Aguid-abc/artwork"
 
 
-def test_public_artwork_url_passes_through_absolute_url() -> None:
+def test_normalize_plex_artwork_path_relative() -> None:
+    path = normalize_plex_artwork_path("/library/metadata/1001/thumb/abc")
+    assert path == "/library/metadata/1001/thumb/abc"
+
+
+def test_normalize_plex_artwork_path_absolute() -> None:
     absolute = "https://plex.example.com/library/metadata/1/thumb/2"
-    assert public_artwork_url("conn-1", absolute) == absolute
+    assert normalize_plex_artwork_path(absolute) == "/library/metadata/1/thumb/2"
 
 
-def test_public_artwork_url_none_for_missing() -> None:
-    assert public_artwork_url("conn-1", None) is None
+def test_normalize_plex_artwork_path_rejects_traversal() -> None:
+    assert normalize_plex_artwork_path("/library/metadata/../identity") is None
+
+
+def test_normalize_plex_artwork_path_none_for_missing() -> None:
+    assert normalize_plex_artwork_path(None) is None
+
+
+def test_artwork_cache_path_is_deterministic(tmp_path) -> None:
+    cache_dir = str(tmp_path)
+    series_id = "conn-1:plex:guid-abc"
+    first = artwork_cache_path(cache_dir, "conn-1", series_id)
+    second = artwork_cache_path(cache_dir, "conn-1", series_id)
+    assert first == second
+    assert first.parent.name == "conn-1"
+
+
+def test_write_and_read_cached_artwork_roundtrip(tmp_path) -> None:
+    from wheeloffish.core.media_artwork import read_cached_artwork
+
+    cache_path = artwork_cache_path(str(tmp_path), "conn-1", "series-1")
+    write_cached_artwork(cache_path, b"jpeg-bytes")
+    cached = read_cached_artwork(cache_path)
+    assert cached is not None
+    assert cached[0] == b"jpeg-bytes"

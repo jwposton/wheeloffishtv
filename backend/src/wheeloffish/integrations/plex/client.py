@@ -172,7 +172,7 @@ class PlexProvider:
         return map_episode(self.connection_id, on_deck)
 
     async def fetch_artwork(self, path: str) -> tuple[bytes, str]:
-        if not path.startswith("/library/"):
+        if ".." in path or not path.startswith("/library/"):
             raise ProviderError("invalid_path")
         url = f"{self.base_url}{path}"
         try:

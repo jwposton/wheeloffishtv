@@ -16,7 +16,6 @@ from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Episode, Library, PagedSeries, Series
 from wheeloffish.domain.ids import format_composite_id
-from wheeloffish.integrations.errors import ProviderUnauthorized
 from wheeloffish.integrations.plex.client import PlexProvider
 from wheeloffish.main import app
 
@@ -620,88 +619,114 @@ async def test_admin_library_scope_put_succeeds(
     assert scoped[0]["in_scope"] is True
 
 
-def _link_admin_to_connection(
+@pytest.mark.asyncio
+async def test_series_artwork_serves_local_cache(
+    catalog_client,
+    connection_factory,
     db_session,
-    vault,
-    connection_id: str,
-    admin_user: AppUser,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
-    now = datetime.now(UTC)
+    monkeypatch.setenv("WOF_ARTWORK_CACHE_DIR", str(tmp_path))
+    get_settings.cache_clear()
+
+    connection = await connection_factory()
+    series_id = format_composite_id(connection.id, "plex", "guid-123")
+    seed_cached_libraries(
+        db_session,
+        connection.id,
+        [{"native_id": "1", "title": "TV Shows", "in_scope": True}],
+    )
+    from wheeloffish.core.media_artwork import artwork_cache_path, write_cached_artwork
+    from wheeloffish.db.models.cached_series import CachedSeries
+
     db_session.add(
-        UserMediaLink(
-            id=str(uuid.uuid4()),
-            app_user_id=admin_user.id,
-            connection_id=connection_id,
-            provider_user_id=admin_user.provider_user_id,
-            provider_username=admin_user.provider_username,
-            linked_at=now,
+        CachedSeries(
+            id=series_id,
+            connection_id=connection.id,
+            library_native_id="1",
+            native_id="guid-123",
+            title="Cached Show",
+            thumb_url="/library/metadata/1001/thumb/abc",
+            synced_at=datetime.now(UTC),
         )
     )
     db_session.commit()
-    vault.store_media_user_token(connection_id, admin_user.id, "admin-token")
+
+    cache_path = artwork_cache_path(str(tmp_path), connection.id, series_id)
+    write_cached_artwork(cache_path, b"cached-poster")
+
+    response = await catalog_client.get(
+        f"/api/v1/connections/{connection.id}/series/{series_id}/artwork"
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"cached-poster"
 
 
 @pytest.mark.asyncio
-async def test_artwork_falls_back_to_admin_token(
+async def test_series_artwork_lazy_fetch_with_user_token(
     catalog_client,
     connection_factory,
     db_session,
-    vault,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
+    monkeypatch.setenv("WOF_ARTWORK_CACHE_DIR", str(tmp_path))
+    get_settings.cache_clear()
+
     connection = await connection_factory()
-    admin_user = (
-        db_session.query(AppUser)
-        .filter(AppUser.provider_user_id == "catalog-test-admin")
-        .one()
+    series_id = format_composite_id(connection.id, "plex", "guid-123")
+    seed_cached_libraries(
+        db_session,
+        connection.id,
+        [{"native_id": "1", "title": "TV Shows", "in_scope": True}],
     )
-    _link_admin_to_connection(db_session, vault, connection.id, admin_user)
+    from wheeloffish.db.models.cached_series import CachedSeries
 
-    user_provider = MagicMock(spec=PlexProvider)
-    user_provider.token = "test-token"
-    user_provider.fetch_artwork = AsyncMock(side_effect=ProviderUnauthorized())
+    db_session.add(
+        CachedSeries(
+            id=series_id,
+            connection_id=connection.id,
+            library_native_id="1",
+            native_id="guid-123",
+            title="Cached Show",
+            thumb_url="/library/metadata/1001/thumb/abc",
+            synced_at=datetime.now(UTC),
+        )
+    )
+    db_session.commit()
 
-    admin_provider = MagicMock(spec=PlexProvider)
-    admin_provider.token = "admin-token"
-    admin_provider.fetch_artwork = AsyncMock(return_value=(b"jpeg-bytes", "image/jpeg"))
-
-    def build_provider_side_effect(connection_obj, token, **kwargs):
-        if token == "test-token":
-            return user_provider
-        if token == "admin-token":
-            return admin_provider
-        raise AssertionError(f"unexpected token {token}")
+    user_provider = PlexProvider(
+        base_url="https://plex.example.com",
+        token="test-token",
+        client_identifier="test-client",
+        connection_id=connection.id,
+        verify_ssl=True,
+    )
+    user_provider.fetch_artwork = AsyncMock(return_value=(b"fresh-poster", "image/jpeg"))
 
     with patch(
         "wheeloffish.api.routes.catalog.build_provider_for_connection",
-        side_effect=build_provider_side_effect,
+        return_value=user_provider,
     ):
         response = await catalog_client.get(
-            f"/api/v1/connections/{connection.id}/artwork",
-            params={"path": "/library/metadata/1001/thumb/abc"},
+            f"/api/v1/connections/{connection.id}/series/{series_id}/artwork"
         )
 
     assert response.status_code == 200
-    assert response.content == b"jpeg-bytes"
-    assert response.headers["content-type"] == "image/jpeg"
-    user_provider.fetch_artwork.assert_awaited_once()
-    admin_provider.fetch_artwork.assert_awaited_once()
+    assert response.content == b"fresh-poster"
+    user_provider.fetch_artwork.assert_awaited_once_with("/library/metadata/1001/thumb/abc")
 
 
 @pytest.mark.asyncio
-async def test_resume_uses_cached_rating_key_and_admin_fallback(
+async def test_resume_uses_cached_rating_key(
     catalog_client,
     connection_factory,
     db_session,
-    vault,
 ) -> None:
     connection = await connection_factory()
     series_id = format_composite_id(connection.id, "plex", "guid-123")
-    admin_user = (
-        db_session.query(AppUser)
-        .filter(AppUser.provider_user_id == "catalog-test-admin")
-        .one()
-    )
-    _link_admin_to_connection(db_session, vault, connection.id, admin_user)
 
     from wheeloffish.db.models.cached_series import CachedSeries
 
@@ -721,32 +746,19 @@ async def test_resume_uses_cached_rating_key_and_admin_fallback(
     episodes = [
         _episode(connection.id, "s1e1", 1, 1, percent=50),
     ]
-    user_provider = MagicMock(spec=PlexProvider)
-    user_provider.token = "test-token"
-    user_provider.list_episodes = AsyncMock(side_effect=ProviderUnauthorized())
-    user_provider.get_on_deck_episode = AsyncMock(side_effect=ProviderUnauthorized())
-
-    admin_provider = MagicMock(spec=PlexProvider)
-    admin_provider.token = "admin-token"
-    admin_provider.list_episodes = AsyncMock(return_value=episodes)
-    admin_provider.get_on_deck_episode = AsyncMock(return_value=None)
-
-    def build_provider_side_effect(connection_obj, token, **kwargs):
-        if token == "test-token":
-            return user_provider
-        if token == "admin-token":
-            return admin_provider
-        raise AssertionError(f"unexpected token {token}")
+    provider = MagicMock(spec=PlexProvider)
+    provider.list_episodes = AsyncMock(return_value=episodes)
+    provider.get_on_deck_episode = AsyncMock(return_value=None)
 
     with patch(
         "wheeloffish.api.routes.catalog.build_provider_for_connection",
-        side_effect=build_provider_side_effect,
+        return_value=provider,
     ):
         response = await catalog_client.get(
             f"/api/v1/connections/{connection.id}/series/{series_id}/resume"
         )
 
     assert response.status_code == 200
-    admin_provider.list_episodes.assert_awaited_once_with(series_id, rating_key="999")
-    admin_provider.get_on_deck_episode.assert_awaited_once_with(series_id, rating_key="999")
+    provider.list_episodes.assert_awaited_once_with(series_id, rating_key="999")
+    provider.get_on_deck_episode.assert_awaited_once_with(series_id, rating_key="999")
     assert response.json()["episode_id"] == episodes[0].id
