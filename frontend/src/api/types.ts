@@ -31,3 +31,20 @@ export interface JellyfinAuthResponse {
   connection_id: string
   auth_token_present: boolean
 }
+
+export interface Library {
+  id: string
+  title: string
+  native_id: string
+  connection_id: string
+  provider: string
+  in_scope: boolean
+}
+
+export interface LibraryScopeUpdate {
+  in_scope_library_native_ids: string[]
+}
+
+export interface LibraryScopeResponse {
+  libraries: Library[]
+}
