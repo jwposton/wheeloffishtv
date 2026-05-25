@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T23:52:00Z"
+last_updated: "2026-05-25T23:45:00Z"
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 36
+  completed_plans: 37
   percent: 97
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 6 plan 03 complete — Library tile add-to-playlist)
+**Updated:** 2026-05-25 (Phase 6 plan 04 complete — two-pane tile picker)
 
 ## Project reference
 
@@ -24,16 +24,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **6 — Library & playlist assignment** — **in progress** (3/5 plans complete).
+Phase **6 — Library & playlist assignment** — **in progress** (4/5 plans complete).
 
-**Stopped at:** Completed 06-03-PLAN.md
+**Stopped at:** Completed 06-04-PLAN.md
 
-**Next action:** Execute 06-04-PLAN.md (two-pane tile picker, RowSettingsSheet)
+**Next action:** Execute 06-05-PLAN.md (series detail hero + metadata)
 
 ## Immediate next actions
 
-1. Execute 06-04-PLAN.md — two-pane tile picker, RowSettingsSheet, remove SeriesPicker
-2. Continue Phase 6 wave 5 (series detail) after Wave 4 completes
+1. Execute 06-05-PLAN.md — series detail hero, provider metadata, Add to playlist CTA
+2. Phase 6 validation after plan 05 completes
 
 ## Decisions (Phase 4)
 
@@ -69,6 +69,13 @@ Phase **6 — Library & playlist assignment** — **in progress** (3/5 plans com
 - **Series detail:** primary Add button + shared menu; enrich with provider metadata (summary, genres, rating) — no external IMDb API
 - **Quick create:** inline name + Advanced… link to full form
 - **Playlist edit:** two-pane tile picker (In | Available); row settings via bottom sheet; mobile tabs
+
+## Decisions (Phase 6 — plan 04)
+
+- TwoPanePicker uses optimistic row mutations with revert on API failure (T-06-04-01)
+- Create flow keeps rows local; edit flow uses incremental append/remove/patch APIs
+- SeriesPicker removed; TwoPanePicker is sole playlist membership UI (D-21)
+- Form page max-width widened to max-w-6xl for two-column picker layout
 
 ## Decisions (Phase 6 — plan 03)
 
@@ -132,6 +139,7 @@ Phase **6 — Library & playlist assignment** — **in progress** (3/5 plans com
 
 ## Working notes
 
+- Phase 6 plan 04: `.planning/phases/06-library-playlist-assignment/06-04-SUMMARY.md`
 - Phase 6 plan 03: `.planning/phases/06-library-playlist-assignment/06-03-SUMMARY.md`
 - Phase 6 plan 02: `.planning/phases/06-library-playlist-assignment/06-02-SUMMARY.md`
 - Phase 6 plan 01: `.planning/phases/06-library-playlist-assignment/06-01-SUMMARY.md`

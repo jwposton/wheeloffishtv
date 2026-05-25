@@ -16,7 +16,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
 | 4 | 6/6 | Complete    | 2026-05-25 |
 | 5 | 6/6 | Complete   | 2026-05-25 |
-| 6 | 3/5 | In Progress|  |
+| 6 | 4/5 | In Progress|  |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
 
 *(Phase numbers align with REQ traceability columns — adjust if phasedown needed later.)*
@@ -209,7 +209,7 @@ Requirements: PLT-03 (membership UX completion), WEB-01 (Library assignment slic
 
 **Wave 4** *(blocked on Waves 2–3)*
 
-- [ ] 06-04-PLAN.md — Two-pane tile picker, RowSettingsSheet, remove SeriesPicker (D-13–D-18, D-21)
+- [x] 06-04-PLAN.md — Two-pane tile picker, RowSettingsSheet, remove SeriesPicker (D-13–D-18, D-21)
 
 **Wave 5** *(blocked on Waves 1, 3)*
 
