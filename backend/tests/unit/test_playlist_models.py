@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from wheeloffish.domain.dto import Episode
+from unit.fixtures.playlist_vectors import episode
 from wheeloffish.domain.playlist import (
     CompletionEvent,
     CompletionPolicy,
@@ -11,18 +11,6 @@ from wheeloffish.domain.playlist import (
     RowMode,
     SeriesRebuildInput,
 )
-
-
-def _episode(episode_id: str, season: int, index: int) -> Episode:
-    return Episode(
-        id=episode_id,
-        title=f"S{season}E{index}",
-        season_index=season,
-        episode_index=index,
-        duration_ms=3_600_000,
-        percent_watched=0.0,
-        provider_marked_played=False,
-    )
 
 
 def test_playlist_episode_count_minimum() -> None:
@@ -38,8 +26,8 @@ def test_row_defaults_per_a4() -> None:
 
 
 def test_series_rebuild_input_shape() -> None:
-    episodes = [_episode("s1e1", 1, 1)]
-    on_deck = _episode("s1e2", 1, 2)
+    episodes = [episode("s1e1", 1, 1)]
+    on_deck = episode("s1e2", 1, 2)
     inp = SeriesRebuildInput(series_id="series-1", episodes=episodes, on_deck=on_deck)
     assert inp.series_id == "series-1"
     assert len(inp.episodes) == 1
