@@ -1,7 +1,7 @@
 # Requirements: Wheel of Fish TV
 
 **Defined:** 2026-05-24  
-**Core Value:** Pick N random TV slots across selected shows — but keep each ordered show aligned to true “resume / up-next”; disordered rows randomize feathers; optional household WheelOfFish mode.
+**Core Value:** Pick N random TV slots across selected shows — but keep each ordered show aligned to true “resume / up-next”; disordered rows randomize feathers; users manage their own playlists via Library UX.
 
 ## v1 Requirements
 
@@ -73,7 +73,7 @@ Deferred (not in roadmap v1):
 | SCH-02 | Phase 5 | Complete |
 | ADM-01 | — | Cancelled (2026-05-25) |
 | ADM-02 | — | Cancelled (2026-05-25) |
-| PLT-03 UX | Phase 6 | Pending (Library assignment + two-pane editor) |
+| PLT-03 UX | Phase 6 | Complete (Library assignment + two-pane editor) |
 | WEB-01 | Phase 3 (+ Phase 7 polish tie-in) | Complete |
 | DEP-01 | Phase 1 | Pending |
 
@@ -88,4 +88,4 @@ Deferred (not in roadmap v1):
 ---
 
 *Requirements defined: 2026-05-24*  
-*Last updated: 2026-05-25 after Phase 6 context (ADM cancelled, PLT-03 UX → Phase 6)*
+*Last updated: 2026-05-25 after Phase 6 plan 05 (PLT-03 UX complete; ADM cancelled)*

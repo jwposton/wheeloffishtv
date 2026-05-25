@@ -16,11 +16,11 @@ Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect
 - ✓ Media ingestion & catalogs (Plex/Jellyfin sync, resume service, cached series/episodes) — Phase 2
 - ✓ Minimal operator SPA shell (auth, protected routes, catalog browsing, artwork) — Phase 3
 - ✓ Playlist mathematics (domain models, ordered/disordered pickers, completion policies, `PlaylistBuilder.build()`) — Phase 4
+- ✓ Library-centric playlist membership UX (add from catalog tiles + two-pane editor) — Phase 6
 
 ### Active
 
 - [ ] Connect user-configured Plex and/or Jellyfin; list libraries & shows user can attach to playlists
-- [ ] Library-centric playlist membership UX (add from catalog tiles + two-pane editor) — Phase 6
 - [ ] Ordered vs disordered per **playlist × show**
 - [ ] Policies when a show’s season (or library rules) completes: remove on next refresh vs restart vs switch to disordered
 - [ ] Daily full rebuild scheduler; multipart episodes grouped back-to-back (ordered flows)
@@ -77,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 after Phase 6 context (Library & playlist assignment; WheelOfFish cancelled)*
+*Last updated: 2026-05-25 after Phase 6 plan 05 (Library assignment complete; WheelOfFish cancelled)*

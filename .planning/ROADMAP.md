@@ -7,7 +7,7 @@
 
 ## Overview
 
-Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds user-defined mixed-order TV playlists wired to Plex or Jellyfin watch state plus the global WheelOfFish admin playlist.
+Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds user-defined mixed-order TV playlists wired to Plex or Jellyfin watch state.
 
 | Phase | Name | Goal | Req coverage |
 |-------|------|------|---------------|
@@ -16,7 +16,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
 | 4 | 6/6 | Complete    | 2026-05-25 |
 | 5 | 6/6 | Complete   | 2026-05-25 |
-| 6 | 4/5 | In Progress|  |
+| 6 | 5/5 | Complete   | 2026-05-25 |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
 
 *(Phase numbers align with REQ traceability columns — adjust if phasedown needed later.)*
@@ -213,7 +213,7 @@ Requirements: PLT-03 (membership UX completion), WEB-01 (Library assignment slic
 
 **Wave 5** *(blocked on Waves 1, 3)*
 
-- [ ] 06-05-PLAN.md — Series detail metadata hero, Add to playlist on detail, docs cleanup (D-01, D-02, D-09, D-10, D-12)
+- [x] 06-05-PLAN.md — Series detail metadata hero, Add to playlist on detail, docs cleanup (D-01, D-02, D-09, D-10, D-12)
 
 ---
 
