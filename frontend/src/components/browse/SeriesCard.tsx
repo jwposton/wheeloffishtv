@@ -2,6 +2,7 @@ import type { KeyboardEvent } from "react"
 import { useNavigate } from "react-router-dom"
 
 import type { Series } from "@/api/types"
+import { SeriesPoster } from "@/components/browse/SeriesPoster"
 import { cn } from "@/lib/utils"
 
 interface SeriesCardProps {
@@ -9,25 +10,19 @@ interface SeriesCardProps {
   variant: "grid" | "list"
 }
 
-function PosterThumb({ series }: { series: Series }) {
-  if (series.thumb_url) {
-    return (
-      <img
-        src={series.thumb_url}
-        alt=""
-        className="size-full object-cover"
-        loading="lazy"
-      />
-    )
-  }
-
+function PosterThumb({
+  series,
+  compact,
+}: {
+  series: Series
+  compact?: boolean
+}) {
   return (
-    <div
-      aria-hidden
-      className="flex size-full items-center justify-center bg-muted text-muted-foreground text-xs"
-    >
-      No image
-    </div>
+    <SeriesPoster
+      title={series.title}
+      thumbUrl={series.thumb_url}
+      compact={compact}
+    />
   )
 }
 
@@ -59,8 +54,8 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
           focusRing,
         )}
       >
-        <div className="aspect-[2/3] w-12 shrink-0 overflow-hidden rounded-sm bg-muted">
-          <PosterThumb series={series} />
+        <div className="aspect-[2/3] w-12 shrink-0 overflow-hidden rounded-sm border bg-white">
+          <PosterThumb series={series} compact />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{series.title}</p>
@@ -82,7 +77,7 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
         focusRing,
       )}
     >
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-muted">
+      <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
         <PosterThumb series={series} />
       </div>
       <span className="line-clamp-2 text-sm font-medium">{series.title}</span>

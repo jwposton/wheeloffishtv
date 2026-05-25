@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom"
 
 import type { Series, SeriesBrowseResponse } from "@/api/types"
 import { ResumePreview } from "@/components/browse/ResumePreview"
+import { SeriesPoster } from "@/components/browse/SeriesPoster"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/hooks/useAuth"
 import { useSeriesEpisodes } from "@/hooks/useSeriesEpisodes"
@@ -110,15 +111,13 @@ export function SeriesDetailPage() {
         ) : null}
       </div>
 
-      {cachedSeries?.thumb_url ? (
-        <div className="aspect-[2/3] w-40 overflow-hidden rounded-md border bg-muted">
-          <img
-            src={cachedSeries.thumb_url}
-            alt=""
-            className="size-full object-cover"
-          />
-        </div>
-      ) : null}
+      <div className="aspect-[2/3] w-40 overflow-hidden rounded-md border bg-white">
+        <SeriesPoster
+          title={title}
+          thumbUrl={cachedSeries?.thumb_url}
+          compact
+        />
+      </div>
 
       <ResumePreview
         resume={resumeQuery.data}
