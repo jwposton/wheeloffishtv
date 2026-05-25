@@ -16,7 +16,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
 | 4 | 6/6 | Complete    | 2026-05-25 |
 | 5 | 6/6 | Complete   | 2026-05-25 |
-| 6 | Library & playlist assignment | Library-centric add-to-playlist UX + enriched series detail + two-pane editor | PLT-03 (UX) |
+| 6 | 1/5 | In Progress|  |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
 
 *(Phase numbers align with REQ traceability columns — adjust if phasedown needed later.)*
@@ -194,6 +194,26 @@ Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 Requirements: PLT-03 (membership UX completion), WEB-01 (Library assignment slice)
 
 **Supersedes:** Former Phase 6 “Admin WheelOfFish” scope (2026-05-25 decision)
+
+**Wave 1**
+
+- [x] 06-01-PLAN.md — Plex/Jellyfin metadata mapper extension + catalog sync round-trip (D-10, D-11)
+
+**Wave 2**
+
+- [ ] 06-02-PLAN.md — Row append/remove/patch API endpoints (D-20, PLT-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 06-03-PLAN.md — Library nav rename, tile ⋯ menu, AddToPlaylistMenu + quick create (D-03–D-09, D-19)
+
+**Wave 4** *(blocked on Waves 2–3)*
+
+- [ ] 06-04-PLAN.md — Two-pane tile picker, RowSettingsSheet, remove SeriesPicker (D-13–D-18, D-21)
+
+**Wave 5** *(blocked on Waves 1, 3)*
+
+- [ ] 06-05-PLAN.md — Series detail metadata hero, Add to playlist on detail, docs cleanup (D-01, D-02, D-09, D-10, D-12)
 
 ---
 

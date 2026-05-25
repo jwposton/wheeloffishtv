@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T23:12:28.483Z"
+last_updated: "2026-05-25T23:32:55Z"
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 32
-  completed_plans: 32
-  percent: 71
+  total_plans: 37
+  completed_plans: 33
+  percent: 89
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 5 plan 06 complete — Phase 5 DONE)
+**Updated:** 2026-05-25 (Phase 6 plan 01 complete — metadata mapper extension)
 
 ## Project reference
 
@@ -24,16 +24,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **6 — Library & playlist assignment** — **context gathered** (0 plans).
+Phase **6 — Library & playlist assignment** — **in progress** (1/5 plans complete).
 
-**Stopped at:** Phase 6 context gathered
+**Stopped at:** Completed 06-01-PLAN.md
 
-**Next action:** `/gsd-plan-phase 6`
+**Next action:** Execute 06-02-PLAN.md (row append/remove/patch API)
 
 ## Immediate next actions
 
-1. `/gsd-plan-phase 6` — plan Library assignment UX + metadata enrichment
-2. `/gsd-verify-work 5` — optional: Phase 5 human UAT (cron + badges)
+1. Execute 06-02-PLAN.md — row append/remove/patch API endpoints (Wave 2)
+2. Continue Phase 6 waves 3–5 after Wave 2 completes
 
 ## Decisions (Phase 4)
 
@@ -69,6 +69,12 @@ Phase **6 — Library & playlist assignment** — **context gathered** (0 plans)
 - **Series detail:** primary Add button + shared menu; enrich with provider metadata (summary, genres, rating) — no external IMDb API
 - **Quick create:** inline name + Advanced… link to full form
 - **Playlist edit:** two-pane tile picker (In | Available); row settings via bottom sheet; mobile tabs
+
+## Decisions (Phase 6 — plan 01)
+
+- Missing Plex metadata fields present as None/[] defaults — not omitted keys
+- Jellyfin Phase 6 stubs defer real Overview/Genres mapping to Phase 7 spike
+- Genre extraction filters malformed entries; wrong-type string fields coerced to None via `_str_or_none`
 
 ## Decisions (Phase 5 — planning)
 
@@ -114,6 +120,7 @@ Phase **6 — Library & playlist assignment** — **context gathered** (0 plans)
 
 ## Working notes
 
+- Phase 6 plan 01: `.planning/phases/06-library-playlist-assignment/06-01-SUMMARY.md`
 - Phase 5 plan 06: `.planning/phases/05-orchestration-scheduling/05-06-SUMMARY.md`
 - Phase 5 plan 05: `.planning/phases/05-orchestration-scheduling/05-05-SUMMARY.md`
 - Phase 5 plan 04: `.planning/phases/05-orchestration-scheduling/05-04-SUMMARY.md`
