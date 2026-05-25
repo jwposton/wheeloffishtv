@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
-
 from unit.fixtures.playlist_vectors import episode
+
 from wheeloffish.domain.playlist import (
     CompletionEvent,
     CompletionPolicy,
