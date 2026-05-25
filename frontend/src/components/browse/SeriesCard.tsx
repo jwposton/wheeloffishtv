@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react"
 import { useNavigate } from "react-router-dom"
 
 import type { Series } from "@/api/types"
@@ -33,8 +34,15 @@ function PosterThumb({ series }: { series: Series }) {
 export function SeriesCard({ series, variant }: SeriesCardProps) {
   const navigate = useNavigate()
 
-  const handleClick = () => {
+  const handleActivate = () => {
     navigate(`/series/${encodeURIComponent(series.id)}`)
+  }
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      handleActivate()
+    }
   }
 
   const focusRing =
@@ -44,7 +52,8 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
     return (
       <button
         type="button"
-        onClick={handleClick}
+        onClick={handleActivate}
+        onKeyDown={handleKeyDown}
         className={cn(
           "flex w-full items-center gap-3 rounded-md border bg-card p-2 text-left transition-colors hover:bg-accent/40",
           focusRing,
@@ -66,7 +75,8 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={handleActivate}
+      onKeyDown={handleKeyDown}
       className={cn(
         "flex flex-col gap-2 rounded-md text-left transition-colors hover:bg-accent/40",
         focusRing,

@@ -75,3 +75,33 @@ export interface SeriesBrowseResponse {
   total: number
   sync: SyncStatusEmbed
 }
+
+export type ResumeSource = "earliest_unfinished" | "on_deck"
+
+export interface ResumePreviewResponse {
+  series_id: string | null
+  episode_id: string | null
+  season_index: number | null
+  episode_index: number | null
+  percent_watched: number | null
+  source: ResumeSource | null
+  series_complete: boolean
+}
+
+export interface Episode {
+  id: string
+  title: string
+  season_index: number
+  episode_index: number
+  duration_ms: number
+  percent_watched: number
+  provider_marked_played: boolean
+  part_index: number | null
+  multipart_group_id: string | null
+  is_special: boolean
+  special_for_season: number | null
+}
+
+export interface EpisodesListResponse {
+  episodes: Episode[]
+}

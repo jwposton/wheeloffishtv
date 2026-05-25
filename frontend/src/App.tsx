@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell"
 import { AdminLibrarySetupPage } from "@/pages/AdminLibrarySetupPage"
 import { AdminSetupPage } from "@/pages/AdminSetupPage"
 import { BrowsePage } from "@/pages/BrowsePage"
+import { SeriesDetailPage } from "@/pages/SeriesDetailPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { SettingsLibrariesPage } from "@/pages/SettingsLibrariesPage"
 import { SettingsPage } from "@/pages/SettingsPage"
@@ -31,6 +32,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route element={<LibraryScopeGuard />}>
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/series/:seriesId" element={<SeriesDetailPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/setup/admin" element={<AdminSetupPage />} />
