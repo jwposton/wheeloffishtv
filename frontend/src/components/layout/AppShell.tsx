@@ -69,6 +69,9 @@ export function AppShell() {
               <Link to="/browse" className={navLinkClass("/browse")}>
                 Browse
               </Link>
+              <Link to="/playlists" className={navLinkClass("/playlists")}>
+                Playlists
+              </Link>
               <Link to="/settings" className={navLinkClass("/settings")}>
                 Settings
               </Link>

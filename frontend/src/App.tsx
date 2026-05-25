@@ -6,6 +6,7 @@ import { AdminSetupPage } from "@/pages/AdminSetupPage"
 import { BrowsePage } from "@/pages/BrowsePage"
 import { SeriesDetailPage } from "@/pages/SeriesDetailPage"
 import { LoginPage } from "@/pages/LoginPage"
+import { PlaylistsPage } from "@/pages/PlaylistsPage"
 import { SettingsLibrariesPage } from "@/pages/SettingsLibrariesPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { AdminRoute } from "@/routes/AdminRoute"
@@ -34,6 +35,7 @@ function App() {
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/series" element={<SeriesDetailPage />} />
             <Route path="/series/:seriesId" element={<SeriesDetailPage />} />
+            <Route path="/playlists" element={<PlaylistsPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/setup/admin" element={<AdminSetupPage />} />
