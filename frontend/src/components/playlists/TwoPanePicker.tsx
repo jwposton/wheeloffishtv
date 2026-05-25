@@ -1,0 +1,384 @@
+import { useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
+
+import type { Series } from "@/api/types"
+import {
+  useAppendPlaylistRow,
+  usePatchPlaylistRow,
+  useRemovePlaylistRow,
+} from "@/api/playlists"
+import { SeriesPoster } from "@/components/browse/SeriesPoster"
+import {
+  RowSettingsSheet,
+  type SeriesRow,
+} from "@/components/playlists/RowSettingsSheet"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuth } from "@/hooks/useAuth"
+import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { useSeriesInfiniteQuery } from "@/hooks/useSeriesInfiniteQuery"
+import { cn } from "@/lib/utils"
+
+export type { SeriesRow }
+
+interface TwoPanePickerProps {
+  rows: SeriesRow[]
+  onRowsChange: (rows: SeriesRow[]) => void
+  playlistId?: string
+}
+
+function MemberTile({
+  row,
+  onClick,
+}: {
+  row: SeriesRow
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative flex flex-col gap-2 rounded-md text-left transition-colors hover:bg-accent/40",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+      )}
+    >
+      <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
+        <SeriesPoster title={row.series_title} thumbUrl={row.thumb_url} />
+      </div>
+      <span className="line-clamp-2 text-sm font-medium">{row.series_title}</span>
+      {row.mode === "disordered" ? (
+        <Badge variant="secondary" className="absolute top-2 left-2 text-xs">
+          Random
+        </Badge>
+      ) : null}
+    </button>
+  )
+}
+
+function AvailableTile({
+  series,
+  disabled,
+  onAdd,
+}: {
+  series: Series
+  disabled: boolean
+  onAdd: (series: Series) => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onAdd(series)}
+      className={cn(
+        "flex flex-col gap-2 rounded-md text-left transition-colors hover:bg-accent/40",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+        disabled && "cursor-not-allowed opacity-40 hover:bg-transparent",
+      )}
+    >
+      <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
+        <SeriesPoster title={series.title} thumbUrl={series.thumb_url} />
+      </div>
+      <span className="line-clamp-2 text-sm font-medium">{series.title}</span>
+    </button>
+  )
+}
+
+function TileGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="flex flex-col gap-2">
+          <Skeleton className="aspect-[2/3] w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function InPlaylistPane({
+  rows,
+  onRowClick,
+}: {
+  rows: SeriesRow[]
+  onRowClick: (row: SeriesRow) => void
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No shows yet — pick from Available to add.
+      </p>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {rows.map((row) => (
+        <MemberTile key={row.series_id} row={row} onClick={() => onRowClick(row)} />
+      ))}
+    </div>
+  )
+}
+
+function AvailablePane({
+  searchInput,
+  onSearchInputChange,
+  catalogItems,
+  selectedIds,
+  isLoading,
+  isFetchingNextPage,
+  onAdd,
+  sentinelRef,
+}: {
+  searchInput: string
+  onSearchInputChange: (value: string) => void
+  catalogItems: Series[]
+  selectedIds: Set<string>
+  isLoading: boolean
+  isFetchingNextPage: boolean
+  onAdd: (series: Series) => void
+  sentinelRef: React.RefObject<HTMLDivElement | null>
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Input
+        type="text"
+        placeholder="Search series…"
+        value={searchInput}
+        onChange={(e) => onSearchInputChange(e.target.value)}
+      />
+
+      {isLoading && catalogItems.length === 0 ? (
+        <TileGridSkeleton />
+      ) : catalogItems.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No matching shows in your library.</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {catalogItems.map((series) => (
+              <AvailableTile
+                key={series.id}
+                series={series}
+                disabled={selectedIds.has(series.id)}
+                onAdd={onAdd}
+              />
+            ))}
+          </div>
+          {isFetchingNextPage ? <TileGridSkeleton /> : null}
+          <div ref={sentinelRef} aria-hidden className="h-1 w-full" />
+        </>
+      )}
+    </div>
+  )
+}
+
+export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerProps) {
+  const { user } = useAuth()
+  const connectionId = user?.connection?.id
+  const [searchInput, setSearchInput] = useState("")
+  const debouncedQ = useDebouncedValue(searchInput, 300)
+  const [settingsRow, setSettingsRow] = useState<SeriesRow | null>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  const appendMutation = useAppendPlaylistRow()
+  const removeMutation = useRemovePlaylistRow()
+  const patchMutation = usePatchPlaylistRow()
+
+  const query = useSeriesInfiniteQuery(connectionId, debouncedQ)
+  const catalogItems = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items) ?? [],
+    [query.data?.pages],
+  )
+
+  const selectedIds = useMemo(() => new Set(rows.map((row) => row.series_id)), [rows])
+
+  const catalogById = useMemo(() => {
+    const map = new Map<string, Series>()
+    for (const item of catalogItems) {
+      map.set(item.id, item)
+    }
+    return map
+  }, [catalogItems])
+
+  const displayRows = useMemo(
+    () =>
+      rows.map((row) => {
+        const catalog = catalogById.get(row.series_id)
+        if (!catalog) {
+          return row
+        }
+        return {
+          ...row,
+          series_title: catalog.title,
+          thumb_url: catalog.thumb_url,
+        }
+      }),
+    [rows, catalogById],
+  )
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel || !query.hasNextPage || query.isFetchingNextPage) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void query.fetchNextPage()
+        }
+      },
+      { rootMargin: "240px" },
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [query.fetchNextPage, query.hasNextPage, query.isFetchingNextPage])
+
+  async function handleAdd(series: Series) {
+    if (selectedIds.has(series.id)) {
+      return
+    }
+
+    const newRow: SeriesRow = {
+      series_id: series.id,
+      series_title: series.title,
+      thumb_url: series.thumb_url,
+      mode: "ordered",
+      completion_policy: "remove",
+    }
+
+    if (playlistId) {
+      const previousRows = rows
+      onRowsChange([...rows, newRow])
+      try {
+        await appendMutation.mutateAsync({
+          playlistId,
+          payload: { series_id: series.id },
+        })
+        toast.success(`Added ${series.title}`)
+      } catch {
+        onRowsChange(previousRows)
+        toast.error("Failed to add show")
+      }
+      return
+    }
+
+    onRowsChange([...rows, newRow])
+    toast.success(`Added ${series.title}`)
+  }
+
+  async function handleRemove(seriesId: string) {
+    if (playlistId) {
+      const previousRows = rows
+      onRowsChange(rows.filter((row) => row.series_id !== seriesId))
+      try {
+        await removeMutation.mutateAsync({ playlistId, seriesId })
+        toast.success("Removed from playlist")
+      } catch {
+        onRowsChange(previousRows)
+        toast.error("Failed to remove show")
+      }
+      return
+    }
+
+    onRowsChange(rows.filter((row) => row.series_id !== seriesId))
+  }
+
+  async function handleSave(updatedRow: SeriesRow) {
+    if (playlistId) {
+      const previousRows = rows
+      onRowsChange(
+        rows.map((row) => (row.series_id === updatedRow.series_id ? updatedRow : row)),
+      )
+      try {
+        await patchMutation.mutateAsync({
+          playlistId,
+          seriesId: updatedRow.series_id,
+          payload: {
+            mode: updatedRow.mode,
+            completion_policy: updatedRow.completion_policy,
+          },
+        })
+      } catch {
+        onRowsChange(previousRows)
+        toast.error("Failed to save row settings")
+      }
+      return
+    }
+
+    onRowsChange(
+      rows.map((row) => (row.series_id === updatedRow.series_id ? updatedRow : row)),
+    )
+  }
+
+  const inPane = (
+    <div className="flex flex-col gap-3">
+      <h4 className="text-sm font-medium">In playlist ({displayRows.length})</h4>
+      <InPlaylistPane rows={displayRows} onRowClick={setSettingsRow} />
+    </div>
+  )
+
+  const availablePane = (
+    <div className="flex flex-col gap-3">
+      <h4 className="text-sm font-medium">Available to add</h4>
+      <AvailablePane
+        searchInput={searchInput}
+        onSearchInputChange={setSearchInput}
+        catalogItems={catalogItems}
+        selectedIds={selectedIds}
+        isLoading={query.isLoading}
+        isFetchingNextPage={query.isFetchingNextPage}
+        onAdd={(series) => void handleAdd(series)}
+        sentinelRef={sentinelRef}
+      />
+    </div>
+  )
+
+  return (
+    <>
+      <div className="md:hidden">
+        <Tabs defaultValue="in">
+          <TabsList>
+            <TabsTrigger value="in">In playlist ({displayRows.length})</TabsTrigger>
+            <TabsTrigger value="add">Add shows</TabsTrigger>
+          </TabsList>
+          <TabsContent value="in">{inPane}</TabsContent>
+          <TabsContent value="add">{availablePane}</TabsContent>
+        </Tabs>
+      </div>
+
+      <div
+        data-testid="two-pane-desktop"
+        className="hidden grid-cols-1 gap-8 md:grid md:grid-cols-2"
+      >
+        {inPane}
+        {availablePane}
+      </div>
+
+      {settingsRow ? (
+        <RowSettingsSheet
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setSettingsRow(null)
+            }
+          }}
+          row={settingsRow}
+          seriesTitle={settingsRow.series_title}
+          onSave={(updatedRow) => {
+            void handleSave(updatedRow)
+            setSettingsRow(null)
+          }}
+          onRemove={() => {
+            void handleRemove(settingsRow.series_id)
+            setSettingsRow(null)
+          }}
+        />
+      ) : null}
+    </>
+  )
+}

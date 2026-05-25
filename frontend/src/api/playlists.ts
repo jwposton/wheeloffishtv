@@ -132,6 +132,31 @@ export async function appendPlaylistRow(
   })
 }
 
+export interface PatchPlaylistRowPayload {
+  mode?: RowMode
+  completion_policy?: CompletionPolicy
+}
+
+export async function removePlaylistRow(
+  playlistId: string,
+  seriesId: string,
+): Promise<void> {
+  await fetchJson<void>(`/playlists/${playlistId}/rows/${seriesId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function patchPlaylistRow(
+  playlistId: string,
+  seriesId: string,
+  payload: PatchPlaylistRowPayload,
+): Promise<PlaylistDetailResponse> {
+  return fetchJson<PlaylistDetailResponse>(`/playlists/${playlistId}/rows/${seriesId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
 export async function createPlaylistWithSeries(
   name: string,
   seriesId: string,
@@ -231,6 +256,42 @@ export function useAppendPlaylistRow() {
       playlistId: string
       payload: AppendPlaylistRowPayload
     }) => appendPlaylistRow(playlistId, payload),
+    onSuccess: (_data, { playlistId }) => {
+      void queryClient.invalidateQueries({ queryKey: ["playlists", playlistId] })
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] })
+    },
+  })
+}
+
+export function useRemovePlaylistRow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      playlistId,
+      seriesId,
+    }: {
+      playlistId: string
+      seriesId: string
+    }) => removePlaylistRow(playlistId, seriesId),
+    onSuccess: (_data, { playlistId }) => {
+      void queryClient.invalidateQueries({ queryKey: ["playlists", playlistId] })
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] })
+    },
+  })
+}
+
+export function usePatchPlaylistRow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      playlistId,
+      seriesId,
+      payload,
+    }: {
+      playlistId: string
+      seriesId: string
+      payload: PatchPlaylistRowPayload
+    }) => patchPlaylistRow(playlistId, seriesId, payload),
     onSuccess: (_data, { playlistId }) => {
       void queryClient.invalidateQueries({ queryKey: ["playlists", playlistId] })
       void queryClient.invalidateQueries({ queryKey: ["playlists"] })
