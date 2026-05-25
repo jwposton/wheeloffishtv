@@ -21,6 +21,12 @@ class CompletionEvent(StrEnum):
     SEASON_COMPLETE = "season_complete"
 
 
+class SlotAllocation(StrEnum):
+    WILD = "wild"
+    BALANCED = "balanced"
+    ROUND_ROBIN = "round_robin"
+
+
 class PlaylistSeriesRow(BaseModel):
     series_id: str
     mode: RowMode = RowMode.ORDERED
@@ -31,7 +37,8 @@ class PlaylistSeriesRow(BaseModel):
 class Playlist(BaseModel):
     id: str
     name: str
-    episode_count: int = Field(ge=1)
+    episode_count: int = Field(default=20, ge=1)
+    slot_allocation: SlotAllocation = SlotAllocation.WILD
     default_completion_policy: CompletionPolicy = CompletionPolicy.REMOVE  # D-12 / D-13
     rows: list[PlaylistSeriesRow]
 

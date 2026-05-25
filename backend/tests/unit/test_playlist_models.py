@@ -10,6 +10,7 @@ from wheeloffish.domain.playlist import (
     PlaylistSeriesRow,
     RowMode,
     SeriesRebuildInput,
+    SlotAllocation,
 )
 
 
@@ -61,3 +62,25 @@ def test_playlist_default_completion_policy_accepts_override() -> None:
         rows=[],
     )
     assert playlist.default_completion_policy == CompletionPolicy.DISORDERED
+
+
+def test_playlist_episode_count_defaults_to_20() -> None:
+    playlist = Playlist(id="p1", name="Test", rows=[])
+    assert playlist.episode_count == 20
+    assert Playlist.model_fields["episode_count"].default == 20
+
+
+def test_playlist_slot_allocation_defaults_to_wild() -> None:
+    playlist = Playlist(id="p1", name="Test", rows=[])
+    assert playlist.slot_allocation == SlotAllocation.WILD
+    assert Playlist.model_fields["slot_allocation"].default == SlotAllocation.WILD
+
+
+def test_playlist_slot_allocation_accepts_balanced() -> None:
+    playlist = Playlist(
+        id="p1",
+        name="Test",
+        slot_allocation=SlotAllocation.BALANCED,
+        rows=[],
+    )
+    assert playlist.slot_allocation == SlotAllocation.BALANCED
