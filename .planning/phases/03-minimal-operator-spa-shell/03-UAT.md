@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 phase: 03-minimal-operator-spa-shell
 source: 03-01-SUMMARY.md, 03-02-SUMMARY.md, 03-03-SUMMARY.md, 03-04-SUMMARY.md, 03-05-SUMMARY.md, 03-06-SUMMARY.md, 03-07-SUMMARY.md
 started: 2026-05-25T18:00:00Z
@@ -84,7 +84,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Open `/browse` with scoped libraries. Poster grid loads series with visible poster images for all authenticated users."
-  status: failed
+  status: resolved
   reason: "User reported: pass for admin; fail for non-admin — broken poster images on browse grid"
   severity: major
   test: 5
@@ -102,7 +102,7 @@ blocked: 0
   debug_session: .planning/debug/non-admin-broken-posters.md
 
 - truth: "From browse, open a series with watch history. Detail page shows series metadata and read-only resume/up-next preview (episode title, season/episode, watch state)."
-  status: failed
+  status: resolved
   reason: "User reported: series detail is blank returns after a longish wait: Resume preview — Could not load resume data for this series."
   severity: major
   test: 6
@@ -121,7 +121,7 @@ blocked: 0
   debug_session: .planning/debug/resume-preview-failure.md
 
 - truth: "As operator, resume pointer reflects watch history — catalog data verifiable before playlist authoring."
-  status: failed
+  status: resolved
   reason: "User reported: resume pointer not correct — see test 6 (Could not load resume data for this series)"
   severity: major
   test: 7
@@ -134,7 +134,7 @@ blocked: 0
   debug_session: .planning/debug/resume-preview-failure.md
 
 - truth: "As a non-admin user before libraries are scoped, navigate to `/browse` and see holding page instead of populated browse grid."
-  status: failed
+  status: resolved
   reason: "User reported: without admin defined I see browse with shows populated instead of holding page"
   severity: major
   test: 8
