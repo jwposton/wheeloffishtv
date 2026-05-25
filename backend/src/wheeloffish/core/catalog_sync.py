@@ -9,7 +9,11 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.connections import build_provider_for_connection
-from wheeloffish.core.media_artwork import download_and_cache_artwork, series_artwork_url
+from wheeloffish.core.media_artwork import (
+    artwork_cache_path,
+    download_and_cache_artwork,
+    series_artwork_url,
+)
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.cached_library import CachedLibrary
 from wheeloffish.db.models.cached_series import CachedSeries
@@ -25,6 +29,7 @@ from wheeloffish.integrations.plex.client import PlexProvider
 logger = structlog.get_logger(__name__)
 
 CHUNK_DELAY_SECONDS = 0.25
+ARTWORK_BACKFILL_DELAY_SECONDS = 0.05
 
 
 def _scoped_library_id_set(settings: Settings) -> set[str] | None:
@@ -296,14 +301,6 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
                 for series in page_result.items:
                     _upsert_series_row(db, series, synced_at)
                     total_synced += 1
-                    if isinstance(provider, PlexProvider):
-                        await download_and_cache_artwork(
-                            provider,
-                            cache_dir=settings.WOF_ARTWORK_CACHE_DIR,
-                            connection_id=connection_id,
-                            series_id=series.id,
-                            thumb_url=series.thumb_url,
-                        )
 
                 total_estimated = max(total_estimated, page_result.total)
                 state.page_cursor = total_synced
@@ -319,6 +316,13 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
                 page += 1
                 await asyncio.sleep(CHUNK_DELAY_SECONDS)
 
+        artwork_cached = 0
+        artwork_failed = 0
+        if isinstance(provider, PlexProvider):
+            artwork_cached, artwork_failed = await backfill_artwork_for_connection(
+                db, provider, connection_id, settings
+            )
+
         state = _get_or_create_sync_state(db, connection_id)
         state.status = "complete"
         state.page_cursor = total_synced
@@ -330,6 +334,8 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
             "catalog_sync_complete",
             connection_id=connection_id,
             series_count=total_synced,
+            artwork_cached=artwork_cached,
+            artwork_failed=artwork_failed,
         )
     except (ProviderError, ValueError, Exception) as err:
         db.rollback()
@@ -350,3 +356,46 @@ def trigger_sync_for_user_links(db: Session, app_user_id: str) -> dict[str, dict
         trigger_sync(db, link.connection_id, app_user_id)
         statuses[link.connection_id] = get_sync_status(db, link.connection_id)
     return statuses
+
+
+async def backfill_artwork_for_connection(
+    db: Session,
+    provider: PlexProvider,
+    connection_id: str,
+    settings: Settings,
+) -> tuple[int, int]:
+    """Ensure every in-scope cached series has a local poster file."""
+    in_scope = get_in_scope_libraries(db, connection_id)
+    in_scope_ids = [library.native_id for library in in_scope]
+    if not in_scope_ids:
+        return 0, 0
+
+    query = db.query(CachedSeries).filter(
+        CachedSeries.connection_id == connection_id,
+        CachedSeries.library_native_id.in_(in_scope_ids),
+    )
+
+    cached_count = 0
+    failed_count = 0
+    for row in query.all():
+        cache_path = artwork_cache_path(settings.WOF_ARTWORK_CACHE_DIR, connection_id, row.id)
+        if cache_path.is_file():
+            cached_count += 1
+            continue
+        if not row.thumb_url:
+            failed_count += 1
+            continue
+        ok = await download_and_cache_artwork(
+            provider,
+            cache_dir=settings.WOF_ARTWORK_CACHE_DIR,
+            connection_id=connection_id,
+            series_id=row.id,
+            thumb_url=row.thumb_url,
+        )
+        if ok:
+            cached_count += 1
+        else:
+            failed_count += 1
+        await asyncio.sleep(ARTWORK_BACKFILL_DELAY_SECONDS)
+
+    return cached_count, failed_count
