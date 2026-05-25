@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
 import { AdminLibrarySetupPage } from "@/pages/AdminLibrarySetupPage"
 import { AdminSetupPage } from "@/pages/AdminSetupPage"
+import { BrowsePage } from "@/pages/BrowsePage"
 import { LoginPage } from "@/pages/LoginPage"
 import { SettingsLibrariesPage } from "@/pages/SettingsLibrariesPage"
 import { SettingsPage } from "@/pages/SettingsPage"
@@ -21,17 +22,6 @@ function HomePage() {
   )
 }
 
-function BrowsePlaceholderPage() {
-  return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-2">
-      <h2 className="text-xl font-semibold">Browse</h2>
-      <p className="text-muted-foreground text-sm">
-        Catalog browser ships in a later plan.
-      </p>
-    </div>
-  )
-}
-
 function App() {
   return (
     <Routes>
@@ -40,7 +30,7 @@ function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
           <Route element={<LibraryScopeGuard />}>
-            <Route path="/browse" element={<BrowsePlaceholderPage />} />
+            <Route path="/browse" element={<BrowsePage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/setup/admin" element={<AdminSetupPage />} />

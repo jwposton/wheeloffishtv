@@ -12,7 +12,7 @@ export function SyncBanner({ sync }: SyncBannerProps) {
   return (
     <div
       role="status"
-      className="border-b bg-muted/80 px-4 py-2 text-center text-sm text-muted-foreground"
+      className="sticky top-0 z-10 border-b bg-muted/80 px-4 py-2 text-center text-sm text-muted-foreground backdrop-blur-sm"
     >
       Updating library…
     </div>
