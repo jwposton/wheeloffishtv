@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T22:30:00.000Z"
+last_updated: "2026-05-25T22:09:33.875Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
-  completed_plans: 27
-  percent: 59
+  completed_plans: 28
+  percent: 57
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 5 plan 01 complete)
+**Updated:** 2026-05-25 (Phase 5 plan 02 complete)
 
 ## Project reference
 
@@ -24,16 +24,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 1/6 executed).
+Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 2/6 executed).
 
-**Stopped at:** 05-01 complete. Next: 05-02.
+**Stopped at:** 05-02 complete. Next: 05-03.
 
-**Next action:** Execute 05-02 (rebuild orchestrator)
+**Next action:** Execute 05-03 (rebuild orchestrator — live fetch + builder wiring)
 
 ## Immediate next actions
 
-1. Execute 05-02 — rebuild orchestrator (live fetch + builder wiring)
-2. Wave 2–6 follow dependency order in ROADMAP
+1. Execute 05-03 — rebuild orchestrator (live fetch + builder wiring)
+2. Wave 3–6 follow dependency order in ROADMAP
 
 ## Decisions (Phase 4)
 
@@ -71,8 +71,15 @@ Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 1/6 exe
 - SQLAlchemy proper constructors required in tests — `__new__` bypasses instance state initialization; use `Model(col=val, ...)` instead
 - `rebuild_run.created_at` always-present; `started_at` nullable for queued state (job created before it begins)
 
+## Decisions (Phase 5 — plan 02)
+
+- `install_tz()` is a regular method (not computed_field) — ZoneInfo is not JSON-serialisable; avoids Pydantic serialization issues
+- `orchestrator.py` created as stub no-op for 05-02; `run_nightly_rebuilds` fully implemented in 05-03
+- `recover_interrupted_rebuilds` uses direct ORM query at startup (sync session from session_factory)
+
 ## Working notes
 
+- Phase 5 plan 02: `.planning/phases/05-orchestration-scheduling/05-02-SUMMARY.md`
 - Phase 5 plan 01: `.planning/phases/05-orchestration-scheduling/05-01-SUMMARY.md`
 - Phase 4 plan 06: `.planning/phases/04-playlist-mathematics/04-06-SUMMARY.md`
 - Phase 4 plan 05: `.planning/phases/04-playlist-mathematics/04-05-SUMMARY.md`

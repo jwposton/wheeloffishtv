@@ -22,7 +22,7 @@
 
 ### Scheduling & multipart
 
-- [ ] **SCH-01**: All playlists regenerate automatically on a **daily** schedule windows (timezone aware; specifics in PLAN phase)  
+- [x] **SCH-01**: All playlists regenerate automatically on a **daily** schedule windows (timezone aware; specifics in PLAN phase)  
 - [x] **SCH-02**: Detect **multipart/multi-part arcs** during selection; whenever any part qualifies for an **ordered** row, sibling parts must appear **adjacent**, in continuity order **within that refresh’s output**
 
 ### Administration
@@ -68,7 +68,7 @@ Deferred (not in roadmap v1):
 | PLT-04 | Phase 4 | Complete |
 | PLT-05 | Phase 4 | Complete |
 | PLT-06 | Phase 4 | Complete |
-| SCH-01 | Phase 5 | Pending |
+| SCH-01 | Phase 5 | Complete |
 | SCH-02 | Phase 5 | Complete |
 | ADM-01 | Phase 6 | Pending |
 | ADM-02 | Phase 6 | Pending |
