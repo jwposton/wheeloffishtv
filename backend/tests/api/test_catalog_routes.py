@@ -9,9 +9,10 @@ from conftest import APP_USER_ID, seed_cached_libraries, seed_cached_series
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import inspect
 
-from wheeloffish.api.deps import get_app_user_id, get_db
+from wheeloffish.api.deps import get_app_user_id, get_db, require_admin
 from wheeloffish.core.config import get_settings
 from wheeloffish.core.resume import ResumeService
+from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Episode, Library, PagedSeries, Series
 from wheeloffish.domain.ids import format_composite_id
@@ -37,12 +38,20 @@ def sync_task_collector(monkeypatch: pytest.MonkeyPatch):
 @pytest.fixture
 async def catalog_client(db_engine, db_session, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("WOF_ENABLED_PROVIDERS", "plex,jellyfin")
+    monkeypatch.setenv("WOF_ADMIN_PROVIDER_USER_ID", "catalog-test-admin")
     get_settings.cache_clear()
+
+    admin_user = AppUser(provider_user_id="catalog-test-admin", provider_username="admin")
+    db_session.add(admin_user)
+    db_session.commit()
+    db_session.refresh(admin_user)
 
     def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
+    app.dependency_overrides[require_admin] = lambda: admin_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()

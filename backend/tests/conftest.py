@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import httpx
@@ -10,12 +11,18 @@ from alembic import command
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.session import get_engine, reset_session_state
-from wheeloffish.main import app
 
 # Valid 32-byte hex key for all tests
 TEST_SECRET_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 APP_USER_ID = "00000000-0000-4000-8000-000000000001"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+os.environ.setdefault("WOF_SECRET_KEY", TEST_SECRET_KEY)
+os.environ.setdefault("WOF_PROVIDER", "plex")
+os.environ.setdefault("WOF_MEDIA_SERVER_URL", "https://plex.example.com")
+os.environ.setdefault("ENVIRONMENT", "development")
+
+from wheeloffish.main import app  # noqa: E402
 
 
 def load_fixture(name: str) -> dict:
@@ -30,6 +37,8 @@ def load_fixture(name: str) -> dict:
 def _test_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure WOF_SECRET_KEY is set for every test."""
     monkeypatch.setenv("WOF_SECRET_KEY", TEST_SECRET_KEY)
+    monkeypatch.setenv("WOF_PROVIDER", "plex")
+    monkeypatch.setenv("WOF_MEDIA_SERVER_URL", "https://plex.example.com")
     get_settings.cache_clear()
     reset_session_state()
 

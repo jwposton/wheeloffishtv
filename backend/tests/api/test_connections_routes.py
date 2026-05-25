@@ -4,9 +4,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import respx
+from conftest import APP_USER_ID
 from httpx import ASGITransport, AsyncClient, Response
 
-from wheeloffish.api.deps import get_db
+from wheeloffish.api.deps import get_app_user_id, get_db
 from wheeloffish.core.config import get_settings
 from wheeloffish.core.namespaces import media_user_token_key
 from wheeloffish.db.models.connection import Connection
@@ -60,6 +61,7 @@ async def connections_client(db_engine, db_session, monkeypatch: pytest.MonkeyPa
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
@@ -138,6 +140,7 @@ async def test_provider_disabled(db_engine, db_session, monkeypatch: pytest.Monk
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
     provider = _mock_provider()
     try:
         with patch(
@@ -154,7 +157,7 @@ async def test_provider_disabled(db_engine, db_session, monkeypatch: pytest.Monk
 
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "provider_disabled"
-    assert db_session.query(Connection).count() == 0
+    assert db_session.query(Connection).filter(Connection.provider_type == "jellyfin").count() == 0
     provider.ping.assert_not_awaited()
 
 
