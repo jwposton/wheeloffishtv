@@ -53,15 +53,27 @@ Requirements: INT-01, INT-02, INT-03
 ---
 
 ### Phase 3: Minimal operator SPA shell
-**Goal:** Frontend bootstrapped, auth gate, wizard to paste server credentials, browsable show list read-only.  
+**Goal:** As a self-host operator, I want to sign in via Plex/Jellyfin OAuth and browse scoped TV libraries with resume preview, so that I can verify catalog data before playlist authoring.  
 **Mode:** mvp  
 **UI hint:** yes  
+**Plans:** 7 plans
 
 **Success criteria**
 
-1. User can sign in (local account — exact scheme in PLAN) and save first server config without CLI  
-2. Series browser meets accessibility baseline keyboard nav  
-3. Storybook/visual regression optional stub created for slick component tokens  
+1. User signs in via media-server OAuth only (env-configured connection — no server wizard in UI)  
+2. Admin scopes libraries in UI; non-admins see holding page until scoped  
+3. Series browser: grid/list toggle, infinite scroll, debounced search, sync banner, detail with up-next preview  
+4. Light/dark theme from day one; keyboard nav baseline on browse grid  
+5. Storybook deferred to Phase 7 (D-20)  
+
+**Plans:**
+- [ ] 03-01-PLAN.md — Session auth, env→DB boot sync, /auth/me, Wave 0 tests
+- [ ] 03-02-PLAN.md — OAuth refactor to env connection; session on callback; catalog auth
+- [ ] 03-03-PLAN.md — Vite/shadcn scaffold, SPA static serve, Docker multi-stage
+- [ ] 03-04-PLAN.md — Login wall, admin discovery, read-only settings
+- [ ] 03-05-PLAN.md — Library scope admin UI, first-run checklist, holding page
+- [ ] 03-06-PLAN.md — Series browse: infinite scroll, search, sync banner, grid/list
+- [ ] 03-07-PLAN.md — Series detail + resume preview, docs, UAT checklist
 
 Requirements: WEB-01 (foundation)
 
