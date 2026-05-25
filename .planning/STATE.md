@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T23:32:55Z"
+last_updated: "2026-05-25T23:33:17Z"
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 33
-  percent: 89
+  completed_plans: 34
+  percent: 92
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 6 plan 01 complete — metadata mapper extension)
+**Updated:** 2026-05-25 (Phase 6 plan 02 complete — row append/remove/patch API)
 
 ## Project reference
 
@@ -24,16 +24,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **6 — Library & playlist assignment** — **in progress** (1/5 plans complete).
+Phase **6 — Library & playlist assignment** — **in progress** (2/5 plans complete).
 
-**Stopped at:** Completed 06-01-PLAN.md
+**Stopped at:** Completed 06-02-PLAN.md
 
-**Next action:** Execute 06-02-PLAN.md (row append/remove/patch API)
+**Next action:** Execute 06-03-PLAN.md (Library nav, tile menu, AddToPlaylistMenu)
 
 ## Immediate next actions
 
-1. Execute 06-02-PLAN.md — row append/remove/patch API endpoints (Wave 2)
-2. Continue Phase 6 waves 3–5 after Wave 2 completes
+1. Execute 06-03-PLAN.md — Library nav rename, tile ⋯ menu, AddToPlaylistMenu + quick create
+2. Continue Phase 6 waves 4–5 after Wave 3 completes
 
 ## Decisions (Phase 4)
 
@@ -69,6 +69,12 @@ Phase **6 — Library & playlist assignment** — **in progress** (1/5 plans com
 - **Series detail:** primary Add button + shared menu; enrich with provider metadata (summary, genres, rating) — no external IMDb API
 - **Quick create:** inline name + Advanced… link to full form
 - **Playlist edit:** two-pane tile picker (In | Available); row settings via bottom sheet; mobile tabs
+
+## Decisions (Phase 6 — plan 02)
+
+- Append row defaults match create: ordered/remove/series_complete
+- Duplicate append returns 409; cross-user row ops return 404 via `_get_owned_playlist`
+- sort_order=max(existing)+1 on append; PATCH requires at least one mutable field
 
 ## Decisions (Phase 6 — plan 01)
 
@@ -120,6 +126,7 @@ Phase **6 — Library & playlist assignment** — **in progress** (1/5 plans com
 
 ## Working notes
 
+- Phase 6 plan 02: `.planning/phases/06-library-playlist-assignment/06-02-SUMMARY.md`
 - Phase 6 plan 01: `.planning/phases/06-library-playlist-assignment/06-01-SUMMARY.md`
 - Phase 5 plan 06: `.planning/phases/05-orchestration-scheduling/05-06-SUMMARY.md`
 - Phase 5 plan 05: `.planning/phases/05-orchestration-scheduling/05-05-SUMMARY.md`
