@@ -22,6 +22,23 @@ def map_library(connection_id: str, section: dict[str, Any]) -> Library:
     )
 
 
+def _str_or_none(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _genres_from_metadata(metadata: dict[str, Any]) -> list[str]:
+    raw_genres = metadata.get("Genre", [])
+    if not isinstance(raw_genres, list):
+        return []
+    return [
+        tag
+        for genre in raw_genres
+        if isinstance(genre, dict)
+        for tag in [genre.get("tag")]
+        if isinstance(tag, str)
+    ]
+
+
 def map_series(
     connection_id: str,
     library_native_id: str,
@@ -37,7 +54,13 @@ def map_series(
         provider=PROVIDER,
         year=metadata.get("year"),
         thumb_url=metadata.get("thumb"),
-        provider_metadata={"ratingKey": metadata.get("ratingKey")},
+        provider_metadata={
+            "ratingKey": metadata.get("ratingKey"),
+            "summary": _str_or_none(metadata.get("summary")),
+            "genres": _genres_from_metadata(metadata),
+            "contentRating": _str_or_none(metadata.get("contentRating")),
+            "studio": _str_or_none(metadata.get("studio")),
+        },
     )
 
 

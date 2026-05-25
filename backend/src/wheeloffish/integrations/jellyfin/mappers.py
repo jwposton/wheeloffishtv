@@ -57,7 +57,13 @@ def map_series(
         provider=PROVIDER,
         year=item.get("ProductionYear"),
         thumb_url=item.get("ImageTags", {}).get("Primary") if item.get("ImageTags") else None,
-        provider_metadata={"Type": item.get("Type")},
+        provider_metadata={
+            "Type": item.get("Type"),
+            "summary": None,
+            "genres": [],
+            "contentRating": None,
+            "studio": None,
+        },
     )
 
 
