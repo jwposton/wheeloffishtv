@@ -69,7 +69,7 @@ created: 2026-05-25
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Nightly cron fires at configured UTC | SCH-01 | APScheduler timing hard to unit-test reliably | Set `WOF_REBUILD_CRON_UTC` to next minute; observe rebuild log |
+| Nightly cron fires at configured local time | SCH-01 | APScheduler timing hard to unit-test reliably | Set WOF_REBUILD_CRON to next minute; WOF_INSTALL_TIMEZONE=UTC; observe rebuild log |
 | Status badge green/amber/red | D-21, WEB-01 | Visual semantic colors | Trigger success/partial/failed rebuilds; verify card badge + detail banner |
 
 ---

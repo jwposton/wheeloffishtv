@@ -10,11 +10,11 @@
 ### Locked Decisions (D-01 through D-26)
 
 #### Global schedule & per-playlist cadence
-- **D-01:** **Global nightly cron at 04:00 UTC** — single install-wide timer (env-configurable default `WOF_REBUILD_CRON_UTC=04:00` or equivalent).
+- **D-01:** **Global nightly cron in install timezone** — default **04:00** local (`WOF_REBUILD_CRON=04:00`) in **`WOF_INSTALL_TIMEZONE`** (IANA, default `UTC`). Single install-wide timer; not per-user timezone.
 - **D-02:** Each playlist declares **refresh cadence**: `daily` **or** `weekly` on a chosen **day of week** (Mon–Sun).
 - **D-03:** Nightly job evaluates **which playlists are due** that night and rebuilds **only those** (not all playlists every night unless daily).
 - **D-04:** **Default cadence for new playlists = daily**.
-- **D-05:** **Missed window → skip until next due** — if container was down at 04:00 UTC, no catch-up pile-up (daily: next night; weekly: next matching DOW).
+- **D-05:** **Missed window → skip until next due** — if container was down at scheduled local time, no catch-up pile-up.
 - **D-06:** **Manual "Rebuild now"** runs immediately via same pipeline as scheduled (Phase 4 D-23); does **not** suppress or reset the next scheduled run.
 
 #### Job runner & batch behavior
@@ -64,7 +64,7 @@
 
 | ID | Description | Research Support |
 |----|-------------|------------------|
-| SCH-01 | Daily schedule (timezone aware) | APScheduler CronTrigger with timezone="UTC"; global cron D-01, per-playlist cadence D-02–D-04 |
+| SCH-01 | Daily schedule (timezone aware) | CronTrigger with timezone=WOF_INSTALL_TIMEZONE; WOF_REBUILD_CRON local HH:MM; weekly DOW in same TZ |
 | SCH-02 | Multipart adjacency (already complete in Phase 4) | Phase 5 orchestration only — fetch inputs, call builder, persist |
 | PLT-01 | Persistence glue for named playlists | Alembic migration: `playlists` table; FastAPI POST/PUT/DELETE routes |
 | PLT-02 | Persistence glue for N episodes | `playlists.episode_count` column |

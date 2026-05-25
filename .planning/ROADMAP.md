@@ -139,7 +139,7 @@ Requirements: PLT-01 … PLT-06
 
 **Success criteria**
 
-1. Scheduler triggers deterministic rebuild respecting timezone config  
+1. Scheduler triggers deterministic rebuild respecting **install timezone** config (`WOF_INSTALL_TIMEZONE` + `WOF_REBUILD_CRON`)
 2. API returns last rebuilt snapshot + timestamps + failures surfaced to UI badges  
 3. Failure isolation: one unhealthy playlist/server doesn’t deadlock others  
 

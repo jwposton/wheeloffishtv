@@ -93,8 +93,21 @@
 
 Alembic schema details, job state enum, snapshot storage shape (JSON vs normalized), partial-status threshold, interrupted-job startup handling, env var naming.
 
+## 7. Install timezone (2026-05-25 amendment)
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Global UTC cron | 04:00 UTC for all | |
+| **Install timezone** | `WOF_INSTALL_TIMEZONE` + local cron hour | ✓ |
+| Per-user timezone | Each user’s local 4am | |
+
+**User's choice:** **A — Install timezone only.** One scheduler job; cron and weekly DOW interpreted in `WOF_INSTALL_TIMEZONE` (default UTC). Renamed time env to `WOF_REBUILD_CRON` (HH:MM local). Per-user timezone deferred.
+
+---
+
 ## Deferred Ideas
 
+- Per-user timezone / per-user refresh hour
 - Per-playlist clock times (hour-of-day)
 - Catch-up after missed cron
 - Dedicated job log page

@@ -18,11 +18,11 @@ Deliver **playlist persistence, rebuild orchestration, and operator UI** so user
 ## Implementation Decisions
 
 ### Global schedule & per-playlist cadence
-- **D-01:** **Global nightly cron at 04:00 UTC** — single install-wide timer (env-configurable default `WOF_REBUILD_CRON_UTC=04:00` or equivalent).
-- **D-02:** Each playlist declares **refresh cadence**: `daily` **or** `weekly` on a chosen **day of week** (Mon–Sun).
+- **D-01:** **Global nightly cron in install timezone** — single install-wide timer. Default **04:00** local (`WOF_REBUILD_CRON=04:00`) in **`WOF_INSTALL_TIMEZONE`** (IANA name, default `UTC`). Operator sets timezone once for the household/server location (SCH-01 timezone-aware). **Not** per-user timezone.
+- **D-02:** Each playlist declares **refresh cadence**: `daily` **or** `weekly` on a chosen **day of week** (Mon–Sun). Weekly DOW evaluated in **install timezone** (same as cron).
 - **D-03:** Nightly job evaluates **which playlists are due** that night and rebuilds **only those** (not all playlists every night unless daily).
 - **D-04:** **Default cadence for new playlists = daily**.
-- **D-05:** **Missed window → skip until next due** — if container was down at 04:00 UTC, no catch-up pile-up (daily: next night; weekly: next matching DOW).
+- **D-05:** **Missed window → skip until next due** — if container was down at the scheduled local time, no catch-up pile-up (daily: next night; weekly: next matching DOW in install TZ).
 - **D-06:** **Manual “Rebuild now”** runs immediately via same pipeline as scheduled (Phase 4 D-23); does **not** suppress or reset the next scheduled run.
 
 ### Job runner & batch behavior
@@ -56,7 +56,7 @@ Deliver **playlist persistence, rebuild orchestration, and operator UI** so user
 - **D-26:** **Expose Phase 4 advanced settings in Phase 5 UI** — `episode_count`, `slot_allocation` (Wild / Balanced / Round-robin labels), `default_completion_policy`, per-row completion override, ordered/disordered per row.
 
 ### Claude's Discretion
-- Exact Alembic table/column names, job state enum values, APScheduler trigger wiring, snapshot JSON vs normalized episode rows, amber vs red threshold for partial (any row skip = amber), startup handling for `running` jobs interrupted by restart, env var names for cron UTC time, TanStack Query cache keys for playlist routes.
+- Exact Alembic table/column names, job state enum values, APScheduler trigger wiring, snapshot JSON vs normalized episode rows, amber vs red threshold for partial (any row skip = amber), startup handling for `running` jobs interrupted by restart, invalid IANA timezone fallback behavior, TanStack Query cache keys for playlist routes.
 
 </decisions>
 
@@ -115,7 +115,7 @@ Deliver **playlist persistence, rebuild orchestration, and operator UI** so user
 <specifics>
 ## Specific Ideas
 
-- Global refresh runs at **4am UTC**; user sets per-playlist **Daily** or **Weekly on Saturday / Monday** etc.
+- Operator sets **install timezone** (e.g. `America/New_York`); global refresh runs at **4am local**; user sets per-playlist **Daily** or **Weekly on Saturday / Monday** etc.
 - Adding shows: **search, filter, select** from catalog (not paste-only IDs)
 - Status badges: green success, amber partial (row skips), red failed
 - Keep **3 rebuild snapshots** for debugging “what changed”
@@ -125,7 +125,8 @@ Deliver **playlist persistence, rebuild orchestration, and operator UI** so user
 <deferred>
 ## Deferred Ideas
 
-- **Per-playlist clock time** — only cadence (daily/weekly DOW), not “rebuild at 9pm”; global 04:00 UTC handles timing
+- **Per-playlist clock time** — only cadence (daily/weekly DOW), not “rebuild at 9pm”; global install-local cron handles timing
+- **Per-user timezone** — deferred; install timezone covers single-household self-host (2026-05-25 amendment)
 - **Catch-up rebuilds** after downtime — explicitly rejected (D-05)
 - **WheelOfFish** global playlist — Phase 6
 - **Export playlist to Plex/Jellyfin** — out of scope MVP

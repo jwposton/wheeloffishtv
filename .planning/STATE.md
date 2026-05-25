@@ -60,6 +60,10 @@ Phase **5 — Orchestration & scheduling** — **planned** (6/6 plans, 0 execute
 - ProtectedRoute requires has_media_link (not just session bootstrap)
 - Storybook deferred to Phase 7 (D-20)
 
+## Decisions (Phase 5 — planning)
+
+- **Install timezone (D-01 amendment 2026-05-25):** `WOF_INSTALL_TIMEZONE` (IANA, default UTC) + `WOF_REBUILD_CRON` (HH:MM local). Single cron job; weekly DOW in same TZ. Per-user timezone deferred.
+
 ## Working notes
 
 - Phase 4 plan 06: `.planning/phases/04-playlist-mathematics/04-06-SUMMARY.md`
