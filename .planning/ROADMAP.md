@@ -159,7 +159,7 @@ Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 05-04-PLAN.md — Playlist REST CRUD + manual rebuild API (PLT-01–03, SCH-01)
+- [x] 05-04-PLAN.md — Playlist REST CRUD + manual rebuild API (PLT-01–03, SCH-01)
 
 **Wave 5** *(blocked on Wave 4)*
 

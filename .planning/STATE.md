@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T22:21:20.122Z"
+last_updated: "2026-05-25T22:35:00.000Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
-  completed_plans: 29
-  percent: 57
+  completed_plans: 31
+  percent: 59
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 5 plan 03 complete)
+**Updated:** 2026-05-25 (Phase 5 plan 04 complete)
 
 ## Project reference
 
@@ -24,16 +24,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 3/6 executed).
+Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 4/6 executed).
 
-**Stopped at:** 05-03 complete. Next: 05-04.
+**Stopped at:** 05-04 complete. Next: 05-05.
 
-**Next action:** Execute 05-04 (playlist REST API — CRUD endpoints + rebuild trigger)
+**Next action:** Execute 05-05 (SPA playlist CRUD screens)
 
 ## Immediate next actions
 
-1. Execute 05-04 — playlist REST API (CRUD + rebuild trigger + run history)
-2. Wave 4–6 follow dependency order in ROADMAP
+1. Execute 05-05 — SPA playlist CRUD screens
+2. Execute 05-06 — final integration wave
 
 ## Decisions (Phase 4)
 
@@ -85,8 +85,16 @@ Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 3/6 exe
 - `recover_interrupted_rebuilds` is sync; `rebuild_playlist` and `run_manual_rebuild` are async
 - `SecretsVault` created inside `rebuild_playlist` from `get_settings()` — self-contained orchestrator
 
+## Decisions (Phase 5 — plan 04)
+
+- `_get_owned_playlist()` returns 404 for non-owner (not 403) to avoid existence leakage (D-18)
+- Rebuild endpoint co-located in `playlists.py` with CRUD routes for cohesion
+- Integration tests use `_set_user(user)` helper switching override inline per-call (avoids shared TestClient fixture collision)
+- 409 `rebuild_in_progress` returned when a RebuildRun with status=running exists for the playlist
+
 ## Working notes
 
+- Phase 5 plan 04: `.planning/phases/05-orchestration-scheduling/05-04-SUMMARY.md`
 - Phase 5 plan 03: `.planning/phases/05-orchestration-scheduling/05-03-SUMMARY.md`
 - Phase 5 plan 02: `.planning/phases/05-orchestration-scheduling/05-02-SUMMARY.md`
 - Phase 5 plan 01: `.planning/phases/05-orchestration-scheduling/05-01-SUMMARY.md`
