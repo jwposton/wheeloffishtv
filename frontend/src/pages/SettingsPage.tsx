@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom"
+
 import {
   Card,
   CardContent,
@@ -57,6 +59,25 @@ export function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {user?.is_admin && !user.setup_mode ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Libraries</CardTitle>
+            <CardDescription>
+              Choose which TV libraries appear in Browse for your household.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              to="/settings/libraries"
+              className="text-primary text-sm font-medium hover:underline"
+            >
+              Manage library scope →
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   )
 }

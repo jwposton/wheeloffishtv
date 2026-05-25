@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 
 import { AppShell } from "@/components/layout/AppShell"
+import { AdminLibrarySetupPage } from "@/pages/AdminLibrarySetupPage"
 import { AdminSetupPage } from "@/pages/AdminSetupPage"
 import { LoginPage } from "@/pages/LoginPage"
+import { SettingsLibrariesPage } from "@/pages/SettingsLibrariesPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { AdminRoute } from "@/routes/AdminRoute"
 import { ProtectedRoute } from "@/routes/ProtectedRoute"
@@ -39,7 +41,10 @@ function App() {
           <Route path="/browse" element={<BrowsePlaceholderPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/setup/admin" element={<AdminSetupPage />} />
-          <Route element={<AdminRoute />}>{/* admin-only routes later */}</Route>
+          <Route element={<AdminRoute />}>
+            <Route path="/setup/libraries" element={<AdminLibrarySetupPage />} />
+            <Route path="/settings/libraries" element={<SettingsLibrariesPage />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
