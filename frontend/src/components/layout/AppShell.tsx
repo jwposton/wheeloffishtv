@@ -67,7 +67,7 @@ export function AppShell() {
             <Separator orientation="vertical" className="hidden h-5 sm:block" />
             <nav className="hidden items-center gap-4 text-sm sm:flex">
               <Link to="/browse" className={navLinkClass("/browse")}>
-                Browse
+                Library
               </Link>
               <Link to="/playlists" className={navLinkClass("/playlists")}>
                 Playlists

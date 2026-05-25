@@ -141,7 +141,7 @@ export function BrowsePage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold">Browse</h2>
+        <h2 className="text-xl font-semibold">Library</h2>
         <p className="text-muted-foreground text-sm">
           Search and scroll through in-scope TV series.
         </p>

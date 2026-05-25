@@ -53,7 +53,11 @@ describe("SeriesCard", () => {
 
   it("navigates to series detail when tile body is clicked", () => {
     renderCard()
-    fireEvent.click(screen.getByText("Test Show"))
+    const tileButton = screen
+      .getAllByRole("button")
+      .find((button) => button.getAttribute("aria-label") !== "Series actions")
+    expect(tileButton).toBeTruthy()
+    fireEvent.click(tileButton!)
     expect(mockNavigate).toHaveBeenCalledWith("/series?id=series-1")
   })
 
