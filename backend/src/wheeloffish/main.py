@@ -1,6 +1,7 @@
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 import structlog
 from fastapi import FastAPI, Request
@@ -19,7 +20,25 @@ from wheeloffish.api.spa import SPAStaticFiles, spa_dist_exists
 from wheeloffish.core.boot import sync_connection_from_env
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.logging import configure_logging, get_logger
+from wheeloffish.core.orchestrator import run_nightly_rebuilds
+from wheeloffish.core.scheduler import create_scheduler
 from wheeloffish.db.session import get_session_factory
+
+
+def recover_interrupted_rebuilds(db) -> None:
+    """Mark any rebuild_runs stuck in 'running' status as failed on startup."""
+    from wheeloffish.db.models.rebuild_run import RebuildRun
+
+    interrupted = db.query(RebuildRun).filter(RebuildRun.status == "running").all()
+    for run in interrupted:
+        run.status = "failed"
+        run.error_message = "Interrupted by restart"
+        run.finished_at = datetime.now(UTC)
+    if interrupted:
+        db.commit()
+        structlog.get_logger("wheeloffish").warning(
+            "interrupted_rebuilds_recovered", count=len(interrupted)
+        )
 
 
 @asynccontextmanager
@@ -30,10 +49,22 @@ async def lifespan(app: FastAPI):
     db = session_factory()
     try:
         sync_connection_from_env(db, settings)
+        recover_interrupted_rebuilds(db)
     finally:
         db.close()
-    get_logger("wheeloffish").info("application_startup", environment=settings.ENVIRONMENT)
-    yield
+
+    scheduler = create_scheduler(settings, job_callable=run_nightly_rebuilds)
+    scheduler.start()
+    get_logger("wheeloffish").info(
+        "application_startup",
+        environment=settings.ENVIRONMENT,
+        scheduler_cron=settings.WOF_REBUILD_CRON,
+        scheduler_tz=settings.WOF_INSTALL_TIMEZONE,
+    )
+    try:
+        yield
+    finally:
+        scheduler.shutdown(wait=True)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
