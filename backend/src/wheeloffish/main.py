@@ -15,6 +15,7 @@ from wheeloffish.api.routes import (
     meta,
     oauth_jellyfin,
     oauth_plex,
+    playlists,
 )
 from wheeloffish.api.spa import SPAStaticFiles, spa_dist_exists
 from wheeloffish.core.boot import sync_connection_from_env
@@ -109,6 +110,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(catalog.session_router, prefix="/api/v1")
     app.include_router(oauth_plex.router, prefix="/api/v1")
     app.include_router(oauth_jellyfin.router, prefix="/api/v1")
+    app.include_router(playlists.router, prefix="/api/v1")
 
     if spa_dist_exists(resolved.SPA_DIST_DIR):
         app.mount(

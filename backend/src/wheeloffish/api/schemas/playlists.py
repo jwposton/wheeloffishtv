@@ -30,7 +30,7 @@ class PlaylistCreateRequest(BaseModel):
     rows: list[PlaylistSeriesRowRequest] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def weekly_requires_day(self) -> "PlaylistCreateRequest":
+    def weekly_requires_day(self) -> PlaylistCreateRequest:
         if self.refresh_cadence == "weekly" and self.refresh_day_of_week is None:
             raise ValueError("refresh_day_of_week required when refresh_cadence is weekly")
         return self
@@ -46,7 +46,7 @@ class PlaylistUpdateRequest(BaseModel):
     rows: list[PlaylistSeriesRowRequest] | None = None
 
     @model_validator(mode="after")
-    def weekly_requires_day(self) -> "PlaylistUpdateRequest":
+    def weekly_requires_day(self) -> PlaylistUpdateRequest:
         if self.refresh_cadence == "weekly" and self.refresh_day_of_week is None:
             raise ValueError("refresh_day_of_week required when refresh_cadence is weekly")
         return self
