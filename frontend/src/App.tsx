@@ -7,6 +7,8 @@ import { BrowsePage } from "@/pages/BrowsePage"
 import { SeriesDetailPage } from "@/pages/SeriesDetailPage"
 import { LoginPage } from "@/pages/LoginPage"
 import { PlaylistsPage } from "@/pages/PlaylistsPage"
+import { PlaylistFormPage } from "@/pages/PlaylistFormPage"
+import { PlaylistDetailPage } from "@/pages/PlaylistDetailPage"
 import { SettingsLibrariesPage } from "@/pages/SettingsLibrariesPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { AdminRoute } from "@/routes/AdminRoute"
@@ -36,6 +38,9 @@ function App() {
             <Route path="/series" element={<SeriesDetailPage />} />
             <Route path="/series/:seriesId" element={<SeriesDetailPage />} />
             <Route path="/playlists" element={<PlaylistsPage />} />
+            <Route path="/playlists/new" element={<PlaylistFormPage />} />
+            <Route path="/playlists/:id/edit" element={<PlaylistFormPage />} />
+            <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/setup/admin" element={<AdminSetupPage />} />
