@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T23:45:00Z"
+last_updated: "2026-05-25T23:53:00Z"
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 37
   completed_plans: 37
   percent: 97
@@ -14,26 +14,26 @@ progress:
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 6 plan 04 complete — two-pane tile picker)
+**Updated:** 2026-05-25 (Phase 6 complete — series detail hero + metadata)
 
 ## Project reference
 
 See: `.planning/PROJECT.md` (updated 2026-05-25)
 
-**Core value:** Mixed random TV playlists across chosen shows honoring true resume semantics per series whenever `ordered`; allow pure chaos rows + global WheelOfFish.
+**Core value:** Mixed random TV playlists across chosen shows honoring true resume semantics per series whenever `ordered`; users manage playlists via Library-centric UX.
 
 ## Current phase
 
-Phase **6 — Library & playlist assignment** — **in progress** (4/5 plans complete).
+Phase **6 — Library & playlist assignment** — **complete** (5/5 plans).
 
-**Stopped at:** Completed 06-04-PLAN.md
+**Stopped at:** Completed 06-05-PLAN.md
 
-**Next action:** Execute 06-05-PLAN.md (series detail hero + metadata)
+**Next action:** Phase 6 validation (06-VALIDATION.md)
 
 ## Immediate next actions
 
-1. Execute 06-05-PLAN.md — series detail hero, provider metadata, Add to playlist CTA
-2. Phase 6 validation after plan 05 completes
+1. Run Phase 6 validation UAT (06-VALIDATION.md)
+2. Begin Phase 7 UX polish when validation passes
 
 ## Decisions (Phase 4)
 
@@ -69,6 +69,12 @@ Phase **6 — Library & playlist assignment** — **in progress** (4/5 plans com
 - **Series detail:** primary Add button + shared menu; enrich with provider metadata (summary, genres, rating) — no external IMDb API
 - **Quick create:** inline name + Advanced… link to full form
 - **Playlist edit:** two-pane tile picker (In | Available); row settings via bottom sheet; mobile tabs
+
+## Decisions (Phase 6 — plan 05)
+
+- SeriesProviderMetadata typed interface; hero omits null/empty fields (no N/A placeholders)
+- Detail page primary Add to playlist reuses AddToPlaylistMenu with Button trigger (D-09)
+- PLT-03 UX marked Complete in REQUIREMENTS after Phase 6 vertical slice ships
 
 ## Decisions (Phase 6 — plan 04)
 
@@ -139,6 +145,7 @@ Phase **6 — Library & playlist assignment** — **in progress** (4/5 plans com
 
 ## Working notes
 
+- Phase 6 plan 05: `.planning/phases/06-library-playlist-assignment/06-05-SUMMARY.md`
 - Phase 6 plan 04: `.planning/phases/06-library-playlist-assignment/06-04-SUMMARY.md`
 - Phase 6 plan 03: `.planning/phases/06-library-playlist-assignment/06-03-SUMMARY.md`
 - Phase 6 plan 02: `.planning/phases/06-library-playlist-assignment/06-02-SUMMARY.md`
