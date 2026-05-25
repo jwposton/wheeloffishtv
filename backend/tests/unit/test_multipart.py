@@ -8,9 +8,10 @@ from wheeloffish.core.playlist.multipart import (
     group_by_multipart,
     sort_multipart_block,
 )
+from wheeloffish.domain.dto import Episode
 
 
-def _episodes_by_id(episodes: list) -> dict[str, object]:
+def _episodes_by_id(episodes: list[Episode]) -> dict[str, Episode]:
     return {ep.id: ep for ep in episodes}
 
 
