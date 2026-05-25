@@ -68,7 +68,7 @@ Each task was committed atomically:
 2. **Task 1 GREEN: Implement multipart helpers** - `1b8994d` (feat)
 3. **Task 2: Finalize golden-vector test module** - `781a44d` (test)
 
-**Plan metadata:** pending (docs commit)
+**Plan metadata:** `eea14de` (docs: complete plan)
 
 ## D-07 vs D-08 Verification Snapshot
 
