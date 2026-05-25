@@ -57,6 +57,14 @@ export interface SyncStatusEmbed {
   error_message: string | null
 }
 
+export interface SeriesProviderMetadata {
+  ratingKey?: string | number
+  summary?: string | null
+  genres?: string[]
+  contentRating?: string | null
+  studio?: string | null
+}
+
 export interface Series {
   id: string
   title: string
@@ -66,7 +74,7 @@ export interface Series {
   provider: string
   year: number | null
   thumb_url: string | null
-  provider_metadata: Record<string, unknown> | null
+  provider_metadata: SeriesProviderMetadata | null
 }
 
 export interface SeriesBrowseResponse {

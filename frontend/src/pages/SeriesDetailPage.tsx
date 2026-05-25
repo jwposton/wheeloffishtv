@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { ResumePreview } from "@/components/browse/ResumePreview"
-import { SeriesPoster } from "@/components/browse/SeriesPoster"
+import { AddToPlaylistMenu } from "@/components/playlists/AddToPlaylistMenu"
+import { SeriesMetadataHero } from "@/components/series/SeriesMetadataHero"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/hooks/useAuth"
 import { useSeriesDetail } from "@/hooks/useSeriesDetail"
@@ -75,7 +77,7 @@ export function SeriesDetailPage() {
           className="text-primary mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
         >
           <ArrowLeftIcon className="size-4" />
-          Back to browse
+          Back to Library
         </Link>
       </div>
     )
@@ -89,11 +91,11 @@ export function SeriesDetailPage() {
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
         >
           <ArrowLeftIcon className="size-4" />
-          Back to browse
+          Back to Library
         </Link>
         <p className="text-muted-foreground text-sm">
           This link is from a previous server session. Open the show again from
-          browse to refresh your catalog.
+          the library to refresh your catalog.
         </p>
       </div>
     )
@@ -107,8 +109,6 @@ export function SeriesDetailPage() {
     !seriesQuery.isFetching &&
     seriesQuery.isFetched
 
-  const title = series?.title ?? "Series detail"
-
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div>
@@ -117,28 +117,28 @@ export function SeriesDetailPage() {
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
         >
           <ArrowLeftIcon className="size-4" />
-          Back to browse
+          Back to Library
         </Link>
-        {(authLoading || seriesQuery.isLoading) && !hasSeries ? (
-          <>
-            <Skeleton className="h-7 w-64" />
-            <Skeleton className="mt-1 h-4 w-16" />
-          </>
-        ) : (
-          <>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="text-xl font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              {title}
-            </h2>
-            {series?.year ? (
-              <p className="text-muted-foreground text-sm">{series.year}</p>
-            ) : null}
-          </>
-        )}
       </div>
+
+      {(authLoading || seriesQuery.isLoading) && !hasSeries ? (
+        <div className="flex flex-col gap-4 md:flex-row md:gap-6">
+          <Skeleton className="aspect-[2/3] w-40 shrink-0" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-full max-w-md" />
+          </div>
+        </div>
+      ) : series ? (
+        <>
+          <SeriesMetadataHero series={series} headingRef={headingRef} />
+          <AddToPlaylistMenu
+            seriesId={series.id}
+            trigger={<Button>Add to playlist</Button>}
+          />
+        </>
+      ) : null}
 
       {detailFailed ? (
         <p className="text-muted-foreground text-sm">
@@ -146,18 +146,6 @@ export function SeriesDetailPage() {
           scope or catalog sync may still be running.
         </p>
       ) : null}
-
-      <div className="aspect-[2/3] w-40 overflow-hidden rounded-md border bg-white">
-        {(authLoading || seriesQuery.isLoading) && !hasSeries ? (
-          <Skeleton className="size-full" />
-        ) : (
-          <SeriesPoster
-            title={title}
-            thumbUrl={series?.thumb_url}
-            compact
-          />
-        )}
-      </div>
 
       <ResumePreview
         resume={resumeQuery.data}
