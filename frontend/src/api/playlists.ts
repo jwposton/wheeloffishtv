@@ -116,6 +116,43 @@ export async function triggerRebuild(id: string): Promise<{ rebuild_run_id: stri
   return fetchJson<{ rebuild_run_id: string }>(`/playlists/${id}/rebuild`, { method: "POST" })
 }
 
+export interface AppendPlaylistRowPayload {
+  series_id: string
+  mode?: RowMode
+  completion_policy?: CompletionPolicy
+}
+
+export async function appendPlaylistRow(
+  playlistId: string,
+  payload: AppendPlaylistRowPayload,
+): Promise<PlaylistDetailResponse> {
+  return fetchJson<PlaylistDetailResponse>(`/playlists/${playlistId}/rows`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function createPlaylistWithSeries(
+  name: string,
+  seriesId: string,
+): Promise<PlaylistDetailResponse> {
+  return createPlaylist({
+    name: name.trim(),
+    episode_count: 20,
+    slot_allocation: "wild",
+    default_completion_policy: "remove",
+    refresh_cadence: "daily",
+    refresh_day_of_week: null,
+    rows: [
+      {
+        series_id: seriesId,
+        mode: "ordered",
+        completion_policy: "remove",
+      },
+    ],
+  })
+}
+
 // ── Query hooks ────────────────────────────────────────────────────────────
 
 export function usePlaylists() {
@@ -180,6 +217,23 @@ export function useRebuildPlaylist() {
     mutationFn: triggerRebuild,
     onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: ["playlists", id] })
+    },
+  })
+}
+
+export function useAppendPlaylistRow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      playlistId,
+      payload,
+    }: {
+      playlistId: string
+      payload: AppendPlaylistRowPayload
+    }) => appendPlaylistRow(playlistId, payload),
+    onSuccess: (_data, { playlistId }) => {
+      void queryClient.invalidateQueries({ queryKey: ["playlists", playlistId] })
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] })
     },
   })
 }
