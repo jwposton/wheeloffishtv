@@ -14,7 +14,7 @@ progress:
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-24 (initialization)
+**Updated:** 2026-05-25 (Phase 1 context gathered)
 
 ## Project reference
 
@@ -24,19 +24,18 @@ See: `.planning/PROJECT.md` (updated 2026-05-24)
 
 ## Current phase
 
-Phase **0 → ready for Phase 1** (foundations).
+Phase **1 — Foundations & packaging** (context gathered; ready for planning).
 
 ## Immediate next actions
 
-1. `/gsd-discuss-phase 1` — tighten auth model, pick first media backend order (Plex vs Jellyfin), confirm multipart heuristics  
-2. `/gsd-plan-phase 1` — produce executable plans + verification hooks  
-3. `/gsd-execute-phase 1` — begin implementation  
+1. `/gsd-plan-phase 1` — produce executable plans + verification hooks  
+2. `/gsd-execute-phase 1` — begin implementation  
 
-## Open questions (carry to discuss)
+## Open questions (deferred to later phases)
 
-- Single local user vs multi-tenant auth on day 1?  
-- Export format to Plex/Jellyfin playlists — direct API vs file bridge?  
-- Exact definition of “season complete” trigger per backend metadata  
+- Single local user vs multi-tenant auth on day 1? → Phase 3  
+- Export format to Plex/Jellyfin playlists — direct API vs file bridge? → Phase 2+  
+- Exact definition of “season complete” trigger per backend metadata → Phase 4  
 
 ## Working notes
 
