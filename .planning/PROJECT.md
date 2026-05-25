@@ -13,6 +13,9 @@ Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect
 ### Validated
 
 - ✓ Dockerized deployment (Python FastAPI service, Compose stack, CI) — Phase 1
+- ✓ Media ingestion & catalogs (Plex/Jellyfin sync, resume service, cached series/episodes) — Phase 2
+- ✓ Minimal operator SPA shell (auth, protected routes, catalog browsing, artwork) — Phase 3
+- ✓ Playlist mathematics (domain models, ordered/disordered pickers, completion policies, `PlaylistBuilder.build()`) — Phase 4
 
 ### Active
 
@@ -74,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 after Phase 1 UAT*
+*Last updated: 2026-05-25 after Phase 4 (playlist mathematics)*
