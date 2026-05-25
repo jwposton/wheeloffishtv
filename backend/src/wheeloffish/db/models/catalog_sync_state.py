@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from wheeloffish.db.models.base import Base
 
 if TYPE_CHECKING:
+    from wheeloffish.db.models.app_user import AppUser
     from wheeloffish.db.models.connection import Connection
 
 
@@ -18,6 +19,11 @@ class CatalogSyncState(Base):
     connection_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("connections.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    app_user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("app_users.id", ondelete="CASCADE"),
         primary_key=True,
     )
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="idle")
@@ -33,4 +39,5 @@ class CatalogSyncState(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
-    connection: Mapped[Connection] = relationship("Connection", back_populates="sync_state")
+    connection: Mapped[Connection] = relationship("Connection", back_populates="sync_states")
+    app_user: Mapped[AppUser] = relationship("AppUser")

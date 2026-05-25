@@ -20,6 +20,7 @@ export async function fetchJson<T>(
   const response = await fetch(url, {
     ...init,
     credentials: "include",
+    cache: "no-store",
     headers: {
       Accept: "application/json",
       ...(init?.body ? { "Content-Type": "application/json" } : {}),

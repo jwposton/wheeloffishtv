@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { fetchJson } from "@/api/client"
+import { ApiError, fetchJson } from "@/api/client"
 import type { ResumePreviewResponse } from "@/api/types"
+import { seriesApiPath } from "@/lib/seriesId"
 
 export function seriesResumeQueryKey(
   connectionId: string,
@@ -15,7 +16,7 @@ function fetchSeriesResume(
   seriesId: string,
 ): Promise<ResumePreviewResponse> {
   return fetchJson<ResumePreviewResponse>(
-    `/connections/${connectionId}/series/${encodeURIComponent(seriesId)}/resume`,
+    seriesApiPath(connectionId, seriesId, "/resume"),
   )
 }
 
@@ -28,5 +29,11 @@ export function useSeriesResume(
     queryFn: () => fetchSeriesResume(connectionId!, seriesId!),
     enabled: Boolean(connectionId && seriesId),
     staleTime: 60_000,
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && (error.status === 404 || error.status === 422)) {
+        return false
+      }
+      return failureCount < 2
+    },
   })
 }

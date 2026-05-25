@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from conftest import APP_USER_ID, seed_cached_libraries, seed_cached_series
+from conftest import APP_USER_ID, seed_cached_libraries, seed_cached_series, seed_series_in_scope
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import inspect
 
@@ -244,7 +244,7 @@ async def test_sync_status(
     provider.list_series = AsyncMock(side_effect=delayed_list_series)
 
     with patch(
-        "wheeloffish.core.catalog_sync.build_provider_for_connection",
+        "wheeloffish.core.catalog_sync.build_plex_provider_for_user",
         return_value=provider,
     ):
         sync_response = await catalog_client.post(f"/api/v1/connections/{connection.id}/sync")
@@ -321,6 +321,7 @@ async def test_library_scope_filter(
     catalog_client,
     connection_factory,
     db_session,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     connection = await connection_factory()
     seed_cached_libraries(
@@ -330,6 +331,12 @@ async def test_library_scope_filter(
             {"native_id": "1", "title": "In Scope TV", "in_scope": True},
             {"native_id": "2", "title": "Out of Scope TV", "in_scope": False},
         ],
+    )
+
+    provider = _mock_library_list_provider(connection.id)
+    monkeypatch.setattr(
+        "wheeloffish.core.catalog_sync._build_provider",
+        lambda *args, **kwargs: provider,
     )
 
     response = await catalog_client.get(f"/api/v1/connections/{connection.id}/libraries")
@@ -345,9 +352,9 @@ async def test_library_scope_filter(
         json={"in_scope_library_native_ids": ["2"]},
     )
     assert scope_response.status_code == 200
-    scoped = scope_response.json()["libraries"]
-    assert len(scoped) == 1
-    assert scoped[0]["native_id"] == "2"
+    scoped = {lib["native_id"]: lib["in_scope"] for lib in scope_response.json()["libraries"]}
+    assert scoped["1"] is False
+    assert scoped["2"] is True
 
     libraries_response = await catalog_client.get(
         f"/api/v1/connections/{connection.id}/libraries"
@@ -360,10 +367,12 @@ async def test_library_scope_filter(
 async def test_episodes_live_fetch(
     catalog_client,
     connection_factory,
+    db_session,
     db_engine,
 ) -> None:
     connection = await connection_factory()
     series_id = format_composite_id(connection.id, "plex", "guid-123")
+    seed_series_in_scope(db_session, connection.id, series_id)
     episodes = [
         _episode(connection.id, "ep-1", 1, 1),
         _episode(connection.id, "ep-2", 1, 2, percent=100, played=True),
@@ -372,7 +381,7 @@ async def test_episodes_live_fetch(
     provider = _mock_episode_provider(connection.id, episodes=episodes)
 
     with patch(
-        "wheeloffish.api.routes.catalog.build_provider_for_connection",
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
         return_value=provider,
     ):
         response = await catalog_client.get(
@@ -386,7 +395,11 @@ async def test_episodes_live_fetch(
     assert body["episodes"][0]["provider_marked_played"] is False
     assert body["episodes"][1]["provider_marked_played"] is True
     assert body["episodes"][2]["percent_watched"] == 50.0
-    provider.list_episodes.assert_awaited_once_with(series_id)
+    provider.list_episodes.assert_awaited_once_with(
+        series_id,
+        rating_key=None,
+        library_native_id="1",
+    )
 
     inspector = inspect(db_engine)
     assert not any("episode" in name for name in inspector.get_table_names())
@@ -396,9 +409,11 @@ async def test_episodes_live_fetch(
 async def test_resume_matches_resume_service(
     catalog_client,
     connection_factory,
+    db_session,
 ) -> None:
     connection = await connection_factory()
     series_id = format_composite_id(connection.id, "plex", "guid-123")
+    seed_series_in_scope(db_session, connection.id, series_id)
     episodes = [
         _episode(connection.id, "s1e1", 1, 1, percent=100, played=True),
         _episode(connection.id, "s1e2", 1, 2, percent=50),
@@ -407,7 +422,7 @@ async def test_resume_matches_resume_service(
     provider = _mock_episode_provider(connection.id, episodes=episodes, on_deck=None)
 
     with patch(
-        "wheeloffish.api.routes.catalog.build_provider_for_connection",
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
         return_value=provider,
     ):
         response = await catalog_client.get(
@@ -427,14 +442,16 @@ async def test_resume_matches_resume_service(
 async def test_resume_on_deck_ahead(
     catalog_client,
     connection_factory,
+    db_session,
 ) -> None:
     connection = await connection_factory()
     series_id = format_composite_id(connection.id, "plex", "guid-123")
+    seed_series_in_scope(db_session, connection.id, series_id)
     episodes, on_deck = _skip_ahead_episodes(connection.id)
     provider = _mock_episode_provider(connection.id, episodes=episodes, on_deck=on_deck)
 
     with patch(
-        "wheeloffish.api.routes.catalog.build_provider_for_connection",
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
         return_value=provider,
     ):
         response = await catalog_client.get(
@@ -456,6 +473,13 @@ async def test_resume_per_user_isolation(
 ) -> None:
     connection = await connection_factory()
     series_id = format_composite_id(connection.id, "plex", "guid-123")
+    seed_series_in_scope(db_session, connection.id, series_id)
+    seed_series_in_scope(
+        db_session,
+        connection.id,
+        series_id,
+        app_user_id=SECOND_APP_USER_ID,
+    )
 
     user1_episodes = [
         _episode(connection.id, "s1e1", 1, 1),
@@ -478,14 +502,19 @@ async def test_resume_per_user_isolation(
         )
     )
     db_session.commit()
-    vault.store_media_user_token(connection.id, SECOND_APP_USER_ID, "second-user-token")
+    vault.store_plex_user_credentials(
+        connection.id,
+        SECOND_APP_USER_ID,
+        "second-user-token",
+        "second-client-id",
+    )
 
-    def build_provider_side_effect(connection_obj, token, **kwargs):
-        episodes = user1_episodes if token == "test-token" else user2_episodes
+    def build_provider_side_effect(_db, _vault, connection_obj, app_user_id, **_kwargs):
+        episodes = user1_episodes if app_user_id == APP_USER_ID else user2_episodes
         return _mock_episode_provider(connection_obj.id, episodes=episodes)
 
     with patch(
-        "wheeloffish.api.routes.catalog.build_provider_for_connection",
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
         side_effect=build_provider_side_effect,
     ):
         app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
@@ -567,9 +596,34 @@ async def test_setup_mode_blocks_admin_library_scope_put(
     assert response.json()["detail"]["code"] == "forbidden"
 
 
+def _mock_library_list_provider(connection_id: str) -> MagicMock:
+    provider = MagicMock()
+    provider.list_libraries = AsyncMock(
+        return_value=[
+            Library(
+                id="ignored",
+                title="In Scope TV",
+                native_id="1",
+                connection_id=connection_id,
+                provider="plex",
+                in_scope=True,
+            ),
+            Library(
+                id="ignored",
+                title="Out of Scope TV",
+                native_id="2",
+                connection_id=connection_id,
+                provider="plex",
+                in_scope=False,
+            ),
+        ]
+    )
+    return provider
+
+
 @pytest.mark.asyncio
 async def test_admin_get_libraries_includes_in_scope_flag(
-    catalog_client, connection_factory, db_session
+    catalog_client, connection_factory, db_session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     connection = await connection_factory()
     seed_cached_libraries(
@@ -579,6 +633,10 @@ async def test_admin_get_libraries_includes_in_scope_flag(
             {"native_id": "1", "title": "In Scope TV", "in_scope": True},
             {"native_id": "2", "title": "Out of Scope TV", "in_scope": False},
         ],
+    )
+    monkeypatch.setattr(
+        "wheeloffish.core.catalog_sync._build_provider",
+        lambda *args, **kwargs: _mock_library_list_provider(connection.id),
     )
 
     response = await catalog_client.get(
@@ -614,9 +672,10 @@ async def test_admin_library_scope_put_succeeds(
 
     assert response.status_code == 200
     scoped = response.json()["libraries"]
-    assert len(scoped) == 1
-    assert scoped[0]["native_id"] == "2"
-    assert scoped[0]["in_scope"] is True
+    assert len(scoped) == 2
+    by_id = {lib["native_id"]: lib["in_scope"] for lib in scoped}
+    assert by_id["1"] is False
+    assert by_id["2"] is True
 
 
 @pytest.mark.asyncio
@@ -643,6 +702,7 @@ async def test_series_artwork_serves_local_cache(
     db_session.add(
         CachedSeries(
             id=series_id,
+            app_user_id=APP_USER_ID,
             connection_id=connection.id,
             library_native_id="1",
             native_id="guid-123",
@@ -653,7 +713,7 @@ async def test_series_artwork_serves_local_cache(
     )
     db_session.commit()
 
-    cache_path = artwork_cache_path(str(tmp_path), connection.id, series_id)
+    cache_path = artwork_cache_path(str(tmp_path), APP_USER_ID, connection.id, series_id)
     write_cached_artwork(cache_path, b"cached-poster")
 
     response = await catalog_client.get(
@@ -687,6 +747,7 @@ async def test_series_artwork_lazy_fetch_with_user_token(
     db_session.add(
         CachedSeries(
             id=series_id,
+            app_user_id=APP_USER_ID,
             connection_id=connection.id,
             library_native_id="1",
             native_id="guid-123",
@@ -707,7 +768,7 @@ async def test_series_artwork_lazy_fetch_with_user_token(
     user_provider.fetch_artwork = AsyncMock(return_value=(b"fresh-poster", "image/jpeg"))
 
     with patch(
-        "wheeloffish.api.routes.catalog.build_provider_for_connection",
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
         return_value=user_provider,
     ):
         response = await catalog_client.get(
@@ -720,6 +781,33 @@ async def test_series_artwork_lazy_fetch_with_user_token(
 
 
 @pytest.mark.asyncio
+async def test_get_series_detail(
+    catalog_client,
+    connection_factory,
+    db_session,
+) -> None:
+    connection = await connection_factory()
+    series_id = format_composite_id(connection.id, "plex", "guid-123")
+    seed_series_in_scope(
+        db_session,
+        connection.id,
+        series_id,
+        title="Detail Show",
+        provider_metadata={"ratingKey": "1001"},
+    )
+
+    response = await catalog_client.get(
+        f"/api/v1/connections/{connection.id}/series/{series_id}"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == series_id
+    assert body["title"] == "Detail Show"
+    assert body["thumb_url"] is not None
+
+
+@pytest.mark.asyncio
 async def test_resume_uses_cached_rating_key(
     catalog_client,
     connection_factory,
@@ -727,21 +815,12 @@ async def test_resume_uses_cached_rating_key(
 ) -> None:
     connection = await connection_factory()
     series_id = format_composite_id(connection.id, "plex", "guid-123")
-
-    from wheeloffish.db.models.cached_series import CachedSeries
-
-    db_session.add(
-        CachedSeries(
-            id=series_id,
-            connection_id=connection.id,
-            library_native_id="1",
-            native_id="guid-123",
-            title="Cached Show",
-            provider_metadata={"ratingKey": "999"},
-            synced_at=datetime.now(UTC),
-        )
+    seed_series_in_scope(
+        db_session,
+        connection.id,
+        series_id,
+        provider_metadata={"ratingKey": "999"},
     )
-    db_session.commit()
 
     episodes = [
         _episode(connection.id, "s1e1", 1, 1, percent=50),
@@ -751,7 +830,7 @@ async def test_resume_uses_cached_rating_key(
     provider.get_on_deck_episode = AsyncMock(return_value=None)
 
     with patch(
-        "wheeloffish.api.routes.catalog.build_provider_for_connection",
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
         return_value=provider,
     ):
         response = await catalog_client.get(
@@ -759,6 +838,14 @@ async def test_resume_uses_cached_rating_key(
         )
 
     assert response.status_code == 200
-    provider.list_episodes.assert_awaited_once_with(series_id, rating_key="999")
-    provider.get_on_deck_episode.assert_awaited_once_with(series_id, rating_key="999")
+    provider.list_episodes.assert_awaited_once_with(
+        series_id,
+        rating_key="999",
+        library_native_id="1",
+    )
+    provider.get_on_deck_episode.assert_awaited_once_with(
+        series_id,
+        rating_key="999",
+        library_native_id="1",
+    )
     assert response.json()["episode_id"] == episodes[0].id

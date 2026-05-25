@@ -18,3 +18,9 @@ def parse_composite_id(value: str) -> tuple[str, str, str]:
     if not connection_id or not provider or not encoded_native_id:
         raise ValueError(f"Invalid composite ID format: {value!r}")
     return connection_id, provider, unquote(encoded_native_id)
+
+
+def canonical_composite_id(value: str) -> str:
+    """Normalize a composite ID to the encoded storage form."""
+    connection_id, provider, native_id = parse_composite_id(value)
+    return format_composite_id(connection_id, provider, native_id)

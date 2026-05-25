@@ -17,6 +17,7 @@ class AuthMeResponse(BaseModel):
     connection: ConnectionSummary | None
     has_media_link: bool
     libraries_scoped: bool
+    install_libraries_configured: bool
 
 
 class BootstrapSessionResponse(BaseModel):

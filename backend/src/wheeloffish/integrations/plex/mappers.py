@@ -4,6 +4,7 @@ import httpx
 
 from wheeloffish.domain.dto import Episode, Library, Series
 from wheeloffish.domain.ids import format_composite_id, parse_composite_id
+from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized
 
 PROVIDER = "plex"
 
@@ -74,22 +75,48 @@ async def resolve_guid_to_rating_key(
     client_identifier: str,
     product_name: str,
     guid: str,
+    *,
+    library_native_id: str | None = None,
 ) -> str:
+    headers = {
+        "Accept": "application/json",
+        "X-Plex-Token": token,
+        "X-Plex-Client-Identifier": client_identifier,
+        "X-Plex-Product": product_name,
+    }
+    base = base_url.rstrip("/")
+
+    if library_native_id is not None:
+        section_response = await client.get(
+            f"{base}/library/sections/{library_native_id}/all",
+            params={"guid": guid, "type": 2},
+            headers=headers,
+        )
+        rating_key = _rating_key_from_guid_response(section_response)
+        if rating_key is not None:
+            return rating_key
+
     response = await client.get(
-        f"{base_url.rstrip('/')}/library/all",
+        f"{base}/library/all",
         params={"guid": guid},
-        headers={
-            "Accept": "application/json",
-            "X-Plex-Token": token,
-            "X-Plex-Client-Identifier": client_identifier,
-            "X-Plex-Product": product_name,
-        },
+        headers=headers,
     )
-    response.raise_for_status()
-    data = response.json()
-    metadata = data.get("MediaContainer", {}).get("Metadata") or []
-    if not metadata:
+    rating_key = _rating_key_from_guid_response(response)
+    if rating_key is None:
         raise ValueError(f"No metadata found for guid: {guid}")
+    return rating_key
+
+
+def _rating_key_from_guid_response(response: httpx.Response) -> str | None:
+    if response.status_code == 401:
+        raise ProviderUnauthorized()
+    if response.status_code == 404:
+        return None
+    if response.status_code >= 400:
+        raise ProviderError(f"Plex API error: {response.status_code}")
+    metadata = response.json().get("MediaContainer", {}).get("Metadata") or []
+    if not metadata:
+        return None
     return str(metadata[0]["ratingKey"])
 
 

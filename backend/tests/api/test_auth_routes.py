@@ -246,7 +246,7 @@ def test_plex_oauth_callback_session_cookie(
     )
 
     assert response.status_code == 302
-    assert response.headers["location"].endswith("/")
+    assert response.headers["location"].endswith("/browse")
 
     me_response = auth_client.get("/api/v1/auth/me")
     assert me_response.status_code == 200

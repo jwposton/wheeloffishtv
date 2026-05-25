@@ -7,6 +7,8 @@ export function useAuth() {
   const query = useQuery({
     queryKey: ["auth", "me"],
     queryFn: () => fetchJson<AuthMeResponse>("/auth/me"),
+    refetchOnMount: "always",
+    staleTime: 0,
     retry: (failureCount, error) => {
       if (error instanceof ApiError && error.status === 401) {
         return false

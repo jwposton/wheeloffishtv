@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
@@ -11,10 +12,15 @@ from wheeloffish.integrations.plex.client import PlexProvider
 logger = logging.getLogger(__name__)
 
 
-def artwork_cache_path(cache_dir: str, connection_id: str, series_id: str) -> Path:
-    """Deterministic on-disk path for a series poster."""
+def artwork_cache_path(
+    cache_dir: str,
+    app_user_id: str,
+    connection_id: str,
+    series_id: str,
+) -> Path:
+    """Deterministic on-disk path for a user's series poster."""
     digest = hashlib.sha256(series_id.encode()).hexdigest()[:32]
-    return Path(cache_dir) / connection_id / f"{digest}.img"
+    return Path(cache_dir) / app_user_id / connection_id / f"{digest}.img"
 
 
 def series_artwork_url(connection_id: str, series_id: str) -> str:
@@ -35,9 +41,17 @@ def normalize_plex_artwork_path(thumb_url: str | None) -> str | None:
     return None
 
 
-def read_cached_artwork(cache_path: Path) -> tuple[bytes, str] | None:
+def read_cached_artwork(
+    cache_path: Path,
+    *,
+    ttl_days: int | None = None,
+) -> tuple[bytes, str] | None:
     if not cache_path.is_file():
         return None
+    if ttl_days is not None and ttl_days > 0:
+        age_seconds = time.time() - cache_path.stat().st_mtime
+        if age_seconds > ttl_days * 86400:
+            return None
     content = cache_path.read_bytes()
     suffix = cache_path.suffix.lower()
     media_type = "image/jpeg" if suffix in {".img", ".jpg", ".jpeg"} else "application/octet-stream"
@@ -53,25 +67,28 @@ async def download_and_cache_artwork(
     provider: PlexProvider,
     *,
     cache_dir: str,
+    app_user_id: str,
     connection_id: str,
     series_id: str,
     thumb_url: str | None,
 ) -> bool:
-    """Fetch poster bytes from Plex and persist locally. Returns True if cached."""
+    """Fetch poster bytes from Plex and persist locally for this user. Returns True if cached."""
     thumb_path = normalize_plex_artwork_path(thumb_url)
     if thumb_path is None:
         return False
 
-    cache_path = artwork_cache_path(cache_dir, connection_id, series_id)
+    cache_path = artwork_cache_path(cache_dir, app_user_id, connection_id, series_id)
     if cache_path.is_file():
         return True
 
     try:
         content, _media_type = await provider.fetch_artwork(thumb_path)
-    except ProviderError:
+    except ProviderError as err:
         logger.warning(
-            "artwork_download_failed",
-            extra={"connection_id": connection_id, "series_id": series_id},
+            "artwork_download_failed code=%s connection_id=%s series_id=%s",
+            err.code,
+            connection_id,
+            series_id,
         )
         return False
 

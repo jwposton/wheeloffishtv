@@ -29,7 +29,9 @@ export function JellyfinLoginForm() {
       setPassword("")
       await queryClient.invalidateQueries({ queryKey: authQueryKey })
       const returnUrl = searchParams.get("returnUrl")
-      navigate(returnUrl ? decodeURIComponent(returnUrl) : "/", { replace: true })
+      navigate(returnUrl ? decodeURIComponent(returnUrl) : "/browse", {
+        replace: true,
+      })
     },
     onError: (error) => {
       setPassword("")

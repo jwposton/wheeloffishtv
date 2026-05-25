@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from wheeloffish.db.models.base import Base
@@ -27,6 +27,7 @@ class Connection(Base):
     verify_ssl: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     plex_client_identifier: Mapped[str | None] = mapped_column(String(64), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    library_allowlist_native_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -54,9 +55,8 @@ class Connection(Base):
         back_populates="connection",
         cascade="all, delete-orphan",
     )
-    sync_state: Mapped[CatalogSyncState | None] = relationship(
+    sync_states: Mapped[list[CatalogSyncState]] = relationship(
         "CatalogSyncState",
         back_populates="connection",
         cascade="all, delete-orphan",
-        uselist=False,
     )

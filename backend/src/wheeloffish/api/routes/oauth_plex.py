@@ -1,5 +1,6 @@
 import uuid
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ from wheeloffish.api.schemas.oauth import (
 )
 from wheeloffish.core.auth import is_setup_mode, upsert_app_user
 from wheeloffish.core.boot import sync_connection_from_env
-from wheeloffish.core.catalog_sync import trigger_sync
+from wheeloffish.core.catalog_sync import ensure_libraries_cached, trigger_sync
 from wheeloffish.core.config import Settings
 from wheeloffish.core.connections import link_media_user
 from wheeloffish.core.secrets import SecretsVault
@@ -22,12 +23,15 @@ from wheeloffish.integrations.errors import ProviderError
 from wheeloffish.integrations.plex.auth import (
     clear_pin_state,
     create_pin_with_auth_url,
-    discover_server,
     get_pin_state,
     poll_pin,
+    resolve_server_connection,
     store_pin_state,
     validate_token,
 )
+from wheeloffish.integrations.plex.client import PlexProvider
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/connections/plex/oauth", tags=["plex-oauth"])
 
@@ -122,16 +126,22 @@ async def plex_oauth_callback(
 
     try:
         user_info = await validate_token(token, state.client_identifier, product_name)
-        if not await discover_server(
-            token, state.base_url, state.client_identifier, product_name
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "unreachable",
-                    "message": "Configured Plex server not found in account resources",
-                },
-            )
+        resolved = await resolve_server_connection(
+            token,
+            state.base_url,
+            state.client_identifier,
+            product_name,
+        )
+
+        server_provider = PlexProvider(
+            base_url=resolved.base_url,
+            token=resolved.token,
+            client_identifier=state.client_identifier,
+            connection_id=connection.id,
+            verify_ssl=state.verify_ssl,
+            product_name=product_name,
+        )
+        await server_provider.ping()
 
         provider_user_id = str(user_info.get("id", "unknown"))
         provider_username = user_info.get("username") or user_info.get("email")
@@ -147,18 +157,42 @@ async def plex_oauth_callback(
             app_user,
             provider_user_id=provider_user_id,
             provider_username=provider_username,
-            token=token,
+            token=resolved.token,
+            plex_client_identifier=state.client_identifier,
         )
         request.session["app_user_id"] = app_user.id
+        try:
+            await ensure_libraries_cached(
+                db, vault, connection.id, app_user.id, settings=settings
+            )
+        except (ProviderError, ValueError) as err:
+            logger.warning(
+                "oauth_library_cache_failed",
+                connection_id=connection.id,
+                app_user_id=app_user.id,
+                error=str(err),
+            )
         trigger_sync(db, connection.id, app_user.id)
-    except ProviderError as err:
+    except ProviderUnauthorized as err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": err.code, "message": str(err) or err.code},
+            detail={
+                "code": err.code,
+                "message": "Plex account cannot access this server — check home user library sharing",
+            },
+        ) from err
+    except ProviderError as err:
+        code = getattr(err, "code", "provider_error")
+        message = str(err) or code
+        if code == "unreachable":
+            message = "Configured Plex server not found in account resources"
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": code, "message": message},
         ) from err
     finally:
         clear_pin_state(pin_id)
 
-    redirect_path = "/setup" if is_setup_mode(settings) else "/"
+    redirect_path = "/setup" if is_setup_mode(settings) else "/browse"
     redirect_url = f"{settings.WOF_OAUTH_CALLBACK_BASE.rstrip('/')}{redirect_path}"
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)

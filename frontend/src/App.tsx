@@ -32,6 +32,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route element={<LibraryScopeGuard />}>
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/series" element={<SeriesDetailPage />} />
             <Route path="/series/:seriesId" element={<SeriesDetailPage />} />
           </Route>
           <Route path="/settings" element={<SettingsPage />} />

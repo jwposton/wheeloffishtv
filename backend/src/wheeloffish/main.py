@@ -65,6 +65,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             request_id=request_id,
         )
         response.headers["X-Request-ID"] = request_id
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
         return response
 
     app.include_router(health.router)

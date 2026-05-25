@@ -18,6 +18,7 @@ from wheeloffish.integrations.plex.mappers import (
 )
 
 PROVIDER = "plex"
+PLEX_REQUEST_TIMEOUT_SECONDS = 60.0
 
 
 class PlexProvider:
@@ -45,10 +46,16 @@ class PlexProvider:
             "X-Plex-Token": self.token,
             "X-Plex-Client-Identifier": self.client_identifier,
             "X-Plex-Product": self.product_name,
+            "X-Plex-Version": "1.0.0",
+            "X-Plex-Platform": "Web",
+            "X-Plex-Device": self.product_name,
         }
 
     def _client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(verify=self.verify_ssl)
+        return httpx.AsyncClient(
+            verify=self.verify_ssl,
+            timeout=httpx.Timeout(PLEX_REQUEST_TIMEOUT_SECONDS),
+        )
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         url = f"{self.base_url}{path}"
@@ -113,11 +120,36 @@ class PlexProvider:
         ]
         return PagedSeries(items=items, page=page, limit=limit, total=total)
 
+    async def _find_series_thumb_in_library(
+        self,
+        library_native_id: str,
+        guid: str,
+        series_composite_id: str,
+    ) -> str | None:
+        """Locate a show's thumb path by paging library listings (works for home users)."""
+        page = 1
+        limit = 100
+        while True:
+            page_result = await self.list_series(
+                library_native_id,
+                page=page,
+                limit=limit,
+                q=None,
+            )
+            for item in page_result.items:
+                if (item.native_id == guid or item.id == series_composite_id) and item.thumb_url:
+                    return str(item.thumb_url)
+            if not page_result.items or page * limit >= page_result.total:
+                break
+            page += 1
+        return None
+
     async def _rating_key_for_series(
         self,
         series_composite_id: str,
         *,
         rating_key: str | None = None,
+        library_native_id: str | None = None,
     ) -> str:
         if rating_key is not None:
             return rating_key
@@ -132,6 +164,7 @@ class PlexProvider:
                 self.client_identifier,
                 self.product_name,
                 guid,
+                library_native_id=library_native_id,
             )
 
     async def list_episodes(
@@ -139,10 +172,12 @@ class PlexProvider:
         series_composite_id: str,
         *,
         rating_key: str | None = None,
+        library_native_id: str | None = None,
     ) -> list[Episode]:
         resolved_key = await self._rating_key_for_series(
             series_composite_id,
             rating_key=rating_key,
+            library_native_id=library_native_id,
         )
         response = await self._request("GET", f"/library/metadata/{resolved_key}/allLeaves")
         metadata = response.json().get("MediaContainer", {}).get("Metadata") or []
@@ -153,10 +188,12 @@ class PlexProvider:
         series_composite_id: str,
         *,
         rating_key: str | None = None,
+        library_native_id: str | None = None,
     ) -> Episode | None:
         resolved_key = await self._rating_key_for_series(
             series_composite_id,
             rating_key=rating_key,
+            library_native_id=library_native_id,
         )
         response = await self._request(
             "GET",
@@ -170,6 +207,32 @@ class PlexProvider:
         if not on_deck:
             return None
         return map_episode(self.connection_id, on_deck)
+
+    async def resolve_series_thumb_path(
+        self,
+        series_composite_id: str,
+        *,
+        library_native_id: str | None = None,
+    ) -> str | None:
+        """Return the poster path for this user/token (from live metadata lookup)."""
+        _, _, guid = parse_series_guid(series_composite_id)
+        if library_native_id is not None:
+            thumb = await self._find_series_thumb_in_library(
+                library_native_id,
+                guid,
+                series_composite_id,
+            )
+            if thumb:
+                return thumb
+            return None
+
+        resolved_key = await self._rating_key_for_series(series_composite_id)
+        response = await self._request("GET", f"/library/metadata/{resolved_key}")
+        metadata_list = response.json().get("MediaContainer", {}).get("Metadata") or []
+        if not metadata_list:
+            return None
+        thumb = metadata_list[0].get("thumb")
+        return str(thumb) if thumb else None
 
     async def fetch_artwork(self, path: str) -> tuple[bytes, str]:
         if ".." in path or not path.startswith("/library/"):

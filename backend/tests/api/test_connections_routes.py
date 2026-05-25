@@ -14,6 +14,7 @@ from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.integrations.plex.auth import clear_pin_state, store_pin_state
 from wheeloffish.integrations.plex.client import PlexProvider
+from conftest import seed_cached_libraries
 from wheeloffish.main import app
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
@@ -185,6 +186,7 @@ async def test_plex_oauth_callback_stores_vault_token(
 
     me = await connections_client.get("/api/v1/auth/me")
     linked_user_id = me.json()["app_user_id"]
+    assert vault.get_plex_user_credentials(connection.id, linked_user_id) is not None
     assert vault.get_media_user_token(connection.id, linked_user_id) == "SANITIZED_PLEX_TOKEN"
 
 
@@ -203,6 +205,16 @@ async def test_plex_list_libraries(connections_client, db_session, vault) -> Non
         provider_user_id="provider-user-1",
         provider_username="testuser",
         token=PLEX_PAYLOAD["token"],
+        plex_client_identifier="11111111-2222-4333-8444-555555555555",
+    )
+
+    seed_cached_libraries(
+        db_session,
+        connection.id,
+        [
+            {"native_id": "1", "title": "Fictional TV Shows", "in_scope": True},
+            {"native_id": "2", "title": "Other Shows", "in_scope": True},
+        ],
     )
 
     respx.get("https://plex.example.com/library/sections").mock(
@@ -210,7 +222,7 @@ async def test_plex_list_libraries(connections_client, db_session, vault) -> Non
     )
 
     with patch(
-        "wheeloffish.core.catalog_sync.build_provider_for_connection",
+        "wheeloffish.core.connections.build_provider_for_connection",
         return_value=PlexProvider(
             base_url=PLEX_PAYLOAD["base_url"],
             token=PLEX_PAYLOAD["token"],
@@ -253,6 +265,9 @@ async def test_jellyfin_auth_success(
             200,
             json={"Id": "22222222-3333-4444-8555-666666666666", "Name": "testuser"},
         )
+    )
+    respx.get("https://jellyfin.example.com/Library/MediaFolders").mock(
+        return_value=Response(200, json=load_fixture("jellyfin/media_folders"))
     )
 
     response = await jellyfin_connections_client.post(
@@ -297,8 +312,13 @@ async def test_jellyfin_auth_unauthorized(jellyfin_connections_client, db_sessio
 @pytest.mark.asyncio
 @respx.mock
 async def test_jellyfin_list_libraries(
-    jellyfin_connections_client, db_session, vault
+    jellyfin_connections_client, db_session, vault, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv(
+        "WOF_SCOPED_LIBRARY_IDS",
+        "aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee",
+    )
+    get_settings.cache_clear()
     settings = get_settings()
     connection = sync_connection_from_env(db_session, settings)
 
@@ -311,16 +331,15 @@ async def test_jellyfin_list_libraries(
             json={"Id": "22222222-3333-4444-8555-666666666666", "Name": "testuser"},
         )
     )
+    respx.get("https://jellyfin.example.com/Library/MediaFolders").mock(
+        return_value=Response(200, json=load_fixture("jellyfin/media_folders"))
+    )
 
     auth_response = await jellyfin_connections_client.post(
         "/api/v1/connections/jellyfin/auth",
         json=JELLYFIN_AUTH_PAYLOAD,
     )
     assert auth_response.status_code == 201
-
-    respx.get("https://jellyfin.example.com/Library/MediaFolders").mock(
-        return_value=Response(200, json=load_fixture("jellyfin/media_folders"))
-    )
 
     response = await jellyfin_connections_client.get(
         f"/api/v1/connections/{connection.id}/libraries"

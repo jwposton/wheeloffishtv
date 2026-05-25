@@ -81,8 +81,9 @@ export function LibraryScopeForm({ onSaveSuccess }: LibraryScopeFormProps) {
       <CardHeader>
         <CardTitle>TV libraries in scope</CardTitle>
         <CardDescription>
-          Choose which TV libraries appear in Browse for everyone in your
-          household. Only selected libraries are synced and searchable.
+          Choose which TV libraries are available on this install. Each
+          household member sees libraries they can access on the configured
+          server, filtered to your selection.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

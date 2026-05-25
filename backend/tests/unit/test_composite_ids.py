@@ -1,6 +1,6 @@
 import pytest
 
-from wheeloffish.domain.ids import format_composite_id, parse_composite_id
+from wheeloffish.domain.ids import canonical_composite_id, format_composite_id, parse_composite_id
 
 
 def test_format_and_parse_round_trip() -> None:
@@ -23,6 +23,14 @@ def test_format_url_encodes_native_id() -> None:
     composite = format_composite_id("conn-uuid", "plex", native_id)
     assert composite.count(":") >= 2
     assert parse_composite_id(composite)[2] == native_id
+
+
+def test_canonical_composite_id_normalizes_decoded_guid() -> None:
+    connection_id = "conn-uuid"
+    encoded = format_composite_id(connection_id, "plex", "plex://show/abc123")
+    decoded = f"{connection_id}:plex:plex://show/abc123"
+    assert canonical_composite_id(decoded) == encoded
+    assert canonical_composite_id(encoded) == encoded
 
 
 @pytest.mark.parametrize(

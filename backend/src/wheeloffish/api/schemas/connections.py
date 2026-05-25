@@ -21,7 +21,6 @@ class ConnectionResponse(BaseModel):
     display_name: str
     base_url: str
     verify_ssl: bool
-    plex_client_identifier: str | None
     enabled: bool
     created_at: datetime
     updated_at: datetime

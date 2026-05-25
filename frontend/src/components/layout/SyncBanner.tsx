@@ -9,12 +9,15 @@ export function SyncBanner({ sync }: SyncBannerProps) {
     return null
   }
 
+  const progress =
+    sync.progress_pct != null ? ` (${Math.round(sync.progress_pct)}%)` : ""
+
   return (
     <div
       role="status"
       className="sticky top-0 z-10 border-b bg-muted/80 px-4 py-2 text-center text-sm text-muted-foreground backdrop-blur-sm"
     >
-      Updating library…
+      Updating library…{progress}
     </div>
   )
 }

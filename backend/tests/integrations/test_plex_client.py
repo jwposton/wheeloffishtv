@@ -172,3 +172,22 @@ async def test_list_episodes_watch_fields() -> None:
     assert episodes[1].provider_marked_played is True
     assert episodes[2].percent_watched == pytest.approx(50.0)
     assert episodes[2].provider_marked_played is False
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_resolve_series_thumb_path_uses_library_listing() -> None:
+    series_id = format_composite_id(CONNECTION_ID, "plex", "com.plexapp.agents.thetvdb://12345")
+    listing = load_fixture("plex/show_series")
+    listing["MediaContainer"]["Metadata"][0]["thumb"] = "/library/metadata/1001/thumb/abc123"
+
+    library_route = respx.get(re.compile(rf"{BASE_URL}/library/sections/1/all.*")).mock(
+        return_value=Response(200, json=listing)
+    )
+    global_route = respx.get(f"{BASE_URL}/library/all").mock(return_value=Response(401))
+
+    thumb = await _provider().resolve_series_thumb_path(series_id, library_native_id="1")
+
+    assert thumb == "/library/metadata/1001/thumb/abc123"
+    assert library_route.called
+    assert not global_route.called

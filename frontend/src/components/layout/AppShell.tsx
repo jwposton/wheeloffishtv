@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/useAuth"
+import { useSessionCatalogRefresh } from "@/hooks/useSessionCatalogRefresh"
 
 function SetupModeGate() {
   const { user } = useAuth()
@@ -17,7 +18,7 @@ function SetupModeGate() {
   }
 
   const allowedPaths = ["/setup/admin"]
-  if (user.libraries_scoped) {
+  if (user.libraries_scoped || user.install_libraries_configured) {
     allowedPaths.push("/browse")
   }
 
@@ -39,6 +40,8 @@ export function AppShell() {
   const queryClient = useQueryClient()
   const location = useLocation()
   const { user } = useAuth()
+
+  useSessionCatalogRefresh()
 
   const logout = useMutation({
     mutationFn: () => fetchJson("/auth/logout", { method: "POST" }),

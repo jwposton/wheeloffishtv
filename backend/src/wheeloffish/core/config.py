@@ -27,10 +27,11 @@ class Settings(BaseSettings):
     WOF_ENABLED_PROVIDERS: str = "plex,jellyfin"
     WOF_PLEX_PRODUCT_NAME: str = "Wheel of Fish TV"
     WOF_OAUTH_CALLBACK_BASE: str = "http://localhost:8000"
-    WOF_CATALOG_SYNC_CHUNK_SIZE: int = 100
+    WOF_CATALOG_SYNC_CHUNK_SIZE: int = 500
     WOF_CATALOG_PAGE_DEFAULT: int = 50
     WOF_SCOPED_LIBRARY_IDS: str = ""
     WOF_ARTWORK_CACHE_DIR: str = "/data/artwork"
+    WOF_ARTWORK_CACHE_TTL_DAYS: int = 30
     SPA_DIST_DIR: str = "/app/static/spa"
 
     @computed_field  # type: ignore[prop-decorator]

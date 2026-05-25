@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query"
 
 import { fetchJson } from "@/api/client"
 import type { SeriesBrowseResponse } from "@/api/types"
@@ -17,7 +17,7 @@ export function getNextSeriesPageParam(
     : undefined
 }
 
-function fetchSeriesPage(
+export function fetchSeriesPage(
   connectionId: string,
   page: number,
   q: string,
@@ -45,12 +45,7 @@ export function useSeriesInfiniteQuery(
     initialPageParam: 1,
     getNextPageParam: getNextSeriesPageParam,
     enabled: Boolean(connectionId),
-    refetchInterval: (query) => {
-      const pages = query.state.data?.pages
-      if (!pages?.some((page) => page.sync.status === "running")) {
-        return false
-      }
-      return 3000
-    },
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
   })
 }

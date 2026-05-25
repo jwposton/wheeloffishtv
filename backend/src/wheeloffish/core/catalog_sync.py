@@ -5,10 +5,11 @@ import uuid
 from datetime import UTC, datetime
 
 import structlog
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import Settings, get_settings
-from wheeloffish.core.connections import build_provider_for_connection
+from wheeloffish.core.connections import build_provider_for_connection, build_plex_provider_for_user
 from wheeloffish.core.media_artwork import (
     artwork_cache_path,
     download_and_cache_artwork,
@@ -23,13 +24,40 @@ from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.db.session import get_session_factory
 from wheeloffish.domain.dto import Library, Series
 from wheeloffish.domain.ids import format_composite_id
-from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized
 from wheeloffish.integrations.plex.client import PlexProvider
 
 logger = structlog.get_logger(__name__)
 
-CHUNK_DELAY_SECONDS = 0.25
-ARTWORK_BACKFILL_DELAY_SECONDS = 0.05
+ARTWORK_PREFETCH_DELAY_SECONDS = 0
+SYNC_RUNNING_STALE_SECONDS = 180
+PLEX_REQUEST_TIMEOUT_SECONDS = 60.0
+
+
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
+def _sync_is_stale(state: CatalogSyncState, now: datetime) -> bool:
+    if state.status != "running":
+        return False
+    if state.updated_at is None:
+        return True
+    updated_at = _as_utc(state.updated_at)
+    return (now - updated_at).total_seconds() > SYNC_RUNNING_STALE_SECONDS
+
+
+def _mark_sync_stale_failed(
+    db: Session,
+    state: CatalogSyncState,
+    now: datetime,
+) -> None:
+    state.status = "failed"
+    state.error_message = "Sync stalled — try again"
+    state.updated_at = now
+    db.commit()
 
 
 def _scoped_library_id_set(settings: Settings) -> set[str] | None:
@@ -37,39 +65,117 @@ def _scoped_library_id_set(settings: Settings) -> set[str] | None:
     return ids if ids else None
 
 
-def _default_in_scope(native_id: str, settings: Settings) -> bool:
-    scoped = _scoped_library_id_set(settings)
-    if scoped is None:
+def get_install_allowlist(connection: Connection, settings: Settings) -> set[str] | None:
+    """Install-level library allowlist. None means not configured yet."""
+    if connection.library_allowlist_native_ids is not None:
+        return set(connection.library_allowlist_native_ids)
+    return _scoped_library_id_set(settings)
+
+
+def install_libraries_configured(connection: Connection, settings: Settings) -> bool:
+    """True once admin (or env) has defined the install library allowlist."""
+    if connection.library_allowlist_native_ids is not None:
         return True
-    return native_id in scoped
+    return _scoped_library_id_set(settings) is not None
 
 
-def _get_or_create_sync_state(db: Session, connection_id: str) -> CatalogSyncState:
+def _library_in_scope(
+    native_id: str,
+    connection: Connection,
+    settings: Settings,
+) -> bool:
+    allowlist = get_install_allowlist(connection, settings)
+    if allowlist is None:
+        return False
+    return native_id in allowlist
+
+
+def _apply_allowlist_to_connection_libraries(
+    db: Session,
+    connection: Connection,
+    settings: Settings,
+) -> None:
+    allowlist = get_install_allowlist(connection, settings)
+    if allowlist is None:
+        return
+    libraries = (
+        db.query(CachedLibrary).filter(CachedLibrary.connection_id == connection.id).all()
+    )
+    now = datetime.now(UTC)
+    for library in libraries:
+        library.in_scope = library.native_id in allowlist
+        library.synced_at = now
+
+
+def _get_or_create_sync_state(
+    db: Session,
+    connection_id: str,
+    app_user_id: str,
+) -> CatalogSyncState:
     state = (
         db.query(CatalogSyncState)
-        .filter(CatalogSyncState.connection_id == connection_id)
+        .filter(
+            CatalogSyncState.connection_id == connection_id,
+            CatalogSyncState.app_user_id == app_user_id,
+        )
         .one_or_none()
     )
     if state is None:
-        state = CatalogSyncState(connection_id=connection_id, status="idle")
+        state = CatalogSyncState(
+            connection_id=connection_id,
+            app_user_id=app_user_id,
+            status="idle",
+        )
         db.add(state)
         db.flush()
     return state
 
 
-def _upsert_series_row(db: Session, series: Series, synced_at: datetime) -> None:
-    existing = (
+def _upsert_series_page(
+    db: Session,
+    items: list[Series],
+    app_user_id: str,
+    synced_at: datetime,
+) -> None:
+    """Upsert a page of series with one lookup query instead of per-row."""
+    if not items:
+        return
+
+    # Plex may return the same show twice in one page (or under multiple guids).
+    deduped: dict[str, Series] = {}
+    for series in items:
+        deduped[series.id] = series
+    unique_items = list(deduped.values())
+
+    connection_id = unique_items[0].connection_id
+    native_ids = [series.native_id for series in unique_items]
+    series_ids = [series.id for series in unique_items]
+    existing_rows = (
         db.query(CachedSeries)
         .filter(
-            CachedSeries.connection_id == series.connection_id,
-            CachedSeries.native_id == series.native_id,
+            CachedSeries.app_user_id == app_user_id,
+            CachedSeries.connection_id == connection_id,
+            or_(
+                CachedSeries.native_id.in_(native_ids),
+                CachedSeries.id.in_(series_ids),
+            ),
         )
-        .one_or_none()
+        .all()
     )
-    if existing is None:
-        db.add(
-            CachedSeries(
+    by_native_id = {row.native_id: row for row in existing_rows}
+    by_id = {row.id: row for row in existing_rows}
+    pending_by_id: dict[str, CachedSeries] = {}
+
+    for series in unique_items:
+        existing = (
+            by_native_id.get(series.native_id)
+            or by_id.get(series.id)
+            or pending_by_id.get(series.id)
+        )
+        if existing is None:
+            row = CachedSeries(
                 id=series.id,
+                app_user_id=app_user_id,
                 connection_id=series.connection_id,
                 library_native_id=series.library_native_id,
                 native_id=series.native_id,
@@ -80,16 +186,31 @@ def _upsert_series_row(db: Session, series: Series, synced_at: datetime) -> None
                 provider_metadata=series.provider_metadata,
                 synced_at=synced_at,
             )
-        )
-        return
+            db.add(row)
+            pending_by_id[series.id] = row
+            by_native_id[series.native_id] = row
+            by_id[series.id] = row
+            continue
 
-    existing.id = series.id
-    existing.library_native_id = series.library_native_id
-    existing.title = series.title
-    existing.year = series.year
-    existing.thumb_url = series.thumb_url
-    existing.provider_metadata = series.provider_metadata
-    existing.synced_at = synced_at
+        existing.id = series.id
+        existing.native_id = series.native_id
+        existing.library_native_id = series.library_native_id
+        existing.title = series.title
+        existing.year = series.year
+        existing.thumb_url = series.thumb_url
+        existing.provider_metadata = series.provider_metadata
+        existing.synced_at = synced_at
+        by_native_id[series.native_id] = existing
+        by_id[series.id] = existing
+
+
+def _upsert_series_row(
+    db: Session,
+    series: Series,
+    app_user_id: str,
+    synced_at: datetime,
+) -> None:
+    _upsert_series_page(db, [series], app_user_id, synced_at)
 
 
 def cached_library_to_dto(cached: CachedLibrary, provider: str) -> Library:
@@ -139,6 +260,19 @@ def _build_provider(
     settings: Settings,
 ):
     link = _get_user_media_link(db, connection.id, app_user_id)
+    if connection.provider_type == "plex":
+        credentials = vault.get_plex_user_credentials(connection.id, app_user_id)
+        if credentials is None:
+            raise ValueError(
+                "Missing Plex credentials — log out and reconnect your Plex account"
+            )
+        return build_plex_provider_for_user(
+            connection,
+            credentials,
+            settings=settings,
+            provider_user_id=link.provider_user_id,
+        )
+
     token = vault.get_media_user_token(connection.id, app_user_id)
     if token is None:
         raise ValueError(f"No token for connection {connection.id}")
@@ -163,44 +297,81 @@ async def ensure_libraries_cached(
     if connection is None:
         raise ValueError("Connection not found")
 
-    cached = db.query(CachedLibrary).filter(CachedLibrary.connection_id == connection_id).all()
-    if cached:
-        return cached
-
     provider = _build_provider(db, vault, connection, app_user_id, resolved_settings)
     libraries = await provider.list_libraries()
     now = datetime.now(UTC)
-    rows: list[CachedLibrary] = []
-    for library in libraries:
-        row = CachedLibrary(
-            id=str(uuid.uuid4()),
-            connection_id=connection_id,
-            native_id=library.native_id,
-            title=library.title,
-            in_scope=_default_in_scope(library.native_id, resolved_settings),
-            synced_at=now,
+
+    existing = (
+        db.query(CachedLibrary)
+        .filter(
+            CachedLibrary.connection_id == connection_id,
+            CachedLibrary.app_user_id == app_user_id,
         )
-        db.add(row)
+        .all()
+    )
+    by_native_id = {row.native_id: row for row in existing}
+    seen_native_ids: set[str] = set()
+    rows: list[CachedLibrary] = []
+
+    for library in libraries:
+        seen_native_ids.add(library.native_id)
+        in_scope = _library_in_scope(library.native_id, connection, resolved_settings)
+        row = by_native_id.get(library.native_id)
+        if row is None:
+            row = CachedLibrary(
+                id=str(uuid.uuid4()),
+                app_user_id=app_user_id,
+                connection_id=connection_id,
+                native_id=library.native_id,
+                title=library.title,
+                in_scope=in_scope,
+                synced_at=now,
+            )
+            db.add(row)
+        else:
+            row.title = library.title
+            row.in_scope = in_scope
+            row.synced_at = now
         rows.append(row)
+
+    for native_id, row in by_native_id.items():
+        if native_id not in seen_native_ids:
+            db.delete(row)
+
     db.commit()
     for row in rows:
         db.refresh(row)
     return rows
 
 
-def get_in_scope_libraries(db: Session, connection_id: str) -> list[CachedLibrary]:
+def get_in_scope_libraries(
+    db: Session,
+    connection_id: str,
+    app_user_id: str,
+) -> list[CachedLibrary]:
     return (
         db.query(CachedLibrary)
-        .filter(CachedLibrary.connection_id == connection_id, CachedLibrary.in_scope.is_(True))
+        .filter(
+            CachedLibrary.connection_id == connection_id,
+            CachedLibrary.app_user_id == app_user_id,
+            CachedLibrary.in_scope.is_(True),
+        )
         .order_by(CachedLibrary.title)
         .all()
     )
 
 
-def get_all_libraries(db: Session, connection_id: str) -> list[CachedLibrary]:
+def get_all_libraries(
+    db: Session,
+    connection_id: str,
+    app_user_id: str,
+) -> list[CachedLibrary]:
     return (
         db.query(CachedLibrary)
-        .filter(CachedLibrary.connection_id == connection_id)
+        .filter(
+            CachedLibrary.connection_id == connection_id,
+            CachedLibrary.app_user_id == app_user_id,
+        )
         .order_by(CachedLibrary.title)
         .all()
     )
@@ -209,25 +380,30 @@ def get_all_libraries(db: Session, connection_id: str) -> list[CachedLibrary]:
 def update_library_scope(
     db: Session,
     connection_id: str,
+    app_user_id: str,
     in_scope_library_native_ids: list[str],
 ) -> list[CachedLibrary]:
-    in_scope_set = set(in_scope_library_native_ids)
-    libraries = db.query(CachedLibrary).filter(CachedLibrary.connection_id == connection_id).all()
-    if not libraries:
+    connection = db.query(Connection).filter(Connection.id == connection_id).one_or_none()
+    if connection is None:
+        raise ValueError("Connection not found")
+
+    admin_libraries = get_all_libraries(db, connection_id, app_user_id)
+    if not admin_libraries:
         raise ValueError("No cached libraries for connection")
 
-    now = datetime.now(UTC)
-    for library in libraries:
-        library.in_scope = library.native_id in in_scope_set
-        library.synced_at = now
+    connection.library_allowlist_native_ids = list(in_scope_library_native_ids)
+    _apply_allowlist_to_connection_libraries(db, connection, get_settings())
     db.commit()
-    return get_in_scope_libraries(db, connection_id)
+    return get_all_libraries(db, connection_id, app_user_id)
 
 
-def get_sync_status(db: Session, connection_id: str) -> dict:
+def get_sync_status(db: Session, connection_id: str, app_user_id: str) -> dict:
     state = (
         db.query(CatalogSyncState)
-        .filter(CatalogSyncState.connection_id == connection_id)
+        .filter(
+            CatalogSyncState.connection_id == connection_id,
+            CatalogSyncState.app_user_id == app_user_id,
+        )
         .one_or_none()
     )
     if state is None:
@@ -236,6 +412,16 @@ def get_sync_status(db: Session, connection_id: str) -> dict:
             "progress_pct": None,
             "library_native_id": None,
             "error_message": None,
+        }
+
+    now = datetime.now(UTC)
+    if _sync_is_stale(state, now):
+        _mark_sync_stale_failed(db, state, now)
+        return {
+            "status": "failed",
+            "progress_pct": None,
+            "library_native_id": state.library_native_id,
+            "error_message": state.error_message,
         }
 
     progress_pct: float | None = None
@@ -251,8 +437,16 @@ def get_sync_status(db: Session, connection_id: str) -> dict:
 
 
 def trigger_sync(db: Session, connection_id: str, app_user_id: str) -> None:
-    state = _get_or_create_sync_state(db, connection_id)
+    state = _get_or_create_sync_state(db, connection_id, app_user_id)
     now = datetime.now(UTC)
+    if state.status == "running" and not _sync_is_stale(state, now):
+        return
+    if state.status == "running" and _sync_is_stale(state, now):
+        logger.warning(
+            "catalog_sync_stale_restarting",
+            connection_id=connection_id,
+            app_user_id=app_user_id,
+        )
     state.status = "running"
     state.library_native_id = None
     state.page_cursor = 0
@@ -277,36 +471,54 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
             raise ValueError("Connection not found")
 
         await ensure_libraries_cached(db, vault, connection_id, app_user_id, settings=settings)
-        libraries = get_in_scope_libraries(db, connection_id)
+        libraries = get_in_scope_libraries(db, connection_id, app_user_id)
         provider = _build_provider(db, vault, connection, app_user_id, settings)
+
+        sync_started_at = datetime.now(UTC)
         chunk_size = settings.WOF_CATALOG_SYNC_CHUNK_SIZE
         total_synced = 0
         total_estimated = 0
 
-        state = _get_or_create_sync_state(db, connection_id)
         for library in libraries:
             page = 1
             while True:
-                state.library_native_id = library.native_id
-                state.updated_at = datetime.now(UTC)
-                db.commit()
-
-                page_result = await provider.list_series(
-                    library.native_id,
-                    page=page,
-                    limit=chunk_size,
-                    q=None,
-                )
+                try:
+                    page_result = await provider.list_series(
+                        library.native_id,
+                        page=page,
+                        limit=chunk_size,
+                        q=None,
+                    )
+                except ProviderUnauthorized:
+                    logger.info(
+                        "catalog_sync_library_skipped",
+                        connection_id=connection_id,
+                        app_user_id=app_user_id,
+                        library_native_id=library.native_id,
+                        reason="unauthorized",
+                    )
+                    break
                 synced_at = datetime.now(UTC)
-                for series in page_result.items:
-                    _upsert_series_row(db, series, synced_at)
-                    total_synced += 1
+                _upsert_series_page(db, page_result.items, app_user_id, synced_at)
+                total_synced += len(page_result.items)
 
                 total_estimated = max(total_estimated, page_result.total)
+                state = _get_or_create_sync_state(db, connection_id, app_user_id)
+                state.library_native_id = library.native_id
                 state.page_cursor = total_synced
                 state.total_estimated = total_estimated
                 state.updated_at = synced_at
                 db.commit()
+                logger.info(
+                    "catalog_sync_page",
+                    connection_id=connection_id,
+                    app_user_id=app_user_id,
+                    library_native_id=library.native_id,
+                    page=page,
+                    page_items=len(page_result.items),
+                    total_synced=total_synced,
+                    total_estimated=total_estimated,
+                )
 
                 if not page_result.items or len(page_result.items) < chunk_size:
                     break
@@ -314,37 +526,62 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
                     break
 
                 page += 1
-                await asyncio.sleep(CHUNK_DELAY_SECONDS)
 
-        artwork_cached = 0
-        artwork_failed = 0
-        if isinstance(provider, PlexProvider):
-            artwork_cached, artwork_failed = await backfill_artwork_for_connection(
-                db, provider, connection_id, settings
-            )
-
-        state = _get_or_create_sync_state(db, connection_id)
+        state = _get_or_create_sync_state(db, connection_id, app_user_id)
         state.status = "complete"
         state.page_cursor = total_synced
         state.total_estimated = total_estimated or total_synced
         state.error_message = None
         state.updated_at = datetime.now(UTC)
         db.commit()
+
+        db.query(CachedSeries).filter(
+            CachedSeries.connection_id == connection_id,
+            CachedSeries.app_user_id == app_user_id,
+            CachedSeries.synced_at < sync_started_at,
+        ).delete()
+        db.commit()
+
         logger.info(
             "catalog_sync_complete",
             connection_id=connection_id,
+            app_user_id=app_user_id,
             series_count=total_synced,
-            artwork_cached=artwork_cached,
-            artwork_failed=artwork_failed,
+        )
+
+        if isinstance(provider, PlexProvider):
+            asyncio.create_task(
+                prefetch_user_artwork(connection_id, app_user_id),
+            )
+    except ProviderUnauthorized as err:
+        db.rollback()
+        vault.clear_plex_user_credentials(connection_id, app_user_id, commit=False)
+        state = _get_or_create_sync_state(db, connection_id, app_user_id)
+        state.status = "failed"
+        state.error_message = (
+            "Plex session invalid — log out and sign in with Plex again"
+        )
+        state.updated_at = datetime.now(UTC)
+        db.commit()
+        logger.exception(
+            "catalog_sync_failed",
+            connection_id=connection_id,
+            app_user_id=app_user_id,
+            error=str(err),
         )
     except (ProviderError, ValueError, Exception) as err:
         db.rollback()
-        state = _get_or_create_sync_state(db, connection_id)
+        state = _get_or_create_sync_state(db, connection_id, app_user_id)
         state.status = "failed"
         state.error_message = str(err)
         state.updated_at = datetime.now(UTC)
         db.commit()
-        logger.exception("catalog_sync_failed", connection_id=connection_id, error=str(err))
+        logger.exception(
+            "catalog_sync_failed",
+            connection_id=connection_id,
+            app_user_id=app_user_id,
+            error=str(err),
+        )
     finally:
         db.close()
 
@@ -354,48 +591,76 @@ def trigger_sync_for_user_links(db: Session, app_user_id: str) -> dict[str, dict
     statuses: dict[str, dict] = {}
     for link in links:
         trigger_sync(db, link.connection_id, app_user_id)
-        statuses[link.connection_id] = get_sync_status(db, link.connection_id)
+        statuses[link.connection_id] = get_sync_status(db, link.connection_id, app_user_id)
     return statuses
 
 
-async def backfill_artwork_for_connection(
-    db: Session,
-    provider: PlexProvider,
-    connection_id: str,
-    settings: Settings,
-) -> tuple[int, int]:
-    """Ensure every in-scope cached series has a local poster file."""
-    in_scope = get_in_scope_libraries(db, connection_id)
-    in_scope_ids = [library.native_id for library in in_scope]
-    if not in_scope_ids:
-        return 0, 0
+async def prefetch_user_artwork(connection_id: str, app_user_id: str) -> None:
+    """Background poster download after catalog metadata sync (non-blocking)."""
+    settings = get_settings()
+    session_factory = get_session_factory(settings)
+    db = session_factory()
+    vault = SecretsVault(db, settings)
 
-    query = db.query(CachedSeries).filter(
-        CachedSeries.connection_id == connection_id,
-        CachedSeries.library_native_id.in_(in_scope_ids),
-    )
+    try:
+        connection = db.query(Connection).filter(Connection.id == connection_id).one_or_none()
+        if connection is None:
+            return
 
-    cached_count = 0
-    failed_count = 0
-    for row in query.all():
-        cache_path = artwork_cache_path(settings.WOF_ARTWORK_CACHE_DIR, connection_id, row.id)
-        if cache_path.is_file():
-            cached_count += 1
-            continue
-        if not row.thumb_url:
-            failed_count += 1
-            continue
-        ok = await download_and_cache_artwork(
-            provider,
-            cache_dir=settings.WOF_ARTWORK_CACHE_DIR,
-            connection_id=connection_id,
-            series_id=row.id,
-            thumb_url=row.thumb_url,
+        provider = _build_provider(db, vault, connection, app_user_id, settings)
+        if not isinstance(provider, PlexProvider):
+            return
+
+        rows = (
+            db.query(CachedSeries)
+            .filter(
+                CachedSeries.connection_id == connection_id,
+                CachedSeries.app_user_id == app_user_id,
+            )
+            .all()
         )
-        if ok:
-            cached_count += 1
-        else:
-            failed_count += 1
-        await asyncio.sleep(ARTWORK_BACKFILL_DELAY_SECONDS)
+        cached_count = 0
+        failed_count = 0
+        for row in rows:
+            if not row.thumb_url:
+                failed_count += 1
+                continue
+            cache_path = artwork_cache_path(
+                settings.WOF_ARTWORK_CACHE_DIR,
+                app_user_id,
+                connection_id,
+                row.id,
+            )
+            if cache_path.is_file():
+                cached_count += 1
+                continue
+            ok = await download_and_cache_artwork(
+                provider,
+                cache_dir=settings.WOF_ARTWORK_CACHE_DIR,
+                app_user_id=app_user_id,
+                connection_id=connection_id,
+                series_id=row.id,
+                thumb_url=row.thumb_url,
+            )
+            if ok:
+                cached_count += 1
+            else:
+                failed_count += 1
+            await asyncio.sleep(ARTWORK_PREFETCH_DELAY_SECONDS)
 
-    return cached_count, failed_count
+        logger.info(
+            "artwork_prefetch_complete",
+            connection_id=connection_id,
+            app_user_id=app_user_id,
+            artwork_cached=cached_count,
+            artwork_failed=failed_count,
+        )
+    except Exception as err:
+        logger.warning(
+            "artwork_prefetch_aborted",
+            connection_id=connection_id,
+            app_user_id=app_user_id,
+            error=str(err),
+        )
+    finally:
+        db.close()

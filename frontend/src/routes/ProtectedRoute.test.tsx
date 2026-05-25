@@ -22,6 +22,7 @@ const authenticatedUser: AuthMeResponse = {
   connection: null,
   has_media_link: true,
   libraries_scoped: false,
+  install_libraries_configured: false,
 }
 
 function renderProtected(initialPath = "/") {

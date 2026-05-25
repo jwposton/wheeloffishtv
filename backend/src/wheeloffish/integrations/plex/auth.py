@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 import httpx
 
-from wheeloffish.integrations.errors import ProviderUnauthorized
+from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized, ProviderUnreachable
 
 PLEX_TV_BASE = "https://plex.tv/api/v2"
 PLEX_AUTH_URL = "https://app.plex.tv/auth#"
@@ -20,6 +20,14 @@ class PinState:
     client_identifier: str
     app_user_id: str
     created_at: float
+
+
+@dataclass(frozen=True)
+class ResolvedServerConnection:
+    """PMS base URL and token that work for this user on the configured server."""
+
+    base_url: str
+    token: str
 
 
 _pin_state: dict[int, PinState] = {}
@@ -150,30 +158,60 @@ async def validate_token(token: str, client_identifier: str, product_name: str) 
         return response.json()
 
 
+async def _fetch_server_resources(
+    token: str,
+    client_identifier: str,
+    product_name: str,
+) -> list[dict[str, Any]]:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{PLEX_TV_BASE}/resources",
+            params={"includeHttps": "1", "includeRelay": "1"},
+            headers=_plex_headers(client_identifier, product_name, token=token),
+        )
+        if response.status_code == 401:
+            raise ProviderUnauthorized()
+        response.raise_for_status()
+        return response.json()
+
+
+async def resolve_server_connection(
+    token: str,
+    base_url: str,
+    client_identifier: str,
+    product_name: str,
+) -> ResolvedServerConnection:
+    """Map configured server URL to this user's working PMS URL and token.
+
+    Home/shared users often need the per-resource ``accessToken`` from plex.tv,
+    not the PIN auth token, when calling the media server API.
+    """
+    target = _normalize_url(base_url)
+    resources = await _fetch_server_resources(token, client_identifier, product_name)
+
+    for resource in resources:
+        resource_token = resource.get("accessToken") or token
+        for connection in resource.get("connections", []):
+            uri = connection.get("uri")
+            if uri and _normalize_url(str(uri)) == target:
+                return ResolvedServerConnection(
+                    base_url=str(uri).rstrip("/"),
+                    token=str(resource_token),
+                )
+    raise ProviderUnreachable()
+
+
 async def discover_server(
     token: str,
     base_url: str,
     client_identifier: str,
     product_name: str,
 ) -> bool:
-    target = _normalize_url(base_url)
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{PLEX_TV_BASE}/resources",
-            params={"includeHttps": "1"},
-            headers=_plex_headers(client_identifier, product_name, token=token),
-        )
-        if response.status_code == 401:
-            raise ProviderUnauthorized()
-        response.raise_for_status()
-        resources = response.json()
-
-    for resource in resources:
-        for connection in resource.get("connections", []):
-            uri = connection.get("uri")
-            if uri and _normalize_url(str(uri)) == target:
-                return True
-    return False
+    try:
+        await resolve_server_connection(token, base_url, client_identifier, product_name)
+    except ProviderError:
+        return False
+    return True
 
 
 async def create_pin_with_auth_url(

@@ -14,6 +14,7 @@ export interface AuthMeResponse {
   connection: ConnectionSummary | null
   has_media_link: boolean
   libraries_scoped: boolean
+  install_libraries_configured: boolean
 }
 
 export interface ProvidersMetaResponse {

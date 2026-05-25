@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import type { Series } from "@/api/types"
 import { SeriesPoster } from "@/components/browse/SeriesPoster"
+import { seriesDetailRoute } from "@/lib/seriesId"
 import { cn } from "@/lib/utils"
 
 interface SeriesCardProps {
@@ -30,7 +31,7 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
   const navigate = useNavigate()
 
   const handleActivate = () => {
-    navigate(`/series/${encodeURIComponent(series.id)}`)
+    navigate(seriesDetailRoute(series.id))
   }
 
   const handleKeyDown = (event: KeyboardEvent) => {

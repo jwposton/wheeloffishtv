@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -6,13 +8,15 @@ from wheeloffish.api.deps import get_current_user, get_db, get_settings_dep, get
 from wheeloffish.api.schemas.oauth import JellyfinAuthRequest
 from wheeloffish.core.auth import upsert_app_user
 from wheeloffish.core.boot import sync_connection_from_env
-from wheeloffish.core.catalog_sync import trigger_sync
+from wheeloffish.core.catalog_sync import ensure_libraries_cached, trigger_sync
 from wheeloffish.core.config import Settings
 from wheeloffish.core.connections import link_media_user
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.integrations.errors import ProviderError
 from wheeloffish.integrations.jellyfin.auth import authenticate, validate_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/connections/jellyfin", tags=["jellyfin-auth"])
 
@@ -57,6 +61,17 @@ async def jellyfin_auth(
             token=token,
         )
         request.session["app_user_id"] = app_user.id
+        try:
+            await ensure_libraries_cached(
+                db, vault, connection.id, app_user.id, settings=settings
+            )
+        except (ProviderError, ValueError) as err:
+            logger.warning(
+                "jellyfin_library_cache_failed",
+                connection_id=connection.id,
+                app_user_id=app_user.id,
+                error=str(err),
+            )
         trigger_sync(db, connection.id, app_user.id)
     except ProviderError as err:
         raise HTTPException(

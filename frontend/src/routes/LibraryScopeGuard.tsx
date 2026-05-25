@@ -16,7 +16,12 @@ export function LibraryScopeGuard() {
     )
   }
 
-  if (user?.libraries_scoped) {
+  const canBrowse =
+    user?.libraries_scoped ||
+    user?.install_libraries_configured ||
+    (Boolean(user?.has_media_link) && !user?.is_admin)
+
+  if (canBrowse) {
     return <Outlet />
   }
 

@@ -3,21 +3,23 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from wheeloffish.api.deps import get_current_user, get_db, get_settings_dep
+from wheeloffish.api.deps import get_current_user, get_db, get_settings_dep, get_vault
 from wheeloffish.api.schemas.auth import (
     AuthMeResponse,
     BootstrapSessionResponse,
     ConnectionSummary,
     LogoutResponse,
 )
+from wheeloffish.core.catalog_sync import install_libraries_configured
 from wheeloffish.core.auth import (
     get_env_connection,
-    has_media_link,
+    has_usable_media_credentials,
     is_admin,
     is_setup_mode,
     libraries_scoped,
 )
 from wheeloffish.core.config import Settings
+from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.app_user import AppUser
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -27,12 +29,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def auth_me(
     user: AppUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    vault: SecretsVault = Depends(get_vault),
     settings: Settings = Depends(get_settings_dep),
 ) -> AuthMeResponse:
     connection = get_env_connection(db, settings)
     connection_summary = None
     linked = False
     scoped = False
+    install_configured = False
     if connection is not None:
         connection_summary = ConnectionSummary(
             id=connection.id,
@@ -40,8 +44,9 @@ def auth_me(
             display_name=connection.display_name,
             base_url=connection.base_url,
         )
-        linked = has_media_link(db, user.id, connection.id)
-        scoped = libraries_scoped(db, connection.id)
+        linked = has_usable_media_credentials(db, vault, connection, user.id)
+        scoped = libraries_scoped(db, connection.id, user.id)
+        install_configured = install_libraries_configured(connection, settings)
 
     return AuthMeResponse(
         app_user_id=user.id,
@@ -52,6 +57,7 @@ def auth_me(
         connection=connection_summary,
         has_media_link=linked,
         libraries_scoped=scoped,
+        install_libraries_configured=install_configured,
     )
 
 

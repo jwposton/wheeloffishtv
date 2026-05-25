@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
+import json
 
 from sqlalchemy.orm import Session
 
@@ -8,9 +10,17 @@ from wheeloffish.core.namespaces import (
     MEDIA_SERVER_NS,
     connection_secrets_prefix,
     media_server_token_key,
+    media_user_client_identifier_key,
     media_user_token_key,
+    plex_user_credentials_key,
 )
 from wheeloffish.db.models.secret import Secret
+
+
+@dataclass(frozen=True)
+class PlexUserCredentials:
+    token: str
+    client_identifier: str
 
 
 class SecretsVault:
@@ -92,6 +102,108 @@ class SecretsVault:
         return self.get_secret(
             MEDIA_SERVER_NS,
             media_user_token_key(connection_id, app_user_id),
+        )
+
+    def store_media_user_client_identifier(
+        self,
+        connection_id: str,
+        app_user_id: str,
+        client_identifier: str,
+        *,
+        commit: bool = True,
+    ) -> None:
+        self.set_secret(
+            MEDIA_SERVER_NS,
+            media_user_client_identifier_key(connection_id, app_user_id),
+            client_identifier,
+            commit=commit,
+        )
+
+    def get_media_user_client_identifier(
+        self,
+        connection_id: str,
+        app_user_id: str,
+    ) -> str | None:
+        return self.get_secret(
+            MEDIA_SERVER_NS,
+            media_user_client_identifier_key(connection_id, app_user_id),
+        )
+
+    def store_plex_user_credentials(
+        self,
+        connection_id: str,
+        app_user_id: str,
+        token: str,
+        client_identifier: str,
+        *,
+        commit: bool = True,
+    ) -> None:
+        """Store token + client ID as one atomic unit (must stay paired for Plex)."""
+        payload = json.dumps({"token": token, "client_identifier": client_identifier})
+        self.set_secret(
+            MEDIA_SERVER_NS,
+            plex_user_credentials_key(connection_id, app_user_id),
+            payload,
+            commit=False,
+        )
+        self.set_secret(
+            MEDIA_SERVER_NS,
+            media_user_token_key(connection_id, app_user_id),
+            token,
+            commit=False,
+        )
+        self.set_secret(
+            MEDIA_SERVER_NS,
+            media_user_client_identifier_key(connection_id, app_user_id),
+            client_identifier,
+            commit=commit,
+        )
+
+    def get_plex_user_credentials(
+        self,
+        connection_id: str,
+        app_user_id: str,
+    ) -> PlexUserCredentials | None:
+        combined = self.get_secret(
+            MEDIA_SERVER_NS,
+            plex_user_credentials_key(connection_id, app_user_id),
+        )
+        if combined:
+            try:
+                data = json.loads(combined)
+                token = str(data["token"])
+                client_identifier = str(data["client_identifier"])
+                return PlexUserCredentials(token=token, client_identifier=client_identifier)
+            except (KeyError, TypeError, json.JSONDecodeError):
+                pass
+
+        token = self.get_media_user_token(connection_id, app_user_id)
+        client_identifier = self.get_media_user_client_identifier(connection_id, app_user_id)
+        if token and client_identifier:
+            return PlexUserCredentials(token=token, client_identifier=client_identifier)
+        return None
+
+    def clear_plex_user_credentials(
+        self,
+        connection_id: str,
+        app_user_id: str,
+        *,
+        commit: bool = True,
+    ) -> None:
+        self.delete_secret(
+            MEDIA_SERVER_NS,
+            plex_user_credentials_key(connection_id, app_user_id),
+            commit=False,
+        )
+        self.delete_secret(
+            MEDIA_SERVER_NS,
+            media_user_token_key(connection_id, app_user_id),
+            commit=False,
+        )
+        self.delete_secret(
+            MEDIA_SERVER_NS,
+            media_user_client_identifier_key(connection_id, app_user_id),
+            commit=commit,
         )
 
     def delete_media_user_token(

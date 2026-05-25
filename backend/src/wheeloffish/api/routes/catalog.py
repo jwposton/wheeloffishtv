@@ -37,7 +37,7 @@ from wheeloffish.core.catalog_sync import (
     update_library_scope,
 )
 from wheeloffish.core.config import Settings
-from wheeloffish.core.connections import build_provider_for_connection
+from wheeloffish.core.connections import build_provider_for_user
 from wheeloffish.core.media_artwork import (
     artwork_cache_path,
     download_and_cache_artwork,
@@ -47,9 +47,8 @@ from wheeloffish.core.resume import ResumeService
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.cached_series import CachedSeries
 from wheeloffish.db.models.connection import Connection
-from wheeloffish.db.models.user_media_link import UserMediaLink
-from wheeloffish.domain.dto import Episode, Library, ResumeCursor
-from wheeloffish.domain.ids import parse_composite_id
+from wheeloffish.domain.dto import Episode, Library, ResumeCursor, Series
+from wheeloffish.domain.ids import canonical_composite_id, parse_composite_id
 from wheeloffish.integrations.base import MediaProvider
 from wheeloffish.integrations.errors import ProviderError
 from wheeloffish.integrations.plex.client import PlexProvider
@@ -91,67 +90,106 @@ def _validate_series_connection(series_id: str, connection_id: str) -> None:
         )
 
 
-def _build_provider_for_user(
+def _cached_series_context(
     db: Session,
-    vault: SecretsVault,
-    connection: Connection,
+    series_id: str,
     app_user_id: str,
-    settings: Settings,
-) -> MediaProvider:
-    link = (
-        db.query(UserMediaLink)
-        .filter(
-            UserMediaLink.connection_id == connection.id,
-            UserMediaLink.app_user_id == app_user_id,
-        )
+) -> tuple[str | None, str | None]:
+    """Return cached ratingKey and library_native_id when sync stored them."""
+    canonical_id = canonical_composite_id(series_id)
+    row = (
+        db.query(CachedSeries)
+        .filter(CachedSeries.id == canonical_id, CachedSeries.app_user_id == app_user_id)
         .one_or_none()
     )
-    if link is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unauthorized", "message": "No token for user"},
+    if row is None:
+        _, _, native_id = parse_composite_id(canonical_id)
+        row = (
+            db.query(CachedSeries)
+            .filter(
+                CachedSeries.app_user_id == app_user_id,
+                CachedSeries.native_id == native_id,
+            )
+            .one_or_none()
         )
-    token = vault.get_media_user_token(connection.id, app_user_id)
-    if token is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unauthorized", "message": "No token for user"},
-        )
-    return build_provider_for_connection(
-        connection,
-        token,
-        settings=settings,
-        provider_user_id=link.provider_user_id,
-    )
+    if row is None:
+        return None, None
+    rating_key: str | None = None
+    if row.provider_metadata:
+        cached_key = row.provider_metadata.get("ratingKey")
+        if cached_key is not None:
+            rating_key = str(cached_key)
+    return rating_key, row.library_native_id
 
 
-def _cached_rating_key(db: Session, series_id: str) -> str | None:
-    row = db.query(CachedSeries).filter(CachedSeries.id == series_id).one_or_none()
-    if row is None or not row.provider_metadata:
-        return None
-    rating_key = row.provider_metadata.get("ratingKey")
-    return str(rating_key) if rating_key is not None else None
+async def _list_episodes(
+    provider: MediaProvider,
+    series_id: str,
+    *,
+    rating_key: str | None,
+    library_native_id: str | None,
+) -> list[Episode]:
+    try:
+        return await provider.list_episodes(
+            series_id,
+            rating_key=rating_key,
+            library_native_id=library_native_id,
+        )
+    except TypeError:
+        return await provider.list_episodes(series_id)
+
+
+async def _get_on_deck_episode(
+    provider: MediaProvider,
+    series_id: str,
+    *,
+    rating_key: str | None,
+    library_native_id: str | None,
+) -> Episode | None:
+    try:
+        return await provider.get_on_deck_episode(
+            series_id,
+            rating_key=rating_key,
+            library_native_id=library_native_id,
+        )
+    except TypeError:
+        return await provider.get_on_deck_episode(series_id)
 
 
 def _get_cached_series_in_scope(
     db: Session,
     connection_id: str,
     series_id: str,
+    app_user_id: str,
 ) -> CachedSeries:
-    _validate_series_connection(series_id, connection_id)
+    canonical_id = canonical_composite_id(series_id)
+    _validate_series_connection(canonical_id, connection_id)
     row = (
         db.query(CachedSeries)
         .filter(
-            CachedSeries.id == series_id,
+            CachedSeries.id == canonical_id,
             CachedSeries.connection_id == connection_id,
+            CachedSeries.app_user_id == app_user_id,
         )
         .one_or_none()
     )
     if row is None:
+        _, _, native_id = parse_composite_id(canonical_id)
+        row = (
+            db.query(CachedSeries)
+            .filter(
+                CachedSeries.connection_id == connection_id,
+                CachedSeries.app_user_id == app_user_id,
+                CachedSeries.native_id == native_id,
+            )
+            .one_or_none()
+        )
+    if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Series not found")
 
     in_scope_ids = {
-        library.native_id for library in get_in_scope_libraries(db, connection_id)
+        library.native_id
+        for library in get_in_scope_libraries(db, connection_id, app_user_id)
     }
     if row.library_native_id not in in_scope_ids:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Series not found")
@@ -163,13 +201,20 @@ async def _fetch_resume_data(
     series_id: str,
     *,
     rating_key: str | None,
+    library_native_id: str | None,
 ) -> tuple[list[Episode], Episode | None]:
-    if isinstance(provider, PlexProvider):
-        episodes_coro = provider.list_episodes(series_id, rating_key=rating_key)
-        on_deck_coro = provider.get_on_deck_episode(series_id, rating_key=rating_key)
-    else:
-        episodes_coro = provider.list_episodes(series_id)
-        on_deck_coro = provider.get_on_deck_episode(series_id)
+    episodes_coro = _list_episodes(
+        provider,
+        series_id,
+        rating_key=rating_key,
+        library_native_id=library_native_id,
+    )
+    on_deck_coro = _get_on_deck_episode(
+        provider,
+        series_id,
+        rating_key=rating_key,
+        library_native_id=library_native_id,
+    )
 
     episodes_result, on_deck_result = await asyncio.gather(
         episodes_coro,
@@ -230,7 +275,7 @@ async def get_connection_libraries(
     await ensure_libraries_cached(
         db, vault, connection_id, app_user_id, settings=settings
     )
-    libraries = get_in_scope_libraries(db, connection_id)
+    libraries = get_in_scope_libraries(db, connection_id, app_user_id)
     return [cached_library_to_dto(row, connection.provider_type) for row in libraries]
 
 
@@ -250,7 +295,7 @@ async def get_admin_connection_libraries(
     await ensure_libraries_cached(
         db, vault, connection_id, app_user_id, settings=settings
     )
-    libraries = get_all_libraries(db, connection_id)
+    libraries = get_all_libraries(db, connection_id, app_user_id)
     return [cached_library_to_dto(row, connection.provider_type) for row in libraries]
 
 
@@ -262,11 +307,17 @@ def put_library_scope(
     connection_id: str,
     body: LibraryScopeUpdate,
     db: Session = Depends(get_db),
+    app_user_id: str = Depends(get_app_user_id),
     _: None = Depends(require_admin),
 ) -> LibraryScopeResponse:
     _get_connection_or_404(db, connection_id)
     try:
-        libraries = update_library_scope(db, connection_id, body.in_scope_library_native_ids)
+        libraries = update_library_scope(
+            db,
+            connection_id,
+            app_user_id,
+            body.in_scope_library_native_ids,
+        )
     except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -287,31 +338,36 @@ def get_connection_series(
     q: str | None = Query(None),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
-    _: None = Depends(get_current_user),
+    app_user_id: str = Depends(get_app_user_id),
 ) -> SeriesBrowseResponse:
     connection = _get_connection_or_404(db, connection_id)
     resolved_limit = limit or settings.WOF_CATALOG_PAGE_DEFAULT
 
-    in_scope = get_in_scope_libraries(db, connection_id)
+    in_scope = get_in_scope_libraries(db, connection_id, app_user_id)
     in_scope_ids = [library.native_id for library in in_scope]
 
-    query = db.query(CachedSeries).filter(CachedSeries.connection_id == connection_id)
+    query = db.query(CachedSeries).filter(
+        CachedSeries.connection_id == connection_id,
+        CachedSeries.app_user_id == app_user_id,
+    )
     if in_scope_ids:
         query = query.filter(CachedSeries.library_native_id.in_(in_scope_ids))
     else:
         query = query.filter(False)  # noqa: E712
 
     if q:
-        query = query.filter(CachedSeries.title.ilike(f"%{q}%"))
+        filtered = query.filter(CachedSeries.title.ilike(f"%{q}%"))
+    else:
+        filtered = query
 
-    total = query.count()
+    total = filtered.count()
     rows = (
-        query.order_by(CachedSeries.title)
+        filtered.order_by(CachedSeries.title)
         .offset((page - 1) * resolved_limit)
         .limit(resolved_limit)
         .all()
     )
-    sync = SyncStatusEmbed(**get_sync_status(db, connection_id))
+    sync = SyncStatusEmbed(**get_sync_status(db, connection_id, app_user_id))
     return SeriesBrowseResponse(
         items=[cached_series_to_dto(row, connection.provider_type) for row in rows],
         page=page,
@@ -319,6 +375,18 @@ def get_connection_series(
         total=total,
         sync=sync,
     )
+
+
+@router.get("/connections/{connection_id}/series/{series_id}", response_model=Series)
+def get_connection_series_detail(
+    connection_id: str,
+    series_id: str,
+    db: Session = Depends(get_db),
+    app_user_id: str = Depends(get_app_user_id),
+) -> Series:
+    connection = _get_connection_or_404(db, connection_id)
+    row = _get_cached_series_in_scope(db, connection_id, series_id, app_user_id)
+    return cached_series_to_dto(row, connection.provider_type)
 
 
 @router.get("/connections/{connection_id}/series/{series_id}/artwork")
@@ -337,9 +405,17 @@ async def get_series_artwork(
             detail={"code": "unsupported_provider", "message": "Artwork supports Plex only"},
         )
 
-    row = _get_cached_series_in_scope(db, connection_id, series_id)
-    cache_path = artwork_cache_path(settings.WOF_ARTWORK_CACHE_DIR, connection_id, series_id)
-    cached = read_cached_artwork(cache_path)
+    row = _get_cached_series_in_scope(db, connection_id, series_id, app_user_id)
+    cache_path = artwork_cache_path(
+        settings.WOF_ARTWORK_CACHE_DIR,
+        app_user_id,
+        connection_id,
+        series_id,
+    )
+    cached = read_cached_artwork(
+        cache_path,
+        ttl_days=settings.WOF_ARTWORK_CACHE_TTL_DAYS,
+    )
     if cached is not None:
         content, media_type = cached
         return Response(content=content, media_type=media_type)
@@ -347,7 +423,9 @@ async def get_series_artwork(
     if not row.thumb_url:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not available")
 
-    provider = _build_provider_for_user(db, vault, connection, app_user_id, settings)
+    provider = build_provider_for_user(
+        db, vault, connection, app_user_id, settings=settings
+    )
     if not isinstance(provider, PlexProvider):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -357,6 +435,7 @@ async def get_series_artwork(
     cached_now = await download_and_cache_artwork(
         provider,
         cache_dir=settings.WOF_ARTWORK_CACHE_DIR,
+        app_user_id=app_user_id,
         connection_id=connection_id,
         series_id=series_id,
         thumb_url=row.thumb_url,
@@ -383,17 +462,17 @@ async def post_connection_sync(
 ) -> SyncStatusResponse:
     _get_connection_or_404(db, connection_id)
     trigger_sync(db, connection_id, app_user_id)
-    return SyncStatusResponse(**get_sync_status(db, connection_id))
+    return SyncStatusResponse(**get_sync_status(db, connection_id, app_user_id))
 
 
 @router.get("/connections/{connection_id}/sync/status", response_model=SyncStatusResponse)
 def get_connection_sync_status(
     connection_id: str,
     db: Session = Depends(get_db),
-    _: None = Depends(get_current_user),
+    app_user_id: str = Depends(get_app_user_id),
 ) -> SyncStatusResponse:
     _get_connection_or_404(db, connection_id)
-    return SyncStatusResponse(**get_sync_status(db, connection_id))
+    return SyncStatusResponse(**get_sync_status(db, connection_id, app_user_id))
 
 
 @session_router.post(
@@ -426,10 +505,18 @@ async def get_series_episodes(
     app_user_id: str = Depends(get_app_user_id),
 ) -> EpisodesListResponse:
     connection = _get_connection_or_404(db, connection_id)
-    _validate_series_connection(series_id, connection_id)
-    provider = _build_provider_for_user(db, vault, connection, app_user_id, settings)
+    _get_cached_series_in_scope(db, connection_id, series_id, app_user_id)
+    rating_key, library_native_id = _cached_series_context(db, series_id, app_user_id)
+    provider = build_provider_for_user(
+        db, vault, connection, app_user_id, settings=settings
+    )
     try:
-        episodes = await provider.list_episodes(series_id)
+        episodes = await _list_episodes(
+            provider,
+            series_id,
+            rating_key=rating_key,
+            library_native_id=library_native_id,
+        )
     except ProviderError as err:
         raise _provider_error_to_http(err) from err
     return EpisodesListResponse(
@@ -450,11 +537,18 @@ async def get_series_resume(
     app_user_id: str = Depends(get_app_user_id),
 ) -> ResumePreviewResponse:
     connection = _get_connection_or_404(db, connection_id)
-    _validate_series_connection(series_id, connection_id)
-    rating_key = _cached_rating_key(db, series_id)
-    provider = _build_provider_for_user(db, vault, connection, app_user_id, settings)
+    _get_cached_series_in_scope(db, connection_id, series_id, app_user_id)
+    rating_key, library_native_id = _cached_series_context(db, series_id, app_user_id)
+    provider = build_provider_for_user(
+        db, vault, connection, app_user_id, settings=settings
+    )
     try:
-        episodes, on_deck = await _fetch_resume_data(provider, series_id, rating_key=rating_key)
+        episodes, on_deck = await _fetch_resume_data(
+            provider,
+            series_id,
+            rating_key=rating_key,
+            library_native_id=library_native_id,
+        )
     except ProviderError as err:
         raise _provider_error_to_http(err) from err
     cursor = _resume_cursor(series_id, episodes, on_deck)

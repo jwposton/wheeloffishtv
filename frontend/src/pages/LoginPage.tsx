@@ -43,7 +43,7 @@ export function LoginPage() {
     const returnUrl = searchParams.get("returnUrl")
     return (
       <Navigate
-        to={returnUrl ? decodeURIComponent(returnUrl) : "/"}
+        to={returnUrl ? decodeURIComponent(returnUrl) : "/browse"}
         replace
       />
     )

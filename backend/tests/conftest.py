@@ -131,13 +131,14 @@ def connection_factory(db_session, settings, vault, app_user_id):
             "wheeloffish.core.connections.build_provider_for_connection",
             return_value=provider,
         ):
-            return await create_connection(
+            connection = await create_connection(
                 db_session,
                 vault,
                 settings,
                 app_user_id=app_user_id,
                 **params,
             )
+        return connection
 
     return _factory
 
@@ -146,20 +147,31 @@ def seed_cached_libraries(
     db_session,
     connection_id: str,
     libraries: list[dict],
+    *,
+    app_user_id: str = APP_USER_ID,
 ) -> list:
     """Seed cached_libraries rows. Each dict: native_id, title, in_scope."""
     from datetime import UTC, datetime
 
     from wheeloffish.db.models.cached_library import CachedLibrary
+    from wheeloffish.db.models.connection import Connection
+
+    in_scope_ids = [spec["native_id"] for spec in libraries if spec.get("in_scope")]
+    if in_scope_ids:
+        connection = (
+            db_session.query(Connection).filter(Connection.id == connection_id).one()
+        )
+        connection.library_allowlist_native_ids = in_scope_ids
 
     now = datetime.now(UTC)
     rows = []
     for spec in libraries:
         row = CachedLibrary(
+            app_user_id=app_user_id,
             connection_id=connection_id,
             native_id=spec["native_id"],
             title=spec["title"],
-            in_scope=spec.get("in_scope", True),
+            in_scope=spec.get("in_scope", False),
             synced_at=now,
         )
         db_session.add(row)
@@ -175,6 +187,7 @@ def seed_cached_series(
     connection_id: str,
     count: int,
     *,
+    app_user_id: str = APP_USER_ID,
     provider: str = "plex",
     library_native_id: str = "1",
     title_prefix: str = "Series",
@@ -193,6 +206,7 @@ def seed_cached_series(
         native_id = f"guid-{index}"
         row = CachedSeries(
             id=format_composite_id(connection_id, provider, native_id),
+            app_user_id=app_user_id,
             connection_id=connection_id,
             library_native_id=library_native_id,
             native_id=native_id,
@@ -205,3 +219,40 @@ def seed_cached_series(
     for row in rows:
         db_session.refresh(row)
     return rows
+
+
+def seed_series_in_scope(
+    db_session,
+    connection_id: str,
+    series_id: str,
+    *,
+    app_user_id: str = APP_USER_ID,
+    library_native_id: str = "1",
+    native_id: str = "guid-123",
+    title: str = "Cached Show",
+    provider_metadata: dict | None = None,
+) -> None:
+    """Seed in-scope library + cached series for detail/resume/episodes routes."""
+    seed_cached_libraries(
+        db_session,
+        connection_id,
+        [{"native_id": library_native_id, "title": "TV Shows", "in_scope": True}],
+        app_user_id=app_user_id,
+    )
+    from datetime import UTC, datetime
+
+    from wheeloffish.db.models.cached_series import CachedSeries
+
+    db_session.add(
+        CachedSeries(
+            id=series_id,
+            app_user_id=app_user_id,
+            connection_id=connection_id,
+            library_native_id=library_native_id,
+            native_id=native_id,
+            title=title,
+            provider_metadata=provider_metadata,
+            synced_at=datetime.now(UTC),
+        )
+    )
+    db_session.commit()

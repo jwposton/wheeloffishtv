@@ -9,16 +9,27 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from wheeloffish.db.models.base import Base
 
 if TYPE_CHECKING:
+    from wheeloffish.db.models.app_user import AppUser
     from wheeloffish.db.models.connection import Connection
 
 
 class CachedSeries(Base):
     __tablename__ = "cached_series"
     __table_args__ = (
-        UniqueConstraint("connection_id", "native_id", name="uq_cached_series_connection_native"),
+        UniqueConstraint(
+            "app_user_id",
+            "connection_id",
+            "native_id",
+            name="uq_cached_series_user_connection_native",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(512), primary_key=True)
+    app_user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("app_users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
     connection_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("connections.id", ondelete="CASCADE"),
@@ -37,4 +48,5 @@ class CachedSeries(Base):
         default=lambda: datetime.now(UTC),
     )
 
+    app_user: Mapped[AppUser] = relationship("AppUser")
     connection: Mapped[Connection] = relationship("Connection", back_populates="cached_series")

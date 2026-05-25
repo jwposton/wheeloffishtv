@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { BrowseToolbar } from "@/components/browse/BrowseToolbar"
 import { SeriesGrid } from "@/components/browse/SeriesGrid"
 import { SeriesList } from "@/components/browse/SeriesList"
 import { SyncBanner } from "@/components/layout/SyncBanner"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { fetchJson } from "@/api/client"
 import { useAuth } from "@/hooks/useAuth"
 import { useBrowseLayout } from "@/hooks/useBrowseLayout"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useSeriesInfiniteQuery } from "@/hooks/useSeriesInfiniteQuery"
+import { useSyncSeriesRefresh } from "@/hooks/useSyncSeriesRefresh"
 
 function BrowseSkeleton({ layout }: { layout: "grid" | "list" }) {
   if (layout === "list") {
@@ -36,6 +40,7 @@ function BrowseSkeleton({ layout }: { layout: "grid" | "list" }) {
 export function BrowsePage() {
   const { user } = useAuth()
   const connectionId = user?.connection?.id
+  const queryClient = useQueryClient()
   const [searchInput, setSearchInput] = useState("")
   const debouncedQ = useDebouncedValue(searchInput, 300)
   const { layout, setLayout } = useBrowseLayout()
@@ -49,8 +54,57 @@ export function BrowsePage() {
   const firstPage = query.data?.pages[0]
   const total = firstPage?.total ?? 0
   const sync = firstPage?.sync
+  const isSyncing = sync?.status === "running"
 
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query
+  useEffect(() => {
+    if (!connectionId) {
+      return
+    }
+    queryClient.removeQueries({
+      predicate: (query) => {
+        const key = query.queryKey
+        if (key[0] === "series" && typeof key[1] === "string" && key[1] !== connectionId) {
+          return true
+        }
+        if (
+          (key[0] === "series-detail" ||
+            key[0] === "series-resume" ||
+            key[0] === "series-episodes") &&
+          typeof key[1] === "string" &&
+          key[1] !== connectionId
+        ) {
+          return true
+        }
+        return false
+      },
+    })
+  }, [connectionId, queryClient])
+  const syncFailed = sync?.status === "failed"
+
+  useSyncSeriesRefresh(connectionId, debouncedQ, sync)
+
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = query
+  const syncKickRef = useRef(false)
+
+  useEffect(() => {
+    if (!connectionId || syncKickRef.current || query.isLoading) {
+      return
+    }
+    if (total > 0 || isSyncing) {
+      return
+    }
+    syncKickRef.current = true
+    void fetchJson(`/connections/${connectionId}/sync`, { method: "POST" }).then(
+      () => refetch(),
+    )
+  }, [
+    connectionId,
+    query.isLoading,
+    total,
+    isSyncing,
+    syncFailed,
+    refetch,
+  ])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -71,8 +125,18 @@ export function BrowsePage() {
     return () => observer.disconnect()
   }, [fetchNextPage, hasNextPage, isFetchingNextPage])
 
-  const showInitialSkeleton = query.isLoading
-  const showEmpty = !query.isLoading && total === 0
+  const showInitialSkeleton = query.isLoading && items.length === 0
+  const showSyncingEmpty = isSyncing && items.length === 0 && !syncFailed
+  const showEmpty =
+    !query.isLoading && total === 0 && !isSyncing
+
+  const retrySync = async () => {
+    if (!connectionId) {
+      return
+    }
+    await fetchJson(`/connections/${connectionId}/sync`, { method: "POST" })
+    await query.refetch()
+  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
@@ -94,14 +158,35 @@ export function BrowsePage() {
 
       {showInitialSkeleton ? (
         <BrowseSkeleton layout={layout} />
+      ) : showSyncingEmpty ? (
+        <div className="rounded-md border border-dashed p-8 text-center">
+          <p className="font-medium">Importing shows from Plex</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Titles appear here as they sync. If this takes more than a few
+            minutes, use Retry sync below.
+          </p>
+          {connectionId ? (
+            <Button type="button" className="mt-4" variant="outline" onClick={() => void retrySync()}>
+              Retry sync
+            </Button>
+          ) : null}
+        </div>
       ) : showEmpty ? (
         <div className="rounded-md border border-dashed p-8 text-center">
           <p className="font-medium">No series found</p>
           <p className="text-muted-foreground mt-1 text-sm">
             {debouncedQ
               ? "Try a different search term."
-              : "Your in-scope libraries have no cached series yet."}
+              : syncFailed
+                ? (sync?.error_message ??
+                  "Library sync failed. Log out and reconnect your Plex account.")
+                : "Your library has not synced yet. Refresh the page or use Retry sync."}
           </p>
+          {!debouncedQ && connectionId && (syncFailed || showEmpty) ? (
+            <Button type="button" className="mt-4" onClick={() => void retrySync()}>
+              {syncFailed ? "Retry sync" : "Sync library"}
+            </Button>
+          ) : null}
         </div>
       ) : layout === "list" ? (
         <SeriesList items={items} />

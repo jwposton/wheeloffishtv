@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { fetchJson } from "@/api/client"
+import { ApiError, fetchJson } from "@/api/client"
 import type { EpisodesListResponse } from "@/api/types"
+import { seriesApiPath } from "@/lib/seriesId"
 
 export function seriesEpisodesQueryKey(
   connectionId: string,
@@ -15,7 +16,7 @@ function fetchSeriesEpisodes(
   seriesId: string,
 ): Promise<EpisodesListResponse> {
   return fetchJson<EpisodesListResponse>(
-    `/connections/${connectionId}/series/${encodeURIComponent(seriesId)}/episodes`,
+    seriesApiPath(connectionId, seriesId, "/episodes"),
   )
 }
 
@@ -29,5 +30,11 @@ export function useSeriesEpisodes(
     queryFn: () => fetchSeriesEpisodes(connectionId!, seriesId!),
     enabled: Boolean(connectionId && seriesId && enabled),
     staleTime: 60_000,
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && (error.status === 404 || error.status === 422)) {
+        return false
+      }
+      return failureCount < 2
+    },
   })
 }

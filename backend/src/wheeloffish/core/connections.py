@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import Settings, get_settings
-from wheeloffish.core.secrets import SecretsVault
+from wheeloffish.core.secrets import PlexUserCredentials, SecretsVault
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.user_media_link import UserMediaLink
@@ -25,7 +25,6 @@ class ConnectionConfig:
     provider_type: ProviderType
     base_url: str
     verify_ssl: bool
-    plex_client_identifier: str | None = None
 
 
 class EphemeralMediaProvider:
@@ -70,6 +69,7 @@ def build_provider_for_connection(
     *,
     settings: Settings | None = None,
     provider_user_id: str | None = None,
+    plex_client_identifier: str | None = None,
 ) -> MediaProvider:
     if isinstance(connection, ConnectionConfig):
         config = connection
@@ -79,19 +79,18 @@ def build_provider_for_connection(
             provider_type=connection.provider_type,  # type: ignore[arg-type]
             base_url=connection.base_url,
             verify_ssl=connection.verify_ssl,
-            plex_client_identifier=connection.plex_client_identifier,
         )
         connection_id = connection.id
 
     product_name = settings.WOF_PLEX_PRODUCT_NAME if settings else "Wheel of Fish TV"
 
     if config.provider_type == "plex":
-        if not config.plex_client_identifier:
+        if not plex_client_identifier:
             raise ProviderError("plex_client_identifier required for Plex")
         return PlexProvider(
             base_url=config.base_url,
             token=token,
-            client_identifier=config.plex_client_identifier,
+            client_identifier=plex_client_identifier,
             connection_id=connection_id,
             verify_ssl=config.verify_ssl,
             product_name=product_name,
@@ -106,6 +105,89 @@ def build_provider_for_connection(
             verify_ssl=config.verify_ssl,
         )
     return build_ephemeral_provider(config, token)
+
+
+def build_plex_provider_for_user(
+    connection: Connection,
+    credentials: PlexUserCredentials,
+    *,
+    settings: Settings | None = None,
+    provider_user_id: str | None = None,
+) -> PlexProvider:
+    resolved_settings = settings or get_settings()
+    _ = provider_user_id
+    return PlexProvider(
+        base_url=connection.base_url,
+        token=credentials.token,
+        client_identifier=credentials.client_identifier,
+        connection_id=connection.id,
+        verify_ssl=connection.verify_ssl,
+        product_name=resolved_settings.WOF_PLEX_PRODUCT_NAME,
+    )
+
+
+def build_provider_for_user(
+    db: Session,
+    vault: SecretsVault,
+    connection: Connection,
+    app_user_id: str,
+    *,
+    settings: Settings | None = None,
+) -> MediaProvider:
+    """Build a live provider for the given app user and connection."""
+    link = (
+        db.query(UserMediaLink)
+        .filter(
+            UserMediaLink.connection_id == connection.id,
+            UserMediaLink.app_user_id == app_user_id,
+        )
+        .one_or_none()
+    )
+    if link is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "unauthorized", "message": "No token for user"},
+        )
+    return _build_user_provider(connection, vault, link, settings=settings)
+
+
+def _build_user_provider(
+    connection: Connection,
+    vault: SecretsVault,
+    link: UserMediaLink,
+    *,
+    settings: Settings | None = None,
+) -> MediaProvider:
+    resolved_settings = settings or get_settings()
+    if connection.provider_type == "plex":
+        credentials = vault.get_plex_user_credentials(connection.id, link.app_user_id)
+        if credentials is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "unauthorized",
+                    "message": "No Plex credentials for user — sign in with Plex again",
+                },
+            )
+        return build_plex_provider_for_user(
+            connection,
+            credentials,
+            settings=resolved_settings,
+            provider_user_id=link.provider_user_id,
+        )
+
+    token = vault.get_media_user_token(connection.id, link.app_user_id)
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "unauthorized", "message": "No token for user"},
+        )
+    return build_provider_for_connection(
+        connection,
+        token,
+        settings=resolved_settings,
+        provider_user_id=link.provider_user_id,
+    )
 
 
 def _provider_error_to_http(err: ProviderError) -> HTTPException:
@@ -150,7 +232,6 @@ async def create_connection(
         display_name=display_name,
         base_url=base_url,
         verify_ssl=verify_ssl,
-        plex_client_identifier=plex_client_identifier,
         enabled=True,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -160,6 +241,7 @@ async def create_connection(
         token,
         settings=settings,
         provider_user_id=provider_user_id,
+        plex_client_identifier=plex_client_identifier,
     )
     if provider_user_id:
         provider.provider_user_id = provider_user_id
@@ -178,7 +260,6 @@ async def create_connection(
         display_name=display_name,
         base_url=base_url,
         verify_ssl=verify_ssl,
-        plex_client_identifier=plex_client_identifier,
         enabled=True,
         created_at=now,
         updated_at=now,
@@ -196,7 +277,16 @@ async def create_connection(
         db.add(connection)
         db.add(link)
         db.flush()
-        vault.store_media_user_token(connection.id, app_user_id, token, commit=False)
+        if provider_type == "plex" and plex_client_identifier:
+            vault.store_plex_user_credentials(
+                connection.id,
+                app_user_id,
+                token,
+                plex_client_identifier,
+                commit=False,
+            )
+        else:
+            vault.store_media_user_token(connection.id, app_user_id, token, commit=False)
         db.commit()
         db.refresh(connection)
     except Exception:
@@ -215,6 +305,7 @@ def link_media_user(
     provider_user_id: str,
     provider_username: str | None,
     token: str,
+    plex_client_identifier: str | None = None,
 ) -> UserMediaLink:
     """Upsert user_media_link and store the provider token in the vault."""
     link = (
@@ -243,7 +334,16 @@ def link_media_user(
 
     try:
         db.flush()
-        vault.store_media_user_token(connection.id, app_user.id, token, commit=False)
+        if connection.provider_type == "plex" and plex_client_identifier:
+            vault.store_plex_user_credentials(
+                connection.id,
+                app_user.id,
+                token,
+                plex_client_identifier,
+                commit=False,
+            )
+        else:
+            vault.store_media_user_token(connection.id, app_user.id, token, commit=False)
         db.commit()
         db.refresh(link)
     except Exception:
@@ -287,20 +387,7 @@ async def test_connection(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
 
     link = _get_user_media_link(db, connection_id, app_user_id)
-    token = vault.get_media_user_token(connection_id, app_user_id)
-    if token is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unauthorized", "message": "No token for user"},
-        )
-
-    resolved_settings = settings or get_settings()
-    provider = build_provider_for_connection(
-        connection,
-        token,
-        settings=resolved_settings,
-        provider_user_id=link.provider_user_id,
-    )
+    provider = _build_user_provider(connection, vault, link, settings=settings)
 
     try:
         await provider.ping()
@@ -323,20 +410,7 @@ async def list_connection_libraries(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
 
     link = _get_user_media_link(db, connection_id, app_user_id)
-    token = vault.get_media_user_token(connection_id, app_user_id)
-    if token is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unauthorized", "message": "No token for user"},
-        )
-
-    resolved_settings = settings or get_settings()
-    provider = build_provider_for_connection(
-        connection,
-        token,
-        settings=resolved_settings,
-        provider_user_id=link.provider_user_id,
-    )
+    provider = _build_user_provider(connection, vault, link, settings=settings)
     try:
         return await provider.list_libraries()
     except ProviderError as err:
