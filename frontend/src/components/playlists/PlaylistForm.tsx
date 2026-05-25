@@ -26,13 +26,13 @@ const COMPLETION_POLICY_LABELS: Record<CompletionPolicy, string> = {
 }
 
 const DOW_OPTIONS = [
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-  { value: 0, label: "Sunday" },
+  { value: 0, label: "Monday" },
+  { value: 1, label: "Tuesday" },
+  { value: 2, label: "Wednesday" },
+  { value: 3, label: "Thursday" },
+  { value: 4, label: "Friday" },
+  { value: 5, label: "Saturday" },
+  { value: 6, label: "Sunday" },
 ]
 
 interface PlaylistFormProps {
@@ -55,7 +55,7 @@ export function PlaylistForm({ mode, playlist }: PlaylistFormProps) {
   const [cadence, setCadence] = useState<RefreshCadence>(
     playlist?.refresh_cadence ?? "daily",
   )
-  const [dow, setDow] = useState<number>(playlist?.refresh_day_of_week ?? 1)
+  const [dow, setDow] = useState<number>(playlist?.refresh_day_of_week ?? 0)
 
   const [rows, setRows] = useState<SeriesRow[]>(
     playlist?.rows.map((r) => ({

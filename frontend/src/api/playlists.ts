@@ -4,13 +4,13 @@ import { fetchJson } from "@/api/client"
 import type { PlaylistListItem, RebuildStatus, RefreshCadence } from "@/api/types"
 
 const WEEKDAY_NAMES = [
-  "Sunday",
   "Monday",
   "Tuesday",
   "Wednesday",
   "Thursday",
   "Friday",
   "Saturday",
+  "Sunday",
 ] as const
 
 // ── Extra domain types ─────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ export async function createPlaylist(payload: PlaylistCreatePayload): Promise<Pl
 
 export async function updatePlaylist(id: string, payload: PlaylistUpdatePayload): Promise<PlaylistDetailResponse> {
   return fetchJson<PlaylistDetailResponse>(`/playlists/${id}`, {
-    method: "PATCH",
+    method: "PUT",
     body: JSON.stringify(payload),
   })
 }
