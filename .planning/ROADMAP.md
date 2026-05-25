@@ -14,7 +14,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 1 | Foundations & packaging | Dockerized API, health, migrations, secrets scaffold | DEP-01, INT-01 (structural) | Complete 2026-05-25 |
 | 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 | Complete |
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
-| 4 | 3/6 | In Progress|  |
+| 4 | 4/6 | In Progress|  |
 | 5 | Orchestration jobs | Persistence for playlists outputs, transactional rebuild, SCH daily trigger + SCH multipart enforcement | SCH-01, SCH-02, PLT/INT glue |
 | 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
@@ -100,7 +100,7 @@ Requirements: WEB-01 (foundation)
 
 **Goal:** Deterministic nightly builder respecting ordered vs disordered, completion policies, multipart adjacency proofs via property tests where feasible.  
 **Mode:** mvp  
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 **Success criteria**
 
@@ -121,7 +121,7 @@ Requirements: WEB-01 (foundation)
 
 **Wave 2**
 
-- [ ] 04-04-PLAN.md — Ordered serial picker from resume (PLT-05)
+- [x] 04-04-PLAN.md — Ordered serial picker from resume (PLT-05)
 - [ ] 04-05-PLAN.md — Disordered picker + last_viewed_at mappers (PLT-04)
 
 **Wave 3** *(blocked on Waves 1–2 completion)*

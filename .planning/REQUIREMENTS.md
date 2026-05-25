@@ -17,7 +17,7 @@
 - [x] **PLT-02**: Each playlist declares **episode count `N`** to emit per rebuild cycle  
 - [x] **PLT-03**: User adds/removes **TV series** to a playlist from enumerated library content  
 - [x] **PLT-04**: Per **playlist × series** toggle: **`ordered`** (respect sequence from resume/next point) vs **`disordered`** (sample episodes ignoring sequence)  
-- [ ] **PLT-05**: For **ordered** rows, emitted episodes proceed **serially forward** beginning at the inferred **resume / up-next** position (handles partially watched installments)  
+- [x] **PLT-05**: For **ordered** rows, emitted episodes proceed **serially forward** beginning at the inferred **resume / up-next** position (handles partially watched installments)  
 - [x] **PLT-06**: When a configurable **“completion event”** occurs (default: no remaining unseen episodes at series/season granularity — finalized in PLAN), user policy per playlist+series: **`remove`** (drop from future refreshes until re-added), **`restart`** (season/series rewind per rule), or **`disordered`** (keep series eligible with random feathers)  
 
 ### Scheduling & multipart
@@ -66,7 +66,7 @@ Deferred (not in roadmap v1):
 | PLT-02 | Phase 4 | Complete |
 | PLT-03 | Phase 4 | Complete |
 | PLT-04 | Phase 4 | Complete |
-| PLT-05 | Phase 4 | Pending |
+| PLT-05 | Phase 4 | Complete |
 | PLT-06 | Phase 4 | Complete |
 | SCH-01 | Phase 5 | Pending |
 | SCH-02 | Phase 5 | Complete |
