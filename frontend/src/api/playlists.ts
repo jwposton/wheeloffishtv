@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { fetchJson } from "@/api/client"
-import type { PlaylistListItem, RefreshCadence } from "@/api/types"
+import type { PlaylistListItem, RebuildStatus, RefreshCadence } from "@/api/types"
 
 const WEEKDAY_NAMES = [
   "Sunday",
@@ -13,9 +13,110 @@ const WEEKDAY_NAMES = [
   "Saturday",
 ] as const
 
+// ── Extra domain types ─────────────────────────────────────────────────────
+
+export type RowMode = "ordered" | "disordered"
+export type CompletionPolicy = "remove" | "restart" | "disordered"
+export type SlotAllocation = "wild" | "balanced" | "round_robin"
+
+export const SLOT_ALLOCATION_LABELS: Record<SlotAllocation, string> = {
+  wild: "Wild",
+  balanced: "Balanced",
+  round_robin: "Round-robin",
+}
+
+export interface SnapshotEpisode {
+  episode_id: string
+  title: string
+  series_id: string
+  series_title: string | null
+  slot_index: number
+  row_mode: string
+}
+
+export interface PlaylistSeriesRowResponse {
+  series_id: string
+  mode: RowMode
+  completion_policy: CompletionPolicy
+  completion_event: string
+  series_title: string | null
+}
+
+export interface RebuildRunSummary {
+  id: string
+  status: string
+  started_at: string | null
+  finished_at: string | null
+  error_message: string | null
+  slots_filled: number | null
+  slots_requested: number | null
+}
+
+export interface PlaylistDetailResponse {
+  id: string
+  name: string
+  episode_count: number
+  slot_allocation: SlotAllocation
+  default_completion_policy: CompletionPolicy
+  refresh_cadence: RefreshCadence
+  refresh_day_of_week: number | null
+  rows: PlaylistSeriesRowResponse[]
+  current_snapshot: SnapshotEpisode[]
+  last_rebuild: RebuildRunSummary | null
+  recent_runs: RebuildRunSummary[]
+}
+
+export interface PlaylistSeriesRowPayload {
+  series_id: string
+  mode: RowMode
+  completion_policy: CompletionPolicy
+}
+
+export interface PlaylistCreatePayload {
+  name: string
+  episode_count: number
+  slot_allocation: SlotAllocation
+  default_completion_policy: CompletionPolicy
+  refresh_cadence: RefreshCadence
+  refresh_day_of_week: number | null
+  rows: PlaylistSeriesRowPayload[]
+}
+
+export type PlaylistUpdatePayload = Partial<PlaylistCreatePayload>
+
+// ── Fetch functions ────────────────────────────────────────────────────────
+
 export async function fetchPlaylists(): Promise<PlaylistListItem[]> {
   return fetchJson<PlaylistListItem[]>("/playlists")
 }
+
+export async function fetchPlaylist(id: string): Promise<PlaylistDetailResponse> {
+  return fetchJson<PlaylistDetailResponse>(`/playlists/${id}`)
+}
+
+export async function createPlaylist(payload: PlaylistCreatePayload): Promise<PlaylistDetailResponse> {
+  return fetchJson<PlaylistDetailResponse>("/playlists", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updatePlaylist(id: string, payload: PlaylistUpdatePayload): Promise<PlaylistDetailResponse> {
+  return fetchJson<PlaylistDetailResponse>(`/playlists/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deletePlaylist(id: string): Promise<void> {
+  await fetchJson<void>(`/playlists/${id}`, { method: "DELETE" })
+}
+
+export async function triggerRebuild(id: string): Promise<{ rebuild_run_id: string }> {
+  return fetchJson<{ rebuild_run_id: string }>(`/playlists/${id}/rebuild`, { method: "POST" })
+}
+
+// ── Query hooks ────────────────────────────────────────────────────────────
 
 export function usePlaylists() {
   return useQuery({
@@ -24,6 +125,66 @@ export function usePlaylists() {
     staleTime: 30_000,
   })
 }
+
+const POLLING_STATUSES: RebuildStatus[] = ["running", "queued"]
+
+export function usePlaylist(id: string) {
+  return useQuery({
+    queryKey: ["playlists", id],
+    queryFn: () => fetchPlaylist(id),
+    staleTime: 5_000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.last_rebuild?.status as RebuildStatus | undefined
+      return status && POLLING_STATUSES.includes(status) ? 5_000 : false
+    },
+  })
+}
+
+// ── Mutation hooks ─────────────────────────────────────────────────────────
+
+export function useCreatePlaylist() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createPlaylist,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] })
+    },
+  })
+}
+
+export function useUpdatePlaylist() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: PlaylistUpdatePayload }) =>
+      updatePlaylist(id, payload),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] })
+      void queryClient.invalidateQueries({ queryKey: ["playlists", id] })
+    },
+  })
+}
+
+export function useDeletePlaylist() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deletePlaylist,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] })
+    },
+  })
+}
+
+export function useRebuildPlaylist() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: triggerRebuild,
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: ["playlists", id] })
+    },
+  })
+}
+
+// ── Formatters ─────────────────────────────────────────────────────────────
 
 export function formatCadence(item: {
   refresh_cadence: RefreshCadence
