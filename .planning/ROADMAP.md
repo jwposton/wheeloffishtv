@@ -14,7 +14,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 1 | Foundations & packaging | Dockerized API, health, migrations, secrets scaffold | DEP-01, INT-01 (structural) | Complete 2026-05-25 |
 | 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 | Complete |
 | 3 | Minimal operator SPA shell | 8/8 | Complete   | 2026-05-25 |
-| 4 | Playlist mathematics | Core generators: ordered/disordered rows, multipart adjacency rules, completion policies | PLT-02…PLT-06 |
+| 4 | 1/6 | In Progress|  |
 | 5 | Orchestration jobs | Persistence for playlists outputs, transactional rebuild, SCH daily trigger + SCH multipart enforcement | SCH-01, SCH-02, PLT/INT glue |
 | 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
 | 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
@@ -100,12 +100,33 @@ Requirements: WEB-01 (foundation)
 
 **Goal:** Deterministic nightly builder respecting ordered vs disordered, completion policies, multipart adjacency proofs via property tests where feasible.  
 **Mode:** mvp  
+**Plans:** 1/6 plans executed
 
 **Success criteria**
 
 1. Golden-vector tests illustrate ordered traversal + disordered stochastic seed stability per day-key  
 2. Multipart arcs never split incorrectly in ordered contexts  
 3. Completion policies enumerated + covered by tests  
+
+**Plans:**
+
+**Wave 0**
+
+- [x] 04-01-PLAN.md — Domain models, test fixtures, model validation
+
+**Wave 1**
+
+- [ ] 04-02-PLAN.md — Multipart grouping and adjacency helpers (SCH-02)
+- [ ] 04-03-PLAN.md — Completion policies (PLT-06)
+
+**Wave 2**
+
+- [ ] 04-04-PLAN.md — Ordered serial picker from resume (PLT-05)
+- [ ] 04-05-PLAN.md — Disordered picker + last_viewed_at mappers (PLT-04)
+
+**Wave 3** *(blocked on Waves 1–2 completion)*
+
+- [ ] 04-06-PLAN.md — PlaylistBuilder integration + end-to-end golden vectors (PLT-01–06, SCH-02)
 
 Requirements: PLT-01 … PLT-06
 

@@ -13,10 +13,10 @@
 
 ### Playlists & tuning
 
-- [ ] **PLT-01**: User can create **multiple named playlists**, each independently configured  
-- [ ] **PLT-02**: Each playlist declares **episode count `N`** to emit per rebuild cycle  
-- [ ] **PLT-03**: User adds/removes **TV series** to a playlist from enumerated library content  
-- [ ] **PLT-04**: Per **playlist × series** toggle: **`ordered`** (respect sequence from resume/next point) vs **`disordered`** (sample episodes ignoring sequence)  
+- [x] **PLT-01**: User can create **multiple named playlists**, each independently configured  
+- [x] **PLT-02**: Each playlist declares **episode count `N`** to emit per rebuild cycle  
+- [x] **PLT-03**: User adds/removes **TV series** to a playlist from enumerated library content  
+- [x] **PLT-04**: Per **playlist × series** toggle: **`ordered`** (respect sequence from resume/next point) vs **`disordered`** (sample episodes ignoring sequence)  
 - [ ] **PLT-05**: For **ordered** rows, emitted episodes proceed **serially forward** beginning at the inferred **resume / up-next** position (handles partially watched installments)  
 - [ ] **PLT-06**: When a configurable **“completion event”** occurs (default: no remaining unseen episodes at series/season granularity — finalized in PLAN), user policy per playlist+series: **`remove`** (drop from future refreshes until re-added), **`restart`** (season/series rewind per rule), or **`disordered`** (keep series eligible with random feathers)  
 
@@ -62,10 +62,10 @@ Deferred (not in roadmap v1):
 | INT-01 | Phase 1 | Pending |
 | INT-02 | Phase 2 | Pending |
 | INT-03 | Phase 2 | Pending |
-| PLT-01 | Phase 4 | Pending |
-| PLT-02 | Phase 4 | Pending |
-| PLT-03 | Phase 4 | Pending |
-| PLT-04 | Phase 4 | Pending |
+| PLT-01 | Phase 4 | Complete |
+| PLT-02 | Phase 4 | Complete |
+| PLT-03 | Phase 4 | Complete |
+| PLT-04 | Phase 4 | Complete |
 | PLT-05 | Phase 4 | Pending |
 | PLT-06 | Phase 4 | Pending |
 | SCH-01 | Phase 5 | Pending |
