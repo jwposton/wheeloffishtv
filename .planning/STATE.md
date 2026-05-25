@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T22:09:33.875Z"
+last_updated: "2026-05-25T22:21:20.122Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
-  completed_plans: 28
+  completed_plans: 29
   percent: 57
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 5 plan 02 complete)
+**Updated:** 2026-05-25 (Phase 5 plan 03 complete)
 
 ## Project reference
 
@@ -24,16 +24,16 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 2/6 executed).
+Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 3/6 executed).
 
-**Stopped at:** 05-02 complete. Next: 05-03.
+**Stopped at:** 05-03 complete. Next: 05-04.
 
-**Next action:** Execute 05-03 (rebuild orchestrator — live fetch + builder wiring)
+**Next action:** Execute 05-04 (playlist REST API — CRUD endpoints + rebuild trigger)
 
 ## Immediate next actions
 
-1. Execute 05-03 — rebuild orchestrator (live fetch + builder wiring)
-2. Wave 3–6 follow dependency order in ROADMAP
+1. Execute 05-04 — playlist REST API (CRUD + rebuild trigger + run history)
+2. Wave 4–6 follow dependency order in ROADMAP
 
 ## Decisions (Phase 4)
 
@@ -77,8 +77,17 @@ Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 2/6 exe
 - `orchestrator.py` created as stub no-op for 05-02; `run_nightly_rebuilds` fully implemented in 05-03
 - `recover_interrupted_rebuilds` uses direct ORM query at startup (sync session from session_factory)
 
+## Decisions (Phase 5 — plan 03)
+
+- `run_nightly_batch(db, settings)` exposed as public for test isolation (avoids session factory mock)
+- empty_snapshot rows excluded from valid_inputs — D-14: not treated as series_complete/REMOVE
+- `row_outcomes_json` keys: `outcomes` (builder + fetch_warning annotations), `fetch_warnings` (list)
+- `recover_interrupted_rebuilds` is sync; `rebuild_playlist` and `run_manual_rebuild` are async
+- `SecretsVault` created inside `rebuild_playlist` from `get_settings()` — self-contained orchestrator
+
 ## Working notes
 
+- Phase 5 plan 03: `.planning/phases/05-orchestration-scheduling/05-03-SUMMARY.md`
 - Phase 5 plan 02: `.planning/phases/05-orchestration-scheduling/05-02-SUMMARY.md`
 - Phase 5 plan 01: `.planning/phases/05-orchestration-scheduling/05-01-SUMMARY.md`
 - Phase 4 plan 06: `.planning/phases/04-playlist-mathematics/04-06-SUMMARY.md`
