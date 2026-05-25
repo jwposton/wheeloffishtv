@@ -2,19 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-last_updated: "2026-05-25T16:35:29.683Z"
+status: executing
+last_updated: "2026-05-25T17:00:00Z"
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 19
-  completed_plans: 12
-  percent: 29
+  completed_plans: 13
+  percent: 32
+current_plan: 03-02
+current_phase: 03-minimal-operator-spa-shell
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 3 context gathered)
+**Updated:** 2026-05-25 (Phase 3 plan 03-01 complete)
 
 ## Project reference
 
@@ -24,33 +26,21 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **3 — Minimal operator SPA shell** (context complete, ready to plan).
+Phase **3 — Minimal operator SPA shell** (executing — 1/7 plans complete).
 
-## Immediate next actions
+**Stopped at:** Completed 03-01-PLAN.md  
+**Resume:** 03-02-PLAN.md (OAuth refactor)
 
-1. `/gsd-plan-phase 3` — research + plan Phase 3 from `03-CONTEXT.md`  
-2. `/gsd-execute-phase 3` — after plans are approved  
-3. Review/edit `03-CONTEXT.md` if anything needs adjustment before planning  
+## Decisions (Phase 3)
 
-## Open questions (deferred to later phases)
-
-- Export format to Plex/Jellyfin playlists — direct API vs file bridge? → Phase 2+  
-- Exact definition of “season complete” trigger per backend metadata → Phase 4  
-- Multipart adjacency heuristics when provider metadata insufficient → Phase 4  
-
-## Resolved this session (Phase 3 discuss)
-
-- Media-server OAuth only; one provider per install (`WOF_PROVIDER`)  
-- Env-only connection config; library scope in UI  
-- Admin via `WOF_ADMIN_PROVIDER_USER_ID` + first-login discovery screen  
-- Series browser: grid/list toggle, infinite scroll, detail with up-next preview  
-- shadcn/ui stack; light+dark day one; utilitarian tone; Storybook deferred Phase 7  
+- WOF_PROVIDER drives single-provider installs; legacy WOF_ENABLED_PROVIDERS retained for multi-provider tests
+- Session cookie https_only only when ENVIRONMENT=production
 
 ## Working notes
 
-- Phase 3 context: `.planning/phases/03-minimal-operator-spa-shell/03-CONTEXT.md`  
-- Phase 2 complete: 7/7 plans  
-- Phase 1 complete: 5/5 plans, 9/9 UAT passed  
+- Phase 3 context: `.planning/phases/03-minimal-operator-spa-shell/03-CONTEXT.md`
+- Phase 2 complete: 7/7 plans
+- Phase 1 complete: 5/5 plans
 
 ---
 

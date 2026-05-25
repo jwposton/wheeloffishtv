@@ -13,7 +13,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 |-------|------|------|---------------|
 | 1 | 5/5 | Complete    | 2026-05-25 |
 | 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 |
-| 3 | Minimal operator shell SPA | Thin vertical slice wired to Phase 2 APIs (connections + browse-only) launching React stack | WEB-01 (partial bootstrap) |
+| 3 | 1/7 | In Progress|  |
 | 4 | Playlist mathematics | Core generators: ordered/disordered rows, multipart adjacency rules, completion policies | PLT-02…PLT-06 |
 | 5 | Orchestration jobs | Persistence for playlists outputs, transactional rebuild, SCH daily trigger + SCH multipart enforcement | SCH-01, SCH-02, PLT/INT glue |
 | 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
@@ -24,6 +24,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 ---
 
 ### Phase 1: Foundations & packaging
+
 **Goal:** As a self-host operator, I want to run docker compose up for Wheel of Fish TV, so that the API reports healthy with database and secrets wiring ready.  
 **Mode:** mvp  
 
@@ -39,6 +40,7 @@ Requirements: DEP-01, INT-01 (structural surfaces)
 ---
 
 ### Phase 2: Media ingestion & catalogs
+
 **Goal:** Live connectivity to one backend (ship Plex first unless parity demand flips decision) plus normalized domain models bridging eventual Jellyfin.  
 **Mode:** mvp  
 
@@ -53,10 +55,11 @@ Requirements: INT-01, INT-02, INT-03
 ---
 
 ### Phase 3: Minimal operator SPA shell
+
 **Goal:** As a self-host operator, I want to sign in via Plex/Jellyfin OAuth and browse scoped TV libraries with resume preview, so that I can verify catalog data before playlist authoring.  
 **Mode:** mvp  
 **UI hint:** yes  
-**Plans:** 7 plans
+**Plans:** 1/7 plans executed
 
 **Success criteria**
 
@@ -67,12 +70,26 @@ Requirements: INT-01, INT-02, INT-03
 5. Storybook deferred to Phase 7 (D-20)  
 
 **Plans:**
-- [ ] 03-01-PLAN.md — Session auth, env→DB boot sync, /auth/me, Wave 0 tests
+**Wave 1**
+
+- [x] 03-01-PLAN.md — Session auth, env→DB boot sync, /auth/me, Wave 0 tests
 - [ ] 03-02-PLAN.md — OAuth refactor to env connection; session on callback; catalog auth
 - [ ] 03-03-PLAN.md — Vite/shadcn scaffold, SPA static serve, Docker multi-stage
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 03-04-PLAN.md — Login wall, admin discovery, read-only settings
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 03-05-PLAN.md — Library scope admin UI, first-run checklist, holding page
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 03-06-PLAN.md — Series browse: infinite scroll, search, sync banner, grid/list
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 03-07-PLAN.md — Series detail + resume preview, docs, UAT checklist
 
 Requirements: WEB-01 (foundation)
@@ -80,6 +97,7 @@ Requirements: WEB-01 (foundation)
 ---
 
 ### Phase 4: Playlist mathematics
+
 **Goal:** Deterministic nightly builder respecting ordered vs disordered, completion policies, multipart adjacency proofs via property tests where feasible.  
 **Mode:** mvp  
 
@@ -94,6 +112,7 @@ Requirements: PLT-01 … PLT-06
 ---
 
 ### Phase 5: Orchestration & scheduling
+
 **Goal:** Persist results, enqueue daily jobs, resilient retries, observability.  
 **Mode:** mvp  
 
@@ -108,6 +127,7 @@ Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 ---
 
 ### Phase 6: Admin WheelOfFish
+
 **Goal:** Specialized global playlist surfaced only to admins, always disordered semantics.  
 **Mode:** mvp  
 
@@ -122,6 +142,7 @@ Requirements: ADM-01, ADM-02
 ---
 
 ### Phase 7: UX polish & release readiness
+
 **Goal:** Elevate slick factor, tighten empty/error states, performance budgets, screenshots for README.  
 **Mode:** mvp  
 **UI hint:** yes  
