@@ -1,6 +1,8 @@
+import zoneinfo
 from functools import lru_cache
 from typing import Literal
 
+import structlog
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,6 +35,20 @@ class Settings(BaseSettings):
     WOF_ARTWORK_CACHE_DIR: str = "/data/artwork"
     WOF_ARTWORK_CACHE_TTL_DAYS: int = 30
     SPA_DIST_DIR: str = "/app/static/spa"
+    WOF_INSTALL_TIMEZONE: str = "UTC"
+    WOF_REBUILD_CRON: str = "04:00"
+
+    def install_tz(self) -> zoneinfo.ZoneInfo:
+        """Return ZoneInfo for WOF_INSTALL_TIMEZONE; falls back to UTC on unknown IANA name."""
+        try:
+            return zoneinfo.ZoneInfo(self.WOF_INSTALL_TIMEZONE)
+        except zoneinfo.ZoneInfoNotFoundError:
+            structlog.get_logger("wheeloffish.config").warning(
+                "unknown_install_timezone",
+                configured=self.WOF_INSTALL_TIMEZONE,
+                fallback="UTC",
+            )
+            return zoneinfo.ZoneInfo("UTC")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
