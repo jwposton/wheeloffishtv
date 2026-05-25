@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 04-04 — Ordered serial picker (PLT-05)
-status: executing
-last_updated: "2026-05-25T20:40:38.515Z"
+current_plan: 04-05 — Disordered picker (PLT-04)
+status: ready
+last_updated: "2026-05-25T20:40:28.000Z"
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 26
   completed_plans: 24
-  percent: 43
+  percent: 46
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 4 plan 03 complete)
+**Updated:** 2026-05-25 (Phase 4 plan 04 complete)
 
 ## Project reference
 
@@ -25,13 +25,13 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **4 — Playlist mathematics** — **in progress** (3/6 plans complete).
+Phase **4 — Playlist mathematics** — **in progress** (4/6 plans complete).
 
-**Current plan:** 04-04 — Ordered serial picker (PLT-05)
+**Current plan:** 04-05 — Disordered picker (PLT-04)
 
 ## Immediate next actions
 
-1. Execute 04-04-PLAN.md — ordered serial picker from resume cursor
+1. Execute 04-05-PLAN.md — disordered picker + last_viewed_at mappers
 2. Continue Phase 4 Wave 2 via `/gsd-execute-phase 4`
 
 ## Decisions (Phase 4)
@@ -42,7 +42,10 @@ Phase **4 — Playlist mathematics** — **in progress** (3/6 plans complete).
 - Sort key `(part_index is None, part_index or 0, id)` for deterministic multipart ordering
 - Playlist.default_completion_policy defaults to REMOVE; row policy wins at evaluation (D-14)
 - Only SERIES_COMPLETE triggers in v1; season finish returns None (D-11)
-- RESTART sets effective_mode=ORDERED; cursor reset deferred to 04-04 (D-17)
+- RESTART sets effective_mode=ORDERED; cursor reset via start_index_for_row(restart=True) (D-17)
+- start_index_for_row skips ResumeService when restart=True, always returning 0
+- Series complete returns len(order_episodes) as exhausted cursor index (D-21)
+- next_block advances via max block member position in ordered list, not index + len(block)
 
 ## Decisions (Phase 3)
 
@@ -53,6 +56,7 @@ Phase **4 — Playlist mathematics** — **in progress** (3/6 plans complete).
 
 ## Working notes
 
+- Phase 4 plan 04: `.planning/phases/04-playlist-mathematics/04-04-SUMMARY.md`
 - Phase 4 plan 03: `.planning/phases/04-playlist-mathematics/04-03-SUMMARY.md`
 - Phase 4 plan 02: `.planning/phases/04-playlist-mathematics/04-02-SUMMARY.md`
 - Phase 4 plan 01: `.planning/phases/04-playlist-mathematics/04-01-SUMMARY.md`

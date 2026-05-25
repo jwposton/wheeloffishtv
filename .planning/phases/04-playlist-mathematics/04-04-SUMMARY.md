@@ -94,7 +94,7 @@ Each task was committed atomically:
 1. **Task 2 RED: Golden-vector tests for ordered picker** - `521ace7` (test)
 2. **Task 1 GREEN: Implement OrderedCursor + start_index_for_row + next_block** - `7aedad9` (feat)
 
-**Plan metadata:** pending (docs: complete plan)
+**Plan metadata:** `23e964e` (docs: complete plan)
 
 ## Files Created/Modified
 
