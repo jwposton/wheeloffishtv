@@ -75,7 +75,7 @@ Each task was committed atomically:
 3. **Task 2 RED / Task 3: Golden-vector completion policy tests** - `407b0fd` (test)
 4. **Task 2 GREEN: Implement completion.py functions** - `25adab5` (feat)
 
-**Plan metadata:** pending (docs commit)
+**Plan metadata:** `1a9e76b` (docs: complete plan)
 
 ## Wave 3 Function Signatures
 
