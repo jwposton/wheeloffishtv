@@ -106,3 +106,22 @@ export interface Episode {
 export interface EpisodesListResponse {
   episodes: Episode[]
 }
+
+export type RebuildStatus =
+  | "succeeded"
+  | "partial"
+  | "failed"
+  | "running"
+  | "queued"
+  | null
+
+export type RefreshCadence = "daily" | "weekly"
+
+export interface PlaylistListItem {
+  id: string
+  name: string
+  refresh_cadence: RefreshCadence
+  refresh_day_of_week: number | null
+  last_rebuild_status: RebuildStatus
+  last_rebuild_at: string | null
+}
