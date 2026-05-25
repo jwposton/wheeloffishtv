@@ -32,6 +32,7 @@ class Playlist(BaseModel):
     id: str
     name: str
     episode_count: int = Field(ge=1)
+    default_completion_policy: CompletionPolicy = CompletionPolicy.REMOVE  # D-12 / D-13
     rows: list[PlaylistSeriesRow]
 
 
