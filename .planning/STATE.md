@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-05-25T22:35:00.000Z"
+last_updated: "2026-05-25T22:32:58.360Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 32
   completed_plans: 31
-  percent: 59
+  percent: 57
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 5 plan 04 complete)
+**Updated:** 2026-05-25 (Phase 5 plan 05 complete)
 
 ## Project reference
 
@@ -24,16 +24,15 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 4/6 executed).
+Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 5/6 executed).
 
-**Stopped at:** 05-04 complete. Next: 05-05.
+**Stopped at:** 05-05 complete. Next: 05-06.
 
-**Next action:** Execute 05-05 (SPA playlist CRUD screens)
+**Next action:** Execute 05-06 — final integration wave
 
 ## Immediate next actions
 
-1. Execute 05-05 — SPA playlist CRUD screens
-2. Execute 05-06 — final integration wave
+1. Execute 05-06 — final integration wave
 
 ## Decisions (Phase 4)
 
@@ -92,8 +91,14 @@ Phase **5 — Orchestration & scheduling** — **executing** (6/6 plans, 4/6 exe
 - Integration tests use `_set_user(user)` helper switching override inline per-call (avoids shared TestClient fixture collision)
 - 409 `rebuild_in_progress` returned when a RebuildRun with status=running exists for the playlist
 
+## Decisions (Phase 5 — plan 05)
+
+- Inline `formatRelativeTime` helper in `PlaylistCard.tsx` — no date-fns dependency added (not in project; plan allowed ISO fallback)
+- Route `/playlists` placed inside `LibraryScopeGuard` + `ProtectedRoute` at same level as `/browse` (D-20)
+
 ## Working notes
 
+- Phase 5 plan 05: `.planning/phases/05-orchestration-scheduling/05-05-SUMMARY.md`
 - Phase 5 plan 04: `.planning/phases/05-orchestration-scheduling/05-04-SUMMARY.md`
 - Phase 5 plan 03: `.planning/phases/05-orchestration-scheduling/05-03-SUMMARY.md`
 - Phase 5 plan 02: `.planning/phases/05-orchestration-scheduling/05-02-SUMMARY.md`

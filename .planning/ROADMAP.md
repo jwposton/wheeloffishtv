@@ -163,7 +163,7 @@ Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 05-05-PLAN.md — SPA playlist list + status badges (WEB-01)
+- [x] 05-05-PLAN.md — SPA playlist list + status badges (WEB-01)
 
 **Wave 6** *(blocked on Wave 5)*
 
