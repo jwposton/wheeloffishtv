@@ -1,0 +1,149 @@
+from typing import Any
+
+import httpx
+
+from wheeloffish.domain.dto import Episode, Library, PagedSeries
+from wheeloffish.integrations.errors import (
+    ProviderError,
+    ProviderSSLError,
+    ProviderUnauthorized,
+    ProviderUnreachable,
+)
+from wheeloffish.integrations.plex.mappers import (
+    map_episode,
+    map_library,
+    map_series,
+    parse_series_guid,
+    resolve_guid_to_rating_key,
+)
+
+PROVIDER = "plex"
+
+
+class PlexProvider:
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        client_identifier: str,
+        connection_id: str,
+        verify_ssl: bool,
+        product_name: str = "Wheel of Fish TV",
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.token = token
+        self.client_identifier = client_identifier
+        self.connection_id = connection_id
+        self.verify_ssl = verify_ssl
+        self.product_name = product_name
+        self.provider_user_id: str = "unknown"
+        self.provider_username: str | None = None
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "Accept": "application/json",
+            "X-Plex-Token": self.token,
+            "X-Plex-Client-Identifier": self.client_identifier,
+            "X-Plex-Product": self.product_name,
+        }
+
+    def _client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(verify=self.verify_ssl)
+
+    async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
+        url = f"{self.base_url}{path}"
+        try:
+            async with self._client() as client:
+                response = await client.request(method, url, headers=self._headers(), **kwargs)
+        except httpx.ConnectError as err:
+            raise ProviderUnreachable() from err
+        except httpx.TimeoutException as err:
+            raise ProviderUnreachable() from err
+        except httpx.RequestError as err:
+            if "ssl" in str(err).lower():
+                raise ProviderSSLError() from err
+            raise ProviderUnreachable() from err
+
+        if response.status_code == 401:
+            raise ProviderUnauthorized()
+        if response.status_code >= 400:
+            raise ProviderError(f"Plex API error: {response.status_code}")
+        return response
+
+    async def ping(self) -> None:
+        await self._request("GET", "/library/sections")
+
+    async def list_libraries(self) -> list[Library]:
+        response = await self._request("GET", "/library/sections")
+        data = response.json()
+        directories = data.get("MediaContainer", {}).get("Directory") or []
+        libraries: list[Library] = []
+        for section in directories:
+            if section.get("type") == "show":
+                libraries.append(map_library(self.connection_id, section))
+        return libraries
+
+    async def list_series(
+        self,
+        library_native_id: str,
+        *,
+        page: int,
+        limit: int,
+        q: str | None,
+    ) -> PagedSeries:
+        start = (page - 1) * limit
+        params: dict[str, str | int] = {
+            "type": 2,
+            "X-Plex-Container-Start": start,
+            "X-Plex-Container-Size": limit,
+        }
+        if q:
+            params["title"] = q
+
+        response = await self._request(
+            "GET",
+            f"/library/sections/{library_native_id}/all",
+            params=params,
+        )
+        container = response.json().get("MediaContainer", {})
+        metadata = container.get("Metadata") or []
+        total = int(container.get("totalSize") or container.get("size") or len(metadata))
+        items = [
+            map_series(self.connection_id, library_native_id, item) for item in metadata
+        ]
+        return PagedSeries(items=items, page=page, limit=limit, total=total)
+
+    async def _rating_key_for_series(self, series_composite_id: str) -> str:
+        _, provider, guid = parse_series_guid(series_composite_id)
+        if provider != PROVIDER:
+            raise ProviderError("wrong_type")
+        async with self._client() as client:
+            return await resolve_guid_to_rating_key(
+                client,
+                self.base_url,
+                self.token,
+                self.client_identifier,
+                self.product_name,
+                guid,
+            )
+
+    async def list_episodes(self, series_composite_id: str) -> list[Episode]:
+        rating_key = await self._rating_key_for_series(series_composite_id)
+        response = await self._request("GET", f"/library/metadata/{rating_key}/allLeaves")
+        metadata = response.json().get("MediaContainer", {}).get("Metadata") or []
+        return [map_episode(self.connection_id, item) for item in metadata]
+
+    async def get_on_deck_episode(self, series_composite_id: str) -> Episode | None:
+        rating_key = await self._rating_key_for_series(series_composite_id)
+        response = await self._request(
+            "GET",
+            f"/library/metadata/{rating_key}",
+            params={"includeOnDeck": 1},
+        )
+        metadata_list = response.json().get("MediaContainer", {}).get("Metadata") or []
+        if not metadata_list:
+            return None
+        on_deck = metadata_list[0].get("OnDeck", {}).get("Metadata")
+        if not on_deck:
+            return None
+        return map_episode(self.connection_id, on_deck)

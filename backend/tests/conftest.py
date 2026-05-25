@@ -118,7 +118,10 @@ def connection_factory(db_session, settings, vault, app_user_id):
         provider = MagicMock()
         provider.ping = AsyncMock(return_value=None)
         provider.provider_user_id = "test-provider-user"
-        with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+        with patch(
+            "wheeloffish.core.connections.build_provider_for_connection",
+            return_value=provider,
+        ):
             return await create_connection(
                 db_session,
                 vault,

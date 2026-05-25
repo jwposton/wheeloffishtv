@@ -1,7 +1,10 @@
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+import respx
+from httpx import ASGITransport, AsyncClient, Response
 
 from wheeloffish.api.deps import get_db
 from wheeloffish.core.config import get_settings
@@ -13,7 +16,15 @@ from wheeloffish.integrations.errors import (
     ProviderUnreachable,
     ProviderWrongType,
 )
+from wheeloffish.integrations.plex.auth import clear_pin_state, store_pin_state
+from wheeloffish.integrations.plex.client import PlexProvider
 from wheeloffish.main import app
+
+FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+
+
+def load_fixture(name: str) -> dict:
+    return json.loads((FIXTURES / f"{name}.json").read_text())
 
 PLEX_PAYLOAD = {
     "provider_type": "plex",
@@ -60,7 +71,7 @@ async def test_create_connection_success(
     connections_client, db_session, vault, app_user_id
 ) -> None:
     provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
     assert response.status_code == 201
@@ -77,7 +88,7 @@ async def test_create_connection_success(
 @pytest.mark.asyncio
 async def test_create_unauthorized(connections_client, db_session) -> None:
     provider = _mock_provider(ping_side_effect=ProviderUnauthorized())
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
     assert response.status_code == 422
@@ -88,7 +99,7 @@ async def test_create_unauthorized(connections_client, db_session) -> None:
 @pytest.mark.asyncio
 async def test_create_unreachable(connections_client, db_session) -> None:
     provider = _mock_provider(ping_side_effect=ProviderUnreachable())
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
     assert response.status_code == 422
@@ -99,7 +110,7 @@ async def test_create_unreachable(connections_client, db_session) -> None:
 @pytest.mark.asyncio
 async def test_create_ssl_error(connections_client, db_session) -> None:
     provider = _mock_provider(ping_side_effect=ProviderSSLError())
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
     assert response.status_code == 422
@@ -110,7 +121,7 @@ async def test_create_ssl_error(connections_client, db_session) -> None:
 @pytest.mark.asyncio
 async def test_create_wrong_type(connections_client, db_session) -> None:
     provider = _mock_provider(ping_side_effect=ProviderWrongType())
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
     assert response.status_code == 422
@@ -129,7 +140,10 @@ async def test_provider_disabled(db_engine, db_session, monkeypatch: pytest.Monk
     app.dependency_overrides[get_db] = override_get_db
     provider = _mock_provider()
     try:
-        with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+        with patch(
+            "wheeloffish.core.connections.build_provider_for_connection",
+            return_value=provider,
+        ):
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
@@ -147,7 +161,7 @@ async def test_provider_disabled(db_engine, db_session, monkeypatch: pytest.Monk
 @pytest.mark.asyncio
 async def test_duplicate_provider_type(connections_client, db_session) -> None:
     provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         first = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
         second = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
@@ -160,7 +174,7 @@ async def test_duplicate_provider_type(connections_client, db_session) -> None:
 @pytest.mark.asyncio
 async def test_connection_response_excludes_token(connections_client) -> None:
     provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         create_response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
         list_response = await connections_client.get("/api/v1/connections")
 
@@ -176,10 +190,123 @@ async def test_connection_response_excludes_token(connections_client) -> None:
 @pytest.mark.asyncio
 async def test_list_connections_no_secrets(connections_client, vault, app_user_id) -> None:
     provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
         await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
     response = await connections_client.get("/api/v1/connections")
     assert response.status_code == 200
     assert "token" not in response.text
     assert media_user_token_key("ignored", app_user_id) not in response.text
+
+
+PLEX_OAUTH_START = {
+    "display_name": "Home Plex",
+    "base_url": "https://plex.example.com",
+    "verify_ssl": True,
+}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_plex_oauth_start(connections_client) -> None:
+    respx.post("https://plex.tv/api/v2/pins").mock(
+        return_value=Response(200, json=load_fixture("plex/pin_create"))
+    )
+
+    response = await connections_client.post(
+        "/api/v1/connections/plex/oauth/start",
+        json=PLEX_OAUTH_START,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["pin_id"] == 123456789
+    assert "auth_url" in body
+    assert "app.plex.tv/auth" in body["auth_url"]
+    assert "code=ABCD" in body["auth_url"]
+    assert "token" not in body
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_plex_oauth_callback_stores_vault_token(
+    connections_client, db_session, vault, app_user_id
+) -> None:
+    clear_pin_state(123456789)
+    store_pin_state(
+        123456789,
+        display_name=PLEX_OAUTH_START["display_name"],
+        base_url=PLEX_OAUTH_START["base_url"],
+        verify_ssl=PLEX_OAUTH_START["verify_ssl"],
+        client_identifier="11111111-2222-4333-8444-555555555555",
+        app_user_id=app_user_id,
+    )
+
+    respx.get("https://plex.tv/api/v2/pins/123456789").mock(
+        return_value=Response(200, json=load_fixture("plex/pin_claimed"))
+    )
+    respx.get("https://plex.tv/api/v2/user").mock(
+        return_value=Response(200, json={"id": 999, "username": "testuser"})
+    )
+    respx.get("https://plex.tv/api/v2/resources").mock(
+        return_value=Response(
+            200,
+            json=[
+                {
+                    "name": "Home",
+                    "connections": [{"uri": "https://plex.example.com"}],
+                }
+            ],
+        )
+    )
+    respx.get("https://plex.example.com/library/sections").mock(
+        return_value=Response(200, json=load_fixture("plex/library_sections"))
+    )
+
+    response = await connections_client.get(
+        "/api/v1/connections/plex/oauth/callback?pin_id=123456789"
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["status"] == "connected"
+    assert body["auth_token_present"] is True
+    assert "SANITIZED_PLEX_TOKEN" not in json.dumps(body)
+
+    connection_id = body["connection_id"]
+    assert db_session.query(Connection).count() == 1
+    assert vault.get_media_user_token(connection_id, app_user_id) == "SANITIZED_PLEX_TOKEN"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_plex_list_libraries(connections_client) -> None:
+    provider = _mock_provider()
+    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
+        create_response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
+    connection_id = create_response.json()["id"]
+
+    respx.get("https://plex.example.com/library/sections").mock(
+        return_value=Response(200, json=load_fixture("plex/library_sections"))
+    )
+
+    with patch(
+        "wheeloffish.core.connections.build_provider_for_connection",
+        return_value=PlexProvider(
+            base_url=PLEX_PAYLOAD["base_url"],
+            token=PLEX_PAYLOAD["token"],
+            client_identifier="11111111-2222-4333-8444-555555555555",
+            connection_id=connection_id,
+            verify_ssl=True,
+        ),
+    ):
+        response = await connections_client.get(
+            f"/api/v1/connections/{connection_id}/libraries"
+        )
+
+    assert response.status_code == 200
+    libraries = response.json()
+    assert len(libraries) == 2
+    assert libraries[0]["title"] == "Fictional TV Shows"
+    assert ":plex:" in libraries[0]["id"]
+    assert "token" not in response.text

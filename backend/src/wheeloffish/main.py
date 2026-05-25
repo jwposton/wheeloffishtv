@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI, Request
 
-from wheeloffish.api.routes import connections, health, meta
+from wheeloffish.api.routes import connections, health, meta, oauth_plex
 from wheeloffish.core.config import get_settings
 from wheeloffish.core.logging import configure_logging, get_logger
 
@@ -45,6 +45,7 @@ async def request_logging_middleware(request: Request, call_next):
 app.include_router(health.router)
 app.include_router(meta.router, prefix="/api/v1")
 app.include_router(connections.router, prefix="/api/v1")
+app.include_router(oauth_plex.router, prefix="/api/v1")
 
 
 @app.get("/")

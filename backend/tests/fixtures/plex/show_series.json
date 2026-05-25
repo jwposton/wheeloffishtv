@@ -1,0 +1,22 @@
+{
+  "MediaContainer": {
+    "size": 2,
+    "totalSize": 2,
+    "Metadata": [
+      {
+        "ratingKey": "1001",
+        "guid": "com.plexapp.agents.thetvdb://12345",
+        "title": "Fictional Show",
+        "year": 2020,
+        "type": "show"
+      },
+      {
+        "ratingKey": "1002",
+        "guid": "com.plexapp.agents.thetvdb://67890",
+        "title": "Another Show",
+        "year": 2021,
+        "type": "show"
+      }
+    ]
+  }
+}

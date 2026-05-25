@@ -1,0 +1,13 @@
+{
+  "MediaContainer": {
+    "size": 1,
+    "Metadata": [
+      {
+        "ratingKey": "1001",
+        "guid": "com.plexapp.agents.thetvdb://12345",
+        "type": "show",
+        "title": "Fictional Show"
+      }
+    ]
+  }
+}
