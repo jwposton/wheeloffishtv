@@ -6,7 +6,15 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from wheeloffish.db.models import app_metadata, secret  # noqa: F401
+from wheeloffish.db.models import (  # noqa: F401
+    app_metadata,
+    cached_library,
+    cached_series,
+    catalog_sync_state,
+    secret,
+    user_media_link,
+)
+from wheeloffish.db.models import connection as connection_model  # noqa: F401
 from wheeloffish.db.models.base import Base
 
 config = context.config

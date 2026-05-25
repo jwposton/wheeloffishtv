@@ -97,3 +97,34 @@ def db_session(db_engine):
     finally:
         session.rollback()
         session.close()
+
+
+@pytest.fixture
+def connection_factory(db_session, settings, vault, app_user_id):
+    """Create a test connection with mocked provider ping."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from wheeloffish.core.connections import create_connection
+
+    async def _factory(**overrides):
+        defaults = {
+            "provider_type": "plex",
+            "display_name": "Test Plex",
+            "base_url": "https://plex.example.com",
+            "verify_ssl": True,
+            "token": "test-token",
+        }
+        params = {**defaults, **overrides}
+        provider = MagicMock()
+        provider.ping = AsyncMock(return_value=None)
+        provider.provider_user_id = "test-provider-user"
+        with patch("wheeloffish.core.connections.build_ephemeral_provider", return_value=provider):
+            return await create_connection(
+                db_session,
+                vault,
+                settings,
+                app_user_id=app_user_id,
+                **params,
+            )
+
+    return _factory
