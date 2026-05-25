@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from wheeloffish.api.deps import get_app_user_id, get_db, get_settings_dep, get_vault, require_admin
+from wheeloffish.api.deps import get_app_user_id, get_current_user, get_db, get_settings_dep, get_vault, require_admin
 from wheeloffish.api.schemas.catalog import (
     LibraryScopeResponse,
     LibraryScopeUpdate,
@@ -19,6 +19,7 @@ from wheeloffish.core.catalog_sync import (
     cached_library_to_dto,
     cached_series_to_dto,
     ensure_libraries_cached,
+    get_all_libraries,
     get_in_scope_libraries,
     get_sync_status,
     trigger_sync,
@@ -124,6 +125,26 @@ async def get_connection_libraries(
     return [cached_library_to_dto(row, connection.provider_type) for row in libraries]
 
 
+@admin_router.get(
+    "/connections/{connection_id}/libraries",
+    response_model=list[Library],
+)
+async def get_admin_connection_libraries(
+    connection_id: str,
+    db: Session = Depends(get_db),
+    vault: SecretsVault = Depends(get_vault),
+    settings: Settings = Depends(get_settings_dep),
+    app_user_id: str = Depends(get_app_user_id),
+    _: None = Depends(require_admin),
+) -> list[Library]:
+    connection = _get_connection_or_404(db, connection_id)
+    await ensure_libraries_cached(
+        db, vault, connection_id, app_user_id, settings=settings
+    )
+    libraries = get_all_libraries(db, connection_id)
+    return [cached_library_to_dto(row, connection.provider_type) for row in libraries]
+
+
 @admin_router.put(
     "/connections/{connection_id}/library-scope",
     response_model=LibraryScopeResponse,
@@ -157,6 +178,7 @@ def get_connection_series(
     q: str | None = Query(None),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
+    _: None = Depends(get_current_user),
 ) -> SeriesBrowseResponse:
     connection = _get_connection_or_404(db, connection_id)
     resolved_limit = limit or settings.WOF_CATALOG_PAGE_DEFAULT
@@ -209,6 +231,7 @@ async def post_connection_sync(
 def get_connection_sync_status(
     connection_id: str,
     db: Session = Depends(get_db),
+    _: None = Depends(get_current_user),
 ) -> SyncStatusResponse:
     _get_connection_or_404(db, connection_id)
     return SyncStatusResponse(**get_sync_status(db, connection_id))

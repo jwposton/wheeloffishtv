@@ -92,6 +92,7 @@ def cached_library_to_dto(cached: CachedLibrary, provider: str) -> Library:
         native_id=cached.native_id,
         connection_id=cached.connection_id,
         provider=provider,
+        in_scope=cached.in_scope,
     )
 
 
@@ -184,6 +185,15 @@ def get_in_scope_libraries(db: Session, connection_id: str) -> list[CachedLibrar
     return (
         db.query(CachedLibrary)
         .filter(CachedLibrary.connection_id == connection_id, CachedLibrary.in_scope.is_(True))
+        .order_by(CachedLibrary.title)
+        .all()
+    )
+
+
+def get_all_libraries(db: Session, connection_id: str) -> list[CachedLibrary]:
+    return (
+        db.query(CachedLibrary)
+        .filter(CachedLibrary.connection_id == connection_id)
         .order_by(CachedLibrary.title)
         .all()
     )

@@ -9,6 +9,7 @@ class Library(BaseModel):
     native_id: str
     connection_id: str
     provider: str
+    in_scope: bool = True
 
 
 class Series(BaseModel):
