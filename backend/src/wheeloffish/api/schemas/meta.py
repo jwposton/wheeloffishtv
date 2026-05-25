@@ -2,4 +2,5 @@ from pydantic import BaseModel
 
 
 class ProvidersMetaResponse(BaseModel):
-    enabled: list[str]
+    provider: str
+    oauth_callback_base: str

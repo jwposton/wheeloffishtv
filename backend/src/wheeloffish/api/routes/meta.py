@@ -10,5 +10,7 @@ router = APIRouter(prefix="/meta", tags=["meta"])
 def list_enabled_providers(
     settings: Settings = Depends(get_settings),
 ) -> ProvidersMetaResponse:
-    enabled = sorted(settings.enabled_providers_set)
-    return ProvidersMetaResponse(enabled=enabled)
+    return ProvidersMetaResponse(
+        provider=settings.WOF_PROVIDER,
+        oauth_callback_base=settings.WOF_OAUTH_CALLBACK_BASE,
+    )
