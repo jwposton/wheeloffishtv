@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-05-25T16:26:50.858Z"
+last_updated: "2026-05-25T16:35:29.683Z"
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 12
+  total_plans: 19
   completed_plans: 12
   percent: 29
 ---

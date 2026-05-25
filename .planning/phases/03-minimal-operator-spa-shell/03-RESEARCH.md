@@ -589,19 +589,16 @@ app.mount("/", SPAStaticFiles(directory="static/spa", html=True), name="spa")
 | A4 | React Router 7 API compatible with standard `<BrowserRouter>` patterns | Standard Stack | Route API changes require doc check at init |
 | A5 | Phase 2 catalog series route works without auth today | Integration | Must add session requirement without breaking tests |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does `Library` DTO expose `in_scope` today?**
-   - What we know: `cached_library_to_dto` used in admin PUT response; browse may filter scoped only.
-   - Recommendation: Inspect `domain/dto.py` + `cached_library_to_dto`; extend API in Wave 0 if missing.
+1. **Does `Library` DTO expose `in_scope` today?** *(RESOLVED — Plan 02)*
+   - **Decision:** Extend `Library` DTO with `in_scope: bool`; add `GET /admin/connections/{id}/libraries` returning all libraries with scope flags for admin checkbox UI (Plan 02 Task 2).
 
-2. **Plex OAuth start before session exists?**
-   - What we know: Login wall means user hits login first; session can be created empty before OAuth redirect.
-   - Recommendation: Issue temporary session on login page load OR bind app_user only at callback after token exchange.
+2. **Plex OAuth start before session exists?** *(RESOLVED — Plan 01 + 04)*
+   - **Decision:** `POST /api/v1/auth/bootstrap-session` creates provisional `AppUser` + session cookie; LoginPage calls it on mount before `POST /connections/plex/oauth/start` (Plan 01 Task 2, Plan 04 Task 2). OAuth callback upserts real `provider_user_id`.
 
-3. **Keep `POST /connections` for API completeness?**
-   - What we know: D-06 rejects UI editing; env is source of truth.
-   - Recommendation: Remove from operator docs; return 403 or 410 in Phase 3; keep internal boot sync only.
+3. **Keep `POST /connections` for API completeness?** *(RESOLVED — Plan 02)*
+   - **Decision:** Return 403 with code `env_config_only` for operator POST; env boot sync is sole write path (D-06). Document in README (Plan 07).
 
 ## Sources
 
