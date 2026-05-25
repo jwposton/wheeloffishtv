@@ -11,9 +11,9 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 
 | Phase | Name | Goal | Req coverage |
 |-------|------|------|---------------|
-| 1 | 5/5 | Complete    | 2026-05-25 |
-| 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 |
-| 3 | 3/7 | In Progress|  |
+| 1 | Foundations & packaging | Dockerized API, health, migrations, secrets scaffold | DEP-01, INT-01 (structural) | Complete 2026-05-25 |
+| 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 | Complete |
+| 3 | Minimal operator SPA shell | Sign in, scope libraries, browse series with resume preview | WEB-01 (foundation) | Complete 2026-05-25 |
 | 4 | Playlist mathematics | Core generators: ordered/disordered rows, multipart adjacency rules, completion policies | PLT-02…PLT-06 |
 | 5 | Orchestration jobs | Persistence for playlists outputs, transactional rebuild, SCH daily trigger + SCH multipart enforcement | SCH-01, SCH-02, PLT/INT glue |
 | 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
