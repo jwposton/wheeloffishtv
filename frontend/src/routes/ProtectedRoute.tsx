@@ -20,6 +20,7 @@ export function ProtectedRoute() {
 
   const isUnauthorized =
     !user ||
+    !user.has_media_link ||
     isError ||
     (error instanceof ApiError && error.status === 401)
 

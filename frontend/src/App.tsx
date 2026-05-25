@@ -1,16 +1,49 @@
-import { ThemeToggle } from "@/components/layout/ThemeToggle"
+import { Navigate, Route, Routes } from "react-router-dom"
+
+import { AppShell } from "@/components/layout/AppShell"
+import { AdminSetupPage } from "@/pages/AdminSetupPage"
+import { LoginPage } from "@/pages/LoginPage"
+import { SettingsPage } from "@/pages/SettingsPage"
+import { AdminRoute } from "@/routes/AdminRoute"
+import { ProtectedRoute } from "@/routes/ProtectedRoute"
+
+function HomePage() {
+  return (
+    <div className="mx-auto flex max-w-2xl flex-col gap-2">
+      <h2 className="text-xl font-semibold">Home</h2>
+      <p className="text-muted-foreground text-sm">
+        Series browse and playlists ship in upcoming plans.
+      </p>
+    </div>
+  )
+}
+
+function BrowsePlaceholderPage() {
+  return (
+    <div className="mx-auto flex max-w-2xl flex-col gap-2">
+      <h2 className="text-xl font-semibold">Browse</h2>
+      <p className="text-muted-foreground text-sm">
+        Catalog browser ships in plan 03-05.
+      </p>
+    </div>
+  )
+}
 
 function App() {
   return (
-    <main className="mx-auto flex min-h-svh max-w-3xl flex-col items-center justify-center gap-6 p-8">
-      <div className="flex w-full items-center justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Wheel of Fish TV</h1>
-        <ThemeToggle />
-      </div>
-      <p className="text-muted-foreground text-center text-sm">
-        Operator SPA shell — auth and browse views ship in upcoming plans.
-      </p>
-    </main>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppShell />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/browse" element={<BrowsePlaceholderPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/setup/admin" element={<AdminSetupPage />} />
+          <Route element={<AdminRoute />}>{/* admin-only routes later */}</Route>
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 
