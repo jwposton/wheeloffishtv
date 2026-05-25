@@ -2,6 +2,9 @@ import pytest
 from pydantic import ValidationError
 from unit.fixtures.playlist_vectors import episode
 
+from wheeloffish.core.playlist.mappers import orm_to_playlist
+from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
+from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.domain.playlist import (
     CompletionEvent,
     CompletionPolicy,
@@ -84,3 +87,75 @@ def test_playlist_slot_allocation_accepts_balanced() -> None:
         rows=[],
     )
     assert playlist.slot_allocation == SlotAllocation.BALANCED
+
+
+# --- ORM ↔ domain mapper tests ---
+
+
+def _make_orm_playlist(
+    id: str = "p1",
+    name: str = "Test Playlist",
+    episode_count: int = 20,
+    slot_allocation: str = "wild",
+    default_completion_policy: str = "remove",
+    rows: list[PlaylistSeriesRowOrm] | None = None,
+) -> PlaylistOrm:
+    orm = PlaylistOrm.__new__(PlaylistOrm)
+    orm.id = id
+    orm.name = name
+    orm.episode_count = episode_count
+    orm.slot_allocation = slot_allocation
+    orm.default_completion_policy = default_completion_policy
+    orm.refresh_cadence = "daily"
+    orm.refresh_day_of_week = None
+    orm.rows = rows or []
+    return orm
+
+
+def _make_orm_row(
+    series_id: str,
+    mode: str = "ordered",
+    completion_policy: str = "remove",
+    completion_event: str = "series_complete",
+    sort_order: int = 0,
+) -> PlaylistSeriesRowOrm:
+    row = PlaylistSeriesRowOrm.__new__(PlaylistSeriesRowOrm)
+    row.id = f"row-{series_id}"
+    row.playlist_id = "p1"
+    row.series_id = series_id
+    row.mode = mode
+    row.completion_policy = completion_policy
+    row.completion_event = completion_event
+    row.sort_order = sort_order
+    return row
+
+
+def test_orm_to_playlist_maps_rows_in_sort_order() -> None:
+    rows = [
+        _make_orm_row("series-b", sort_order=2),
+        _make_orm_row("series-a", sort_order=1),
+        _make_orm_row("series-c", sort_order=3),
+    ]
+    orm = _make_orm_playlist(rows=rows)
+    result = orm_to_playlist(orm)
+    assert [r.series_id for r in result.rows] == ["series-a", "series-b", "series-c"]
+
+
+def test_orm_to_playlist_defaults_episode_count_20() -> None:
+    orm = _make_orm_playlist(episode_count=20)
+    result = orm_to_playlist(orm)
+    assert result.episode_count == 20
+
+
+def test_orm_to_playlist_maps_slot_allocation_enum() -> None:
+    orm = _make_orm_playlist(slot_allocation="balanced")
+    result = orm_to_playlist(orm)
+    assert result.slot_allocation == SlotAllocation.BALANCED
+
+
+def test_weekly_cadence_stores_day_of_week() -> None:
+    orm = _make_orm_playlist()
+    orm.refresh_cadence = "weekly"
+    orm.refresh_day_of_week = 5
+    result = orm_to_playlist(orm)
+    assert result.id == "p1"
