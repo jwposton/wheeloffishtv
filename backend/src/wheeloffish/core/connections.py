@@ -13,6 +13,7 @@ from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Library
 from wheeloffish.integrations.base import MediaProvider
 from wheeloffish.integrations.errors import ProviderDisabled, ProviderError
+from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 from wheeloffish.integrations.plex.client import PlexProvider
 
 ProviderType = Literal["plex", "jellyfin"]
@@ -67,6 +68,7 @@ def build_provider_for_connection(
     token: str,
     *,
     settings: Settings | None = None,
+    provider_user_id: str | None = None,
 ) -> MediaProvider:
     if isinstance(connection, ConnectionConfig):
         config = connection
@@ -92,6 +94,15 @@ def build_provider_for_connection(
             connection_id=connection_id,
             verify_ssl=config.verify_ssl,
             product_name=product_name,
+        )
+    if config.provider_type == "jellyfin":
+        resolved_user_id = provider_user_id or "unknown"
+        return JellyfinProvider(
+            base_url=config.base_url,
+            token=token,
+            user_id=resolved_user_id,
+            connection_id=connection_id,
+            verify_ssl=config.verify_ssl,
         )
     return build_ephemeral_provider(config, token)
 
@@ -143,7 +154,12 @@ async def create_connection(
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
-    provider = build_provider_for_connection(pending, token, settings=settings)
+    provider = build_provider_for_connection(
+        pending,
+        token,
+        settings=settings,
+        provider_user_id=provider_user_id,
+    )
     if provider_user_id:
         provider.provider_user_id = provider_user_id
     if provider_username:
@@ -189,6 +205,27 @@ async def create_connection(
     return connection
 
 
+def _get_user_media_link(
+    db: Session,
+    connection_id: str,
+    app_user_id: str,
+) -> UserMediaLink:
+    link = (
+        db.query(UserMediaLink)
+        .filter(
+            UserMediaLink.connection_id == connection_id,
+            UserMediaLink.app_user_id == app_user_id,
+        )
+        .one_or_none()
+    )
+    if link is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "unauthorized", "message": "No token for user"},
+        )
+    return link
+
+
 async def test_connection(
     db: Session,
     vault: SecretsVault,
@@ -201,6 +238,7 @@ async def test_connection(
     if connection is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
 
+    link = _get_user_media_link(db, connection_id, app_user_id)
     token = vault.get_media_user_token(connection_id, app_user_id)
     if token is None:
         raise HTTPException(
@@ -209,7 +247,12 @@ async def test_connection(
         )
 
     resolved_settings = settings or get_settings()
-    provider = build_provider_for_connection(connection, token, settings=resolved_settings)
+    provider = build_provider_for_connection(
+        connection,
+        token,
+        settings=resolved_settings,
+        provider_user_id=link.provider_user_id,
+    )
 
     try:
         await provider.ping()
@@ -231,6 +274,7 @@ async def list_connection_libraries(
     if connection is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
 
+    link = _get_user_media_link(db, connection_id, app_user_id)
     token = vault.get_media_user_token(connection_id, app_user_id)
     if token is None:
         raise HTTPException(
@@ -239,7 +283,12 @@ async def list_connection_libraries(
         )
 
     resolved_settings = settings or get_settings()
-    provider = build_provider_for_connection(connection, token, settings=resolved_settings)
+    provider = build_provider_for_connection(
+        connection,
+        token,
+        settings=resolved_settings,
+        provider_user_id=link.provider_user_id,
+    )
     try:
         return await provider.list_libraries()
     except ProviderError as err:

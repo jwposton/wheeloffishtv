@@ -310,3 +310,96 @@ async def test_plex_list_libraries(connections_client) -> None:
     assert libraries[0]["title"] == "Fictional TV Shows"
     assert ":plex:" in libraries[0]["id"]
     assert "token" not in response.text
+
+
+JELLYFIN_AUTH_PAYLOAD = {
+    "base_url": "https://jellyfin.example.com",
+    "username": "testuser",
+    "password": "secret-password",
+    "display_name": "Home Jellyfin",
+    "verify_ssl": True,
+}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_jellyfin_auth_success(
+    connections_client, db_session, vault, app_user_id
+) -> None:
+    respx.post("https://jellyfin.example.com/Users/AuthenticateByName").mock(
+        return_value=Response(200, json=load_fixture("jellyfin/authenticate"))
+    )
+    respx.get("https://jellyfin.example.com/Users/Me").mock(
+        return_value=Response(
+            200,
+            json={"Id": "22222222-3333-4444-8555-666666666666", "Name": "testuser"},
+        )
+    )
+
+    response = await connections_client.post(
+        "/api/v1/connections/jellyfin/auth",
+        json=JELLYFIN_AUTH_PAYLOAD,
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["status"] == "connected"
+    assert body["auth_token_present"] is True
+    assert "SANITIZED_JELLYFIN_TOKEN" not in json.dumps(body)
+    assert "secret-password" not in response.text
+
+    connection_id = body["connection_id"]
+    assert db_session.query(Connection).count() == 1
+    assert vault.get_media_user_token(connection_id, app_user_id) == "SANITIZED_JELLYFIN_TOKEN"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_jellyfin_auth_unauthorized(connections_client, db_session) -> None:
+    respx.post("https://jellyfin.example.com/Users/AuthenticateByName").mock(
+        return_value=Response(401)
+    )
+
+    response = await connections_client.post(
+        "/api/v1/connections/jellyfin/auth",
+        json=JELLYFIN_AUTH_PAYLOAD,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "unauthorized"
+    assert db_session.query(Connection).count() == 0
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_jellyfin_list_libraries(connections_client, db_session, vault, app_user_id) -> None:
+    respx.post("https://jellyfin.example.com/Users/AuthenticateByName").mock(
+        return_value=Response(200, json=load_fixture("jellyfin/authenticate"))
+    )
+    respx.get("https://jellyfin.example.com/Users/Me").mock(
+        return_value=Response(
+            200,
+            json={"Id": "22222222-3333-4444-8555-666666666666", "Name": "testuser"},
+        )
+    )
+
+    auth_response = await connections_client.post(
+        "/api/v1/connections/jellyfin/auth",
+        json=JELLYFIN_AUTH_PAYLOAD,
+    )
+    connection_id = auth_response.json()["connection_id"]
+
+    respx.get("https://jellyfin.example.com/Library/MediaFolders").mock(
+        return_value=Response(200, json=load_fixture("jellyfin/media_folders"))
+    )
+
+    response = await connections_client.get(
+        f"/api/v1/connections/{connection_id}/libraries"
+    )
+
+    assert response.status_code == 200
+    libraries = response.json()
+    assert len(libraries) == 1
+    assert libraries[0]["title"] == "TV Shows"
+    assert ":jellyfin:" in libraries[0]["id"]
+    assert "token" not in response.text
