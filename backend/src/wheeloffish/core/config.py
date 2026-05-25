@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     WOF_CATALOG_SYNC_CHUNK_SIZE: int = 100
     WOF_CATALOG_PAGE_DEFAULT: int = 50
     WOF_SCOPED_LIBRARY_IDS: str = ""
+    SPA_DIST_DIR: str = "/app/static/spa"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
