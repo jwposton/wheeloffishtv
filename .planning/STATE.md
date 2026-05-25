@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_to_plan
-last_updated: "2026-05-25T21:38:12.617Z"
+status: ready_to_execute
+last_updated: "2026-05-25T22:00:00.000Z"
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 26
+  total_plans: 32
   completed_plans: 26
   percent: 57
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 4 complete)
+**Updated:** 2026-05-25 (Phase 5 planned)
 
 ## Project reference
 
@@ -24,14 +24,14 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **4 — Playlist mathematics** — **complete** (6/6 plans).
+Phase **5 — Orchestration & scheduling** — **planned** (6/6 plans, 0 executed).
 
-**Next phase:** Phase **5 — Orchestration & scheduling**
+**Next action:** Execute Phase 5 via `/gsd-execute-phase 5`
 
 ## Immediate next actions
 
-1. Plan Phase 5 via `/gsd-plan-phase 5` or `/gsd-execute-phase 5` when plans exist
-2. Wire Phase 5 scheduler to call `PlaylistBuilder.build()` with live MediaProvider snapshots
+1. `/gsd-execute-phase 5` — run Wave 1 (05-01 schema + ORM)
+2. Wave 2–6 follow dependency order in ROADMAP
 
 ## Decisions (Phase 4)
 

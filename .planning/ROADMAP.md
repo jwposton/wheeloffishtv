@@ -145,6 +145,36 @@ Requirements: PLT-01 … PLT-06
 
 Requirements: SCH-01, SCH-02 (+ cross-cutting glue)
 
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — Alembic schema, ORM models, domain mappers (PLT-01–03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 05-02-PLAN.md — APScheduler lifespan + cadence evaluation (SCH-01)
+
+**Wave 3** *(blocked on Waves 1–2)*
+
+- [ ] 05-03-PLAN.md — Rebuild orchestrator, failure isolation, snapshot persist (SCH-02)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 05-04-PLAN.md — Playlist REST CRUD + manual rebuild API (PLT-01–03, SCH-01)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 05-05-PLAN.md — SPA playlist list + status badges (WEB-01)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 05-06-PLAN.md — SPA create/edit, series picker, rebuild now, output view (WEB-01, PLT-03)
+
+**Cross-cutting constraints:**
+
+- `PlaylistBuilder.build()` is the sole rebuild entry point — manual and scheduled paths share orchestrator (D-06, D-23)
+- Playlists scoped by `app_user_id`; owner-only rebuild (D-18, D-22)
+- Failed rebuild retains last good snapshot; partial when any row skipped (D-11–D-12, D-17)
+
 ---
 
 ### Phase 6: Admin WheelOfFish
