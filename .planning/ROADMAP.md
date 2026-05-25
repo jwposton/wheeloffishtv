@@ -13,7 +13,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 |-------|------|------|---------------|
 | 1 | 5/5 | Complete    | 2026-05-25 |
 | 2 | Media ingestion & catalogs | Robust connectors enumerate libraries/episodes/watch progress cache | INT-01, INT-02, INT-03 |
-| 3 | 1/7 | In Progress|  |
+| 3 | 2/7 | In Progress|  |
 | 4 | Playlist mathematics | Core generators: ordered/disordered rows, multipart adjacency rules, completion policies | PLT-02…PLT-06 |
 | 5 | Orchestration jobs | Persistence for playlists outputs, transactional rebuild, SCH daily trigger + SCH multipart enforcement | SCH-01, SCH-02, PLT/INT glue |
 | 6 | Admin WheelOfFish | Global playlist + RBAC surfaced in UI/API | ADM-01, ADM-02 |
@@ -59,7 +59,7 @@ Requirements: INT-01, INT-02, INT-03
 **Goal:** As a self-host operator, I want to sign in via Plex/Jellyfin OAuth and browse scoped TV libraries with resume preview, so that I can verify catalog data before playlist authoring.  
 **Mode:** mvp  
 **UI hint:** yes  
-**Plans:** 1/7 plans executed
+**Plans:** 2/7 plans executed
 
 **Success criteria**
 
@@ -73,7 +73,7 @@ Requirements: INT-01, INT-02, INT-03
 **Wave 1**
 
 - [x] 03-01-PLAN.md — Session auth, env→DB boot sync, /auth/me, Wave 0 tests
-- [ ] 03-02-PLAN.md — OAuth refactor to env connection; session on callback; catalog auth
+- [x] 03-02-PLAN.md — OAuth refactor to env connection; session on callback; catalog auth
 - [ ] 03-03-PLAN.md — Vite/shadcn scaffold, SPA static serve, Docker multi-stage
 
 **Wave 2** *(blocked on Wave 1 completion)*

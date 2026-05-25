@@ -8,15 +8,15 @@ progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 19
-  completed_plans: 13
-  percent: 32
-current_plan: 03-02
+  completed_plans: 14
+  percent: 35
+current_plan: 03-03
 current_phase: 03-minimal-operator-spa-shell
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 3 plan 03-01 complete)
+**Updated:** 2026-05-25 (Phase 3 plan 03-02 complete)
 
 ## Project reference
 
@@ -26,10 +26,10 @@ See: `.planning/PROJECT.md` (updated 2026-05-25)
 
 ## Current phase
 
-Phase **3 — Minimal operator SPA shell** (executing — 1/7 plans complete).
+Phase **3 — Minimal operator SPA shell** (executing — 2/7 plans complete).
 
-**Stopped at:** Completed 03-01-PLAN.md  
-**Resume:** 03-02-PLAN.md (OAuth refactor)
+**Stopped at:** Completed 03-02-PLAN.md  
+**Resume:** 03-03-PLAN.md (frontend scaffold)
 
 ## Decisions (Phase 3)
 
