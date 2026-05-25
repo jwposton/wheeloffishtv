@@ -1,22 +1,17 @@
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import respx
-from conftest import APP_USER_ID
 from httpx import ASGITransport, AsyncClient, Response
 
-from wheeloffish.api.deps import get_app_user_id, get_db
+from wheeloffish.api.deps import get_db
+from wheeloffish.core.boot import sync_connection_from_env
 from wheeloffish.core.config import get_settings
-from wheeloffish.core.namespaces import media_user_token_key
+from wheeloffish.core.connections import link_media_user
+from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
-from wheeloffish.integrations.errors import (
-    ProviderSSLError,
-    ProviderUnauthorized,
-    ProviderUnreachable,
-    ProviderWrongType,
-)
 from wheeloffish.integrations.plex.auth import clear_pin_state, store_pin_state
 from wheeloffish.integrations.plex.client import PlexProvider
 from wheeloffish.main import app
@@ -27,6 +22,7 @@ FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 def load_fixture(name: str) -> dict:
     return json.loads((FIXTURES / f"{name}.json").read_text())
 
+
 PLEX_PAYLOAD = {
     "provider_type": "plex",
     "display_name": "Home Plex",
@@ -35,25 +31,11 @@ PLEX_PAYLOAD = {
     "token": "plex-test-token",
 }
 
-JELLYFIN_PAYLOAD = {
-    "provider_type": "jellyfin",
-    "display_name": "Home Jellyfin",
-    "base_url": "https://jellyfin.example.com",
-    "verify_ssl": True,
-    "token": "jellyfin-test-token",
-}
-
-
-def _mock_provider(*, ping_side_effect=None) -> MagicMock:
-    provider = MagicMock()
-    provider.ping = AsyncMock(side_effect=ping_side_effect)
-    provider.provider_user_id = "provider-user-1"
-    provider.provider_username = "testuser"
-    return provider
-
 
 @pytest.fixture
 async def connections_client(db_engine, db_session, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("WOF_PROVIDER", "plex")
+    monkeypatch.setenv("WOF_MEDIA_SERVER_URL", "https://plex.example.com")
     monkeypatch.setenv("WOF_ENABLED_PROVIDERS", "plex,jellyfin")
     get_settings.cache_clear()
 
@@ -61,164 +43,88 @@ async def connections_client(db_engine, db_session, monkeypatch: pytest.MonkeyPa
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        bootstrap = await client.post("/api/v1/auth/bootstrap-session")
+        assert bootstrap.status_code == 200
         yield client
     app.dependency_overrides.clear()
     get_settings.cache_clear()
 
 
-@pytest.mark.asyncio
-async def test_create_connection_success(
-    connections_client, db_session, vault, app_user_id
-) -> None:
-    provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-
-    assert response.status_code == 201
-    body = response.json()
-    assert body["provider_type"] == "plex"
-    assert "token" not in body
-
-    connection_id = body["id"]
-    assert db_session.query(Connection).count() == 1
-    assert vault.get_media_user_token(connection_id, app_user_id) == PLEX_PAYLOAD["token"]
-    provider.ping.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_create_unauthorized(connections_client, db_session) -> None:
-    provider = _mock_provider(ping_side_effect=ProviderUnauthorized())
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-
-    assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "unauthorized"
-    assert db_session.query(Connection).count() == 0
-
-
-@pytest.mark.asyncio
-async def test_create_unreachable(connections_client, db_session) -> None:
-    provider = _mock_provider(ping_side_effect=ProviderUnreachable())
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-
-    assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "unreachable"
-    assert db_session.query(Connection).count() == 0
-
-
-@pytest.mark.asyncio
-async def test_create_ssl_error(connections_client, db_session) -> None:
-    provider = _mock_provider(ping_side_effect=ProviderSSLError())
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-
-    assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "ssl_error"
-    assert db_session.query(Connection).count() == 0
-
-
-@pytest.mark.asyncio
-async def test_create_wrong_type(connections_client, db_session) -> None:
-    provider = _mock_provider(ping_side_effect=ProviderWrongType())
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-
-    assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "wrong_type"
-    assert db_session.query(Connection).count() == 0
-
-
-@pytest.mark.asyncio
-async def test_provider_disabled(db_engine, db_session, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("WOF_ENABLED_PROVIDERS", "plex")
+@pytest.fixture
+async def jellyfin_connections_client(db_engine, db_session, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("WOF_PROVIDER", "jellyfin")
+    monkeypatch.setenv("WOF_MEDIA_SERVER_URL", "https://jellyfin.example.com")
+    monkeypatch.setenv("WOF_ENABLED_PROVIDERS", "plex,jellyfin")
     get_settings.cache_clear()
 
     def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
-    provider = _mock_provider()
-    try:
-        with patch(
-            "wheeloffish.core.connections.build_provider_for_connection",
-            return_value=provider,
-        ):
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                response = await client.post("/api/v1/connections", json=JELLYFIN_PAYLOAD)
-    finally:
-        app.dependency_overrides.clear()
-        get_settings.cache_clear()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        bootstrap = await client.post("/api/v1/auth/bootstrap-session")
+        assert bootstrap.status_code == 200
+        yield client
+    app.dependency_overrides.clear()
+    get_settings.cache_clear()
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "provider_disabled"
-    assert db_session.query(Connection).filter(Connection.provider_type == "jellyfin").count() == 0
-    provider.ping.assert_not_awaited()
+
+async def _session_app_user_id(client: AsyncClient) -> str:
+    response = await client.get("/api/v1/auth/me")
+    assert response.status_code == 200
+    return response.json()["app_user_id"]
 
 
 @pytest.mark.asyncio
-async def test_duplicate_provider_type(connections_client, db_session) -> None:
-    provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        first = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-        second = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
+async def test_post_connection_env_config_only(connections_client) -> None:
+    response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
 
-    assert first.status_code == 201
-    assert second.status_code == 409
-    assert second.json()["detail"]["code"] == "duplicate_provider_type"
-    assert db_session.query(Connection).count() == 1
+    assert response.status_code == 403
+    body = response.json()
+    assert body["detail"]["code"] == "env_config_only"
+    assert "Configure connection in .env" in body["detail"]["message"]
 
 
 @pytest.mark.asyncio
-async def test_connection_response_excludes_token(connections_client) -> None:
-    provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        create_response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-        list_response = await connections_client.get("/api/v1/connections")
-
-    assert create_response.status_code == 201
-    assert "token" not in create_response.json()
-
-    assert list_response.status_code == 200
-    items = list_response.json()
-    assert len(items) == 1
-    assert "token" not in items[0]
-
-
-@pytest.mark.asyncio
-async def test_list_connections_no_secrets(connections_client, vault, app_user_id) -> None:
-    provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
+async def test_list_connections_no_secrets(
+    connections_client, db_session, vault
+) -> None:
+    settings = get_settings()
+    connection = sync_connection_from_env(db_session, settings)
+    session_user_id = await _session_app_user_id(connections_client)
+    user = db_session.query(AppUser).filter(AppUser.id == session_user_id).one()
+    link_media_user(
+        db_session,
+        vault,
+        connection,
+        user,
+        provider_user_id="provider-user-1",
+        provider_username="testuser",
+        token=PLEX_PAYLOAD["token"],
+    )
 
     response = await connections_client.get("/api/v1/connections")
     assert response.status_code == 200
     assert "token" not in response.text
-    assert media_user_token_key("ignored", app_user_id) not in response.text
-
-
-PLEX_OAUTH_START = {
-    "display_name": "Home Plex",
-    "base_url": "https://plex.example.com",
-    "verify_ssl": True,
-}
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["provider_type"] == "plex"
 
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_plex_oauth_start(connections_client) -> None:
+async def test_plex_oauth_start(connections_client, db_session) -> None:
+    settings = get_settings()
+    sync_connection_from_env(db_session, settings)
+
     respx.post("https://plex.tv/api/v2/pins").mock(
         return_value=Response(200, json=load_fixture("plex/pin_create"))
     )
 
     response = await connections_client.post(
         "/api/v1/connections/plex/oauth/start",
-        json=PLEX_OAUTH_START,
+        json={},
     )
 
     assert response.status_code == 200
@@ -226,23 +132,26 @@ async def test_plex_oauth_start(connections_client) -> None:
     assert body["pin_id"] == 123456789
     assert "auth_url" in body
     assert "app.plex.tv/auth" in body["auth_url"]
-    assert "code=ABCD" in body["auth_url"]
     assert "token" not in body
 
 
 @pytest.mark.asyncio
 @respx.mock
 async def test_plex_oauth_callback_stores_vault_token(
-    connections_client, db_session, vault, app_user_id
+    connections_client, db_session, vault
 ) -> None:
+    settings = get_settings()
+    connection = sync_connection_from_env(db_session, settings)
+    session_user_id = await _session_app_user_id(connections_client)
+
     clear_pin_state(123456789)
     store_pin_state(
         123456789,
-        display_name=PLEX_OAUTH_START["display_name"],
-        base_url=PLEX_OAUTH_START["base_url"],
-        verify_ssl=PLEX_OAUTH_START["verify_ssl"],
+        connection_id=connection.id,
+        base_url=connection.base_url,
+        verify_ssl=connection.verify_ssl,
         client_identifier="11111111-2222-4333-8444-555555555555",
-        app_user_id=app_user_id,
+        app_user_id=session_user_id,
     )
 
     respx.get("https://plex.tv/api/v2/pins/123456789").mock(
@@ -267,44 +176,51 @@ async def test_plex_oauth_callback_stores_vault_token(
     )
 
     response = await connections_client.get(
-        "/api/v1/connections/plex/oauth/callback?pin_id=123456789"
+        "/api/v1/connections/plex/oauth/callback?pin_id=123456789",
+        follow_redirects=False,
     )
 
-    assert response.status_code == 201
-    body = response.json()
-    assert body["status"] == "connected"
-    assert body["auth_token_present"] is True
-    assert "SANITIZED_PLEX_TOKEN" not in json.dumps(body)
-
-    connection_id = body["connection_id"]
+    assert response.status_code == 302
     assert db_session.query(Connection).count() == 1
-    assert vault.get_media_user_token(connection_id, app_user_id) == "SANITIZED_PLEX_TOKEN"
+
+    me = await connections_client.get("/api/v1/auth/me")
+    linked_user_id = me.json()["app_user_id"]
+    assert vault.get_media_user_token(connection.id, linked_user_id) == "SANITIZED_PLEX_TOKEN"
 
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_plex_list_libraries(connections_client) -> None:
-    provider = _mock_provider()
-    with patch("wheeloffish.core.connections.build_provider_for_connection", return_value=provider):
-        create_response = await connections_client.post("/api/v1/connections", json=PLEX_PAYLOAD)
-    connection_id = create_response.json()["id"]
+async def test_plex_list_libraries(connections_client, db_session, vault) -> None:
+    settings = get_settings()
+    connection = sync_connection_from_env(db_session, settings)
+    session_user_id = await _session_app_user_id(connections_client)
+    user = db_session.query(AppUser).filter(AppUser.id == session_user_id).one()
+    link_media_user(
+        db_session,
+        vault,
+        connection,
+        user,
+        provider_user_id="provider-user-1",
+        provider_username="testuser",
+        token=PLEX_PAYLOAD["token"],
+    )
 
     respx.get("https://plex.example.com/library/sections").mock(
         return_value=Response(200, json=load_fixture("plex/library_sections"))
     )
 
     with patch(
-        "wheeloffish.core.connections.build_provider_for_connection",
+        "wheeloffish.core.catalog_sync.build_provider_for_connection",
         return_value=PlexProvider(
             base_url=PLEX_PAYLOAD["base_url"],
             token=PLEX_PAYLOAD["token"],
             client_identifier="11111111-2222-4333-8444-555555555555",
-            connection_id=connection_id,
+            connection_id=connection.id,
             verify_ssl=True,
         ),
     ):
         response = await connections_client.get(
-            f"/api/v1/connections/{connection_id}/libraries"
+            f"/api/v1/connections/{connection.id}/libraries"
         )
 
     assert response.status_code == 200
@@ -316,19 +232,19 @@ async def test_plex_list_libraries(connections_client) -> None:
 
 
 JELLYFIN_AUTH_PAYLOAD = {
-    "base_url": "https://jellyfin.example.com",
     "username": "testuser",
     "password": "secret-password",
-    "display_name": "Home Jellyfin",
-    "verify_ssl": True,
 }
 
 
 @pytest.mark.asyncio
 @respx.mock
 async def test_jellyfin_auth_success(
-    connections_client, db_session, vault, app_user_id
+    jellyfin_connections_client, db_session, vault
 ) -> None:
+    settings = get_settings()
+    connection = sync_connection_from_env(db_session, settings)
+
     respx.post("https://jellyfin.example.com/Users/AuthenticateByName").mock(
         return_value=Response(200, json=load_fixture("jellyfin/authenticate"))
     )
@@ -339,7 +255,7 @@ async def test_jellyfin_auth_success(
         )
     )
 
-    response = await connections_client.post(
+    response = await jellyfin_connections_client.post(
         "/api/v1/connections/jellyfin/auth",
         json=JELLYFIN_AUTH_PAYLOAD,
     )
@@ -348,34 +264,44 @@ async def test_jellyfin_auth_success(
     body = response.json()
     assert body["status"] == "connected"
     assert body["auth_token_present"] is True
+    assert body["connection_id"] == connection.id
     assert "SANITIZED_JELLYFIN_TOKEN" not in json.dumps(body)
     assert "secret-password" not in response.text
 
-    connection_id = body["connection_id"]
     assert db_session.query(Connection).count() == 1
-    assert vault.get_media_user_token(connection_id, app_user_id) == "SANITIZED_JELLYFIN_TOKEN"
+
+    me = await jellyfin_connections_client.get("/api/v1/auth/me")
+    linked_user_id = me.json()["app_user_id"]
+    assert vault.get_media_user_token(connection.id, linked_user_id) == "SANITIZED_JELLYFIN_TOKEN"
 
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_jellyfin_auth_unauthorized(connections_client, db_session) -> None:
+async def test_jellyfin_auth_unauthorized(jellyfin_connections_client, db_session) -> None:
+    sync_connection_from_env(db_session, get_settings())
+
     respx.post("https://jellyfin.example.com/Users/AuthenticateByName").mock(
         return_value=Response(401)
     )
 
-    response = await connections_client.post(
+    response = await jellyfin_connections_client.post(
         "/api/v1/connections/jellyfin/auth",
         json=JELLYFIN_AUTH_PAYLOAD,
     )
 
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "unauthorized"
-    assert db_session.query(Connection).count() == 0
+    assert db_session.query(Connection).count() == 1
 
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_jellyfin_list_libraries(connections_client, db_session, vault, app_user_id) -> None:
+async def test_jellyfin_list_libraries(
+    jellyfin_connections_client, db_session, vault
+) -> None:
+    settings = get_settings()
+    connection = sync_connection_from_env(db_session, settings)
+
     respx.post("https://jellyfin.example.com/Users/AuthenticateByName").mock(
         return_value=Response(200, json=load_fixture("jellyfin/authenticate"))
     )
@@ -386,18 +312,18 @@ async def test_jellyfin_list_libraries(connections_client, db_session, vault, ap
         )
     )
 
-    auth_response = await connections_client.post(
+    auth_response = await jellyfin_connections_client.post(
         "/api/v1/connections/jellyfin/auth",
         json=JELLYFIN_AUTH_PAYLOAD,
     )
-    connection_id = auth_response.json()["connection_id"]
+    assert auth_response.status_code == 201
 
     respx.get("https://jellyfin.example.com/Library/MediaFolders").mock(
         return_value=Response(200, json=load_fixture("jellyfin/media_folders"))
     )
 
-    response = await connections_client.get(
-        f"/api/v1/connections/{connection_id}/libraries"
+    response = await jellyfin_connections_client.get(
+        f"/api/v1/connections/{connection.id}/libraries"
     )
 
     assert response.status_code == 200

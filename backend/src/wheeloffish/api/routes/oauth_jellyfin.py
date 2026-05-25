@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from wheeloffish.api.deps import get_app_user_id, get_db, get_settings_dep, get_vault
+from wheeloffish.api.deps import get_current_user, get_db, get_settings_dep, get_vault
 from wheeloffish.api.schemas.oauth import JellyfinAuthRequest
+from wheeloffish.core.auth import upsert_app_user
+from wheeloffish.core.boot import sync_connection_from_env
 from wheeloffish.core.catalog_sync import trigger_sync
 from wheeloffish.core.config import Settings
-from wheeloffish.core.connections import create_connection
+from wheeloffish.core.connections import link_media_user
 from wheeloffish.core.secrets import SecretsVault
+from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.integrations.errors import ProviderError
 from wheeloffish.integrations.jellyfin.auth import authenticate, validate_token
 
@@ -17,39 +20,44 @@ router = APIRouter(prefix="/connections/jellyfin", tags=["jellyfin-auth"])
 @router.post("/auth")
 async def jellyfin_auth(
     body: JellyfinAuthRequest,
+    request: Request,
     db: Session = Depends(get_db),
     vault: SecretsVault = Depends(get_vault),
     settings: Settings = Depends(get_settings_dep),
-    app_user_id: str = Depends(get_app_user_id),
+    user: AppUser = Depends(get_current_user),
 ) -> JSONResponse:
-    if "jellyfin" not in settings.enabled_providers_set:
+    if settings.WOF_PROVIDER != "jellyfin":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"code": "provider_disabled", "message": "Jellyfin is not enabled"},
         )
 
+    connection = sync_connection_from_env(db, settings)
+
     try:
         token, user_id, username = await authenticate(
-            body.base_url,
+            connection.base_url,
             body.username,
             body.password,
-            body.verify_ssl,
+            connection.verify_ssl,
         )
-        await validate_token(body.base_url, token, body.verify_ssl)
-        connection = await create_connection(
+        await validate_token(connection.base_url, token, connection.verify_ssl)
+        app_user = upsert_app_user(
             db,
-            vault,
-            settings,
-            provider_type="jellyfin",
-            display_name=body.display_name,
-            base_url=body.base_url,
-            verify_ssl=body.verify_ssl,
-            token=token,
-            app_user_id=app_user_id,
             provider_user_id=user_id,
             provider_username=username,
         )
-        trigger_sync(db, connection.id, app_user_id)
+        link_media_user(
+            db,
+            vault,
+            connection,
+            app_user,
+            provider_user_id=user_id,
+            provider_username=username,
+            token=token,
+        )
+        request.session["app_user_id"] = app_user.id
+        trigger_sync(db, connection.id, app_user.id)
     except ProviderError as err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
