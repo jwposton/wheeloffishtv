@@ -34,7 +34,29 @@ MIT — see [LICENSE](LICENSE).
    docker compose ps
    ```
 
-   The `app` service should show `healthy`. Phase 1 does not publish host ports — health is verified via Compose healthcheck. Phase 3 will expose an HTTP port for an external reverse proxy.
+   The `app` service should show `healthy`.
+
+## Release deployment (pre-built image)
+
+Published multi-arch images (`linux/amd64`, `linux/arm64`) are on GitHub Container Registry:
+
+```text
+ghcr.io/jwposton/wheeloffishtv:0.1.0
+ghcr.io/jwposton/wheeloffishtv:latest
+```
+
+No git clone or local build required:
+
+```bash
+curl -O https://raw.githubusercontent.com/jwposton/wheeloffishtv/main/compose.release.yml
+curl -O https://raw.githubusercontent.com/jwposton/wheeloffishtv/main/.env.example
+cp .env.example .env
+# edit .env, then:
+docker compose -f compose.release.yml pull
+docker compose -f compose.release.yml up -d
+```
+
+Images are built automatically when a `v*` tag is pushed (see `.github/workflows/publish-image.yml`). After the first publish, set the package to **Public** under GitHub → Packages if pulls fail with “denied”.
 
 ## Configuration
 

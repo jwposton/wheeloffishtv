@@ -1,0 +1,38 @@
+# Pull-only deployment — no local build required.
+# Usage:
+#   cp .env.example .env   # configure, then:
+#   docker compose -f compose.release.yml pull
+#   docker compose -f compose.release.yml up -d
+#
+# Image published by .github/workflows/publish-image.yml on version tags.
+
+services:
+  app:
+    image: ghcr.io/jwposton/wheeloffishtv:0.1.0
+    ports:
+      - 8000:8000
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: sqlite:////data/wheeloffisht.db
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+      ENVIRONMENT: production
+    volumes:
+      - wof_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  wof_data:
