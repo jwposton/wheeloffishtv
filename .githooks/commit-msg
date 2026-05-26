@@ -1,0 +1,3 @@
+#!/bin/sh
+# Final pass: Cursor may append Co-authored-by after prepare-commit-msg.
+grep -v '^Co-authored-by: Cursor <cursoragent@cursor.com>$' "$1" >"$1.tmp" && mv "$1.tmp" "$1"

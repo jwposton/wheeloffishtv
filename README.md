@@ -224,6 +224,13 @@ Automated scans (Gitleaks, Semgrep, pip-audit, npm audit, Trivy, API auth guard 
 
 ## Development
 
+Enable git hooks once per clone (strips Cursor `Co-authored-by` trailers from commit messages; required for agent commits):
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/*
+```
+
 ```bash
 cd backend
 uv sync
