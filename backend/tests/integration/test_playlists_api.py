@@ -403,3 +403,42 @@ def test_append_row_cross_user_404(base_client: TestClient, db_session) -> None:
         json={"series_id": SERIES_ID_A},
     )
     assert resp.status_code == 404
+
+
+def test_playlist_detail_row_includes_thumb_url(
+    base_client: TestClient,
+    db_session,
+) -> None:
+    """GET playlist detail includes same-origin artwork URL when series is cached."""
+    from datetime import UTC, datetime
+
+    from wheeloffish.db.models.cached_series import CachedSeries
+
+    user = _make_user(db_session)
+    _set_user(user)
+
+    db_session.add(
+        CachedSeries(
+            id=SERIES_ID_A,
+            app_user_id=user.id,
+            connection_id="conn-aaaa",
+            library_native_id="1",
+            native_id="show-alpha",
+            title="Alpha Show",
+            synced_at=datetime.now(UTC),
+        )
+    )
+    db_session.commit()
+
+    playlist_id = _create_empty_playlist(base_client)
+    append = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert append.status_code in (200, 201), append.text
+
+    detail = base_client.get(f"/api/v1/playlists/{playlist_id}")
+    assert detail.status_code == 200
+    row = detail.json()["rows"][0]
+    assert row["thumb_url"] is not None
+    assert "/artwork" in row["thumb_url"]

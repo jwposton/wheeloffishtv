@@ -30,19 +30,31 @@ vi.mock("@/api/playlists", async (importOriginal) => {
   }
 })
 
-import { TwoPanePicker } from "@/components/playlists/TwoPanePicker"
+import { TwoPanePicker, type SeriesRow } from "@/components/playlists/TwoPanePicker"
+
+const SAMPLE_ROW: SeriesRow = {
+  series_id: "series-in-1",
+  series_title: "In Playlist Show",
+  thumb_url: null,
+  mode: "ordered",
+  completion_policy: "remove",
+}
 
 function makeQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })
 }
 
-function renderPicker() {
+function renderPicker(rows: SeriesRow[] = []) {
   const queryClient = makeQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
-      <TwoPanePicker rows={[]} onRowsChange={() => {}} />
+      <TwoPanePicker rows={rows} onRowsChange={() => {}} />
     </QueryClientProvider>,
   )
+}
+
+function renderPickerWithRows() {
+  return renderPicker([SAMPLE_ROW])
 }
 
 describe("TwoPanePicker", () => {
@@ -80,5 +92,11 @@ describe("TwoPanePicker", () => {
     renderPicker()
 
     expect(screen.getAllByText("Available to add").length).toBeGreaterThan(0)
+  })
+
+  it("renders Series actions button on In-pane tiles", () => {
+    renderPickerWithRows()
+
+    expect(screen.getAllByRole("button", { name: "Series actions" }).length).toBeGreaterThan(0)
   })
 })

@@ -65,7 +65,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
     playlist?.rows.map((r) => ({
       series_id: r.series_id,
       series_title: r.series_title ?? r.series_id,
-      thumb_url: null,
+      thumb_url: r.thumb_url ?? null,
       mode: r.mode,
       completion_policy: r.completion_policy,
     })) ??
@@ -121,7 +121,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
   const isPending = createMutation.isPending || updateMutation.isPending
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-6">
+    <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-6 pb-20">
       {/* Section 1: Basics */}
       <section className="flex flex-col gap-4 rounded-xl border bg-card p-4">
         <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Basics</h3>
@@ -251,7 +251,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
         {errors.rows && <p className="text-xs text-destructive">{errors.rows}</p>}
       </section>
 
-      <div className="flex items-center gap-3">
+      <div className="sticky bottom-0 z-10 -mx-4 mt-4 flex items-center gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <Button type="submit" disabled={isPending}>
           {isPending ? "Saving…" : "Save playlist"}
         </Button>

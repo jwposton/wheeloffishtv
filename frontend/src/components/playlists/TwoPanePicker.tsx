@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react"
+import { MoreVertical } from "lucide-react"
 import { toast } from "sonner"
 
 import type { Series } from "@/api/types"
@@ -6,13 +7,24 @@ import {
   useAppendPlaylistRow,
   usePatchPlaylistRow,
   useRemovePlaylistRow,
+  type CompletionPolicy,
+  type RowMode,
 } from "@/api/playlists"
 import { SeriesPoster } from "@/components/browse/SeriesPoster"
-import {
-  RowSettingsSheet,
-  type SeriesRow,
-} from "@/components/playlists/RowSettingsSheet"
+import { PlaylistRowMenuItems } from "@/components/playlists/PlaylistRowMenuItems"
+import { type SeriesRow } from "@/components/playlists/RowSettingsSheet"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -31,30 +43,78 @@ interface TwoPanePickerProps {
 
 function MemberTile({
   row,
-  onClick,
+  onModeChange,
+  onPolicyChange,
+  onRemove,
 }: {
   row: SeriesRow
-  onClick: () => void
+  onModeChange: (mode: RowMode) => void
+  onPolicyChange: (policy: CompletionPolicy) => void
+  onRemove: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "relative flex flex-col gap-2 rounded-md text-left transition-colors hover:bg-accent/40",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-      )}
-    >
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
-        <SeriesPoster title={row.series_title} thumbUrl={row.thumb_url} />
-      </div>
-      <span className="line-clamp-2 text-sm font-medium">{row.series_title}</span>
-      {row.mode === "disordered" ? (
-        <Badge variant="secondary" className="absolute top-2 left-2 text-xs">
-          Random
-        </Badge>
-      ) : null}
-    </button>
+    <ContextMenu>
+      <ContextMenuTrigger className="block w-full">
+        <div className="relative flex flex-col gap-2 rounded-md text-left">
+          <div
+            className={cn(
+              "relative flex flex-col gap-2 rounded-md text-left",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+            )}
+          >
+            <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
+              <SeriesPoster title={row.series_title} thumbUrl={row.thumb_url} />
+            </div>
+            <span className="line-clamp-2 text-sm font-medium">{row.series_title}</span>
+            {row.mode === "disordered" ? (
+              <Badge variant="secondary" className="absolute top-2 left-2 text-xs">
+                Random
+              </Badge>
+            ) : null}
+          </div>
+          <div
+            className="absolute top-2 right-2"
+            onClick={(event: MouseEvent) => event.stopPropagation()}
+            onContextMenu={(event: MouseEvent) => event.stopPropagation()}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon-xs"
+                    className="bg-background/90 shadow-sm backdrop-blur-sm"
+                    aria-label="Series actions"
+                    onClick={(event: MouseEvent) => event.stopPropagation()}
+                  >
+                    <MoreVertical />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                <PlaylistRowMenuItems
+                  row={row}
+                  variant="dropdown"
+                  onModeChange={onModeChange}
+                  onPolicyChange={onPolicyChange}
+                  onRemove={onRemove}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent onClick={(event) => event.stopPropagation()}>
+        <PlaylistRowMenuItems
+          row={row}
+          variant="context"
+          onModeChange={onModeChange}
+          onPolicyChange={onPolicyChange}
+          onRemove={onRemove}
+        />
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
@@ -101,10 +161,14 @@ function TileGridSkeleton() {
 
 function InPlaylistPane({
   rows,
-  onRowClick,
+  onModeChange,
+  onPolicyChange,
+  onRemove,
 }: {
   rows: SeriesRow[]
-  onRowClick: (row: SeriesRow) => void
+  onModeChange: (row: SeriesRow, mode: RowMode) => void
+  onPolicyChange: (row: SeriesRow, policy: CompletionPolicy) => void
+  onRemove: (seriesId: string) => void
 }) {
   if (rows.length === 0) {
     return (
@@ -117,7 +181,13 @@ function InPlaylistPane({
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
       {rows.map((row) => (
-        <MemberTile key={row.series_id} row={row} onClick={() => onRowClick(row)} />
+        <MemberTile
+          key={row.series_id}
+          row={row}
+          onModeChange={(mode) => onModeChange(row, mode)}
+          onPolicyChange={(policy) => onPolicyChange(row, policy)}
+          onRemove={() => onRemove(row.series_id)}
+        />
       ))}
     </div>
   )
@@ -180,7 +250,6 @@ export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerP
   const connectionId = user?.connection?.id
   const [searchInput, setSearchInput] = useState("")
   const debouncedQ = useDebouncedValue(searchInput, 300)
-  const [settingsRow, setSettingsRow] = useState<SeriesRow | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const appendMutation = useAppendPlaylistRow()
@@ -213,7 +282,7 @@ export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerP
         return {
           ...row,
           series_title: catalog.title,
-          thumb_url: catalog.thumb_url,
+          thumb_url: row.thumb_url ?? catalog.thumb_url,
         }
       }),
     [rows, catalogById],
@@ -315,10 +384,29 @@ export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerP
     )
   }
 
+  function handleModeChange(row: SeriesRow, mode: RowMode) {
+    if (mode === row.mode) {
+      return
+    }
+    void handleSave({ ...row, mode })
+  }
+
+  function handlePolicyChange(row: SeriesRow, policy: CompletionPolicy) {
+    if (policy === row.completion_policy) {
+      return
+    }
+    void handleSave({ ...row, completion_policy: policy })
+  }
+
   const inPane = (
     <div className="flex flex-col gap-3">
       <h4 className="text-sm font-medium">In playlist ({displayRows.length})</h4>
-      <InPlaylistPane rows={displayRows} onRowClick={setSettingsRow} />
+      <InPlaylistPane
+        rows={displayRows}
+        onModeChange={handleModeChange}
+        onPolicyChange={handlePolicyChange}
+        onRemove={(seriesId) => void handleRemove(seriesId)}
+      />
     </div>
   )
 
@@ -358,27 +446,6 @@ export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerP
         {inPane}
         {availablePane}
       </div>
-
-      {settingsRow ? (
-        <RowSettingsSheet
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setSettingsRow(null)
-            }
-          }}
-          row={settingsRow}
-          seriesTitle={settingsRow.series_title}
-          onSave={(updatedRow) => {
-            void handleSave(updatedRow)
-            setSettingsRow(null)
-          }}
-          onRemove={() => {
-            void handleRemove(settingsRow.series_id)
-            setSettingsRow(null)
-          }}
-        />
-      ) : null}
     </>
   )
 }

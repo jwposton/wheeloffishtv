@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from "react"
+import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
 import { useAppendPlaylistRow, usePlaylists } from "@/api/playlists"
@@ -24,6 +25,7 @@ function useAddToPlaylistHandlers(seriesId: string) {
   const { data: playlists, isLoading } = usePlaylists()
   const appendMutation = useAppendPlaylistRow()
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
+  const advancedHref = `/playlists/new?seriesId=${encodeURIComponent(seriesId)}`
 
   async function handleAppend(playlistId: string, playlistName: string) {
     try {
@@ -50,6 +52,7 @@ function useAddToPlaylistHandlers(seriesId: string) {
     handleAppend,
     openQuickCreate,
     appendPending: appendMutation.isPending,
+    advancedHref,
   }
 }
 
@@ -62,6 +65,7 @@ export function AddToPlaylistContextMenuItems({ seriesId }: { seriesId: string }
     handleAppend,
     openQuickCreate,
     appendPending,
+    advancedHref,
   } = useAddToPlaylistHandlers(seriesId)
 
   return (
@@ -84,6 +88,12 @@ export function AddToPlaylistContextMenuItems({ seriesId }: { seriesId: string }
       )}
       <ContextMenuSeparator />
       <ContextMenuItem onClick={openQuickCreate}>Create new playlist…</ContextMenuItem>
+      <ContextMenuItem
+        render={<Link to={advancedHref} />}
+        onClick={(event) => event.stopPropagation()}
+      >
+        Advanced…
+      </ContextMenuItem>
       <QuickCreatePlaylistDialog
         seriesId={seriesId}
         open={quickCreateOpen}
@@ -102,6 +112,7 @@ export function AddToPlaylistMenu({ seriesId, trigger }: AddToPlaylistMenuProps)
     handleAppend,
     openQuickCreate,
     appendPending,
+    advancedHref,
   } = useAddToPlaylistHandlers(seriesId)
 
   return (
@@ -128,6 +139,12 @@ export function AddToPlaylistMenu({ seriesId, trigger }: AddToPlaylistMenuProps)
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={openQuickCreate}>
             Create new playlist…
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            render={<Link to={advancedHref} />}
+            onClick={(event) => event.stopPropagation()}
+          >
+            Advanced…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

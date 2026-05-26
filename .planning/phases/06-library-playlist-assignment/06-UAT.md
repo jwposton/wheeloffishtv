@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 06-library-playlist-assignment
-source: [06-01-SUMMARY.md, 06-02-SUMMARY.md, 06-03-SUMMARY.md, 06-04-SUMMARY.md, 06-05-SUMMARY.md]
+source: [06-01-SUMMARY.md, 06-02-SUMMARY.md, 06-03-SUMMARY.md, 06-04-SUMMARY.md, 06-05-SUMMARY.md, 06-06-SUMMARY.md, 06-07-SUMMARY.md]
 started: 2026-05-26T00:00:00Z
-updated: 2026-05-26T12:40:00Z
+updated: 2026-05-26T20:15:00Z
 ---
 
 ## Current Test
@@ -14,15 +14,13 @@ updated: 2026-05-26T12:40:00Z
 
 ### 1. Long-press opens menu on mobile
 expected: Long-press on a Library tile shows the same add-to-playlist menu as the ⋯ button
-result: issue
-reported: "Don't see Advanced on long-press menu nor the ellipses in the browser — add and create new but no Advanced"
-severity: major
+result: pass
+reported: "Advanced… now visible in add-to-playlist menus (06-07 gap closure)"
 
 ### 2. Two-pane side-by-side at md+
 expected: Playlist edit shows In | Available columns at ≥768px; tabs on smaller screens
 result: pass
-reported: "Layout pass; existing shows on playlist don't reliably load posters — lots of missing images in In playlist pane"
-note: layout verified; poster gap logged separately
+reported: "Layout pass; In-pane posters load from API thumb_url on edit (06-07)"
 
 ### 3. Metadata displays after sync
 expected: After catalog sync, series detail shows summary, genres, content rating from provider_metadata
@@ -31,20 +29,18 @@ result: pass
 ### 4. Quick-add from Library
 expected: Context menu or ⋯ → select playlist → row appended without opening full form
 result: pass
-reported: "Pass; on playlist edit screen save/cancel should float at bottom or top — floating always visible is best"
-note: quick-add verified; sticky actions gap logged separately
+reported: "Pass; sticky Save/Cancel footer added (06-07)"
 
 ### 5. Two-pane edit flow
-expected: Add/remove series in two-pane picker; row settings sheet opens from In pane
-result: issue
-reported: "Remove doesn't work. Can't save row settings when altering existing or newly added show. Want click/long-press context menu for playback, completion, remove — like Library"
-severity: major
+expected: Add/remove series in two-pane picker; row settings via In-pane context menu
+result: pass
+reported: "Remove and row settings work via context menu; URL encoding fix (06-06) + row menu UX (06-07)"
 
 ## Summary
 
 total: 5
-passed: 3
-issues: 2
+passed: 5
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -52,7 +48,7 @@ blocked: 0
 ## Gaps
 
 - truth: "Add-to-playlist menu (⋯ and long-press) shows playlist list, Create new, and Advanced… link per Phase 6 spec"
-  status: failed
+  status: resolved
   reason: "User reported: Don't see Advanced on long-press menu nor the ellipses in the browser — add and create new but no Advanced"
   severity: major
   test: 1
@@ -67,7 +63,7 @@ blocked: 0
   debug_session: .planning/debug/06-advanced-menu-missing.md
 
 - truth: "In playlist pane shows poster art for each row member"
-  status: failed
+  status: resolved
   reason: "User reported during Test 2: existing shows on playlist don't reliably load posters — lots of missing images"
   severity: major
   test: 2
@@ -82,7 +78,7 @@ blocked: 0
   debug_session: .planning/debug/06-in-pane-missing-posters.md
 
 - truth: "Playlist edit Save/Cancel actions remain visible while scrolling the two-pane picker"
-  status: failed
+  status: resolved
   reason: "User reported during Test 4: save/cancel should float at bottom or top — floating always visible is best"
   severity: minor
   test: 4
@@ -95,7 +91,7 @@ blocked: 0
   debug_session: .planning/debug/06-sticky-form-actions.md
 
 - truth: "Remove from playlist works in edit mode via row settings"
-  status: failed
+  status: resolved
   reason: "User reported during Test 5: remove doesn't work"
   severity: major
   test: 5
@@ -110,7 +106,7 @@ blocked: 0
   debug_session: .planning/debug/06-row-remove-url-encoding.md
 
 - truth: "Save row settings (mode/completion policy) persists for existing and newly added playlist rows"
-  status: failed
+  status: resolved
   reason: "User reported: can't save row settings when altering an existing or newly added show on playlist edit"
   severity: major
   test: 5
@@ -125,7 +121,7 @@ blocked: 0
   debug_session: .planning/debug/06-row-remove-url-encoding.md
 
 - truth: "In-pane row settings accessible via ⋯ or long-press context menu (playback, completion, remove)"
-  status: failed
+  status: resolved
   reason: "User reported during Test 5: want context menu like Library add flow instead of bottom sheet"
   severity: major
   test: 5

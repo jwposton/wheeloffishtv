@@ -102,6 +102,7 @@ class PlaylistSeriesRowResponse(BaseModel):
     completion_policy: str
     completion_event: str
     series_title: str | None = None
+    thumb_url: str | None = None
 
 
 class PlaylistDetailResponse(BaseModel):

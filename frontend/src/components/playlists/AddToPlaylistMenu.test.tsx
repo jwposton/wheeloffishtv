@@ -19,9 +19,17 @@ import {
   usePlaylists,
   useAppendPlaylistRow,
 } from "@/api/playlists"
-import { AddToPlaylistMenu } from "@/components/playlists/AddToPlaylistMenu"
+import {
+  AddToPlaylistContextMenuItems,
+  AddToPlaylistMenu,
+} from "@/components/playlists/AddToPlaylistMenu"
 import { QuickCreatePlaylistDialog } from "@/components/playlists/QuickCreatePlaylistDialog"
 import { Button } from "@/components/ui/button"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
 const mockUsePlaylists = vi.mocked(usePlaylists)
 const mockUseAppendPlaylistRow = vi.mocked(useAppendPlaylistRow)
@@ -110,6 +118,40 @@ describe("AddToPlaylistMenu", () => {
     await waitFor(() => {
       expect(screen.getByText("Create new playlist…")).toBeInTheDocument()
     })
+  })
+
+  it("shows Advanced… link in dropdown with encoded seriesId", async () => {
+    renderMenu()
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Advanced…")).toBeInTheDocument()
+    })
+    const advanced = screen.getByText("Advanced…").closest("a")
+    expect(advanced?.getAttribute("href")).toContain("seriesId=series-abc")
+  })
+
+  it("shows Advanced… in context menu variant", async () => {
+    const queryClient = makeQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ContextMenu open>
+            <ContextMenuTrigger render={<Button type="button">Tile</Button>} />
+            <ContextMenuContent>
+              <AddToPlaylistContextMenuItems seriesId="series-abc" />
+            </ContextMenuContent>
+          </ContextMenu>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText("Advanced…")).toBeInTheDocument()
+    })
+    const advanced = screen.getByText("Advanced…").closest("a")
+    expect(advanced?.getAttribute("href")).toContain("seriesId=series-abc")
   })
 })
 

@@ -40,6 +40,7 @@ export interface PlaylistSeriesRowResponse {
   completion_policy: CompletionPolicy
   completion_event: string
   series_title: string | null
+  thumb_url: string | null
 }
 
 export interface RebuildRunSummary {

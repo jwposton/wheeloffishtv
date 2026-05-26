@@ -22,6 +22,7 @@ from wheeloffish.api.schemas.playlists import (
     RebuildRunSummary,
     SnapshotEpisode,
 )
+from wheeloffish.core.media_artwork import series_artwork_url
 from wheeloffish.core.orchestrator import run_manual_rebuild
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.cached_series import CachedSeries
@@ -68,19 +69,36 @@ def _rebuild_run_to_summary(run: RebuildRun) -> RebuildRunSummary:
     )
 
 
-def _series_title_map(db: Session, app_user_id: str, series_ids: list[str]) -> dict[str, str]:
-    """Resolve series_id → title from CachedSeries where available."""
+def _series_row_metadata_map(
+    db: Session,
+    app_user_id: str,
+    series_ids: list[str],
+) -> dict[str, tuple[str | None, str | None]]:
+    """Resolve series_id → (title, thumb_url) from owner-scoped CachedSeries."""
     if not series_ids:
         return {}
     rows = (
-        db.query(CachedSeries.id, CachedSeries.title)
+        db.query(CachedSeries.id, CachedSeries.title, CachedSeries.connection_id)
         .filter(
             CachedSeries.id.in_(series_ids),
             CachedSeries.app_user_id == app_user_id,
         )
         .all()
     )
-    return {r.id: r.title for r in rows}
+    return {
+        r.id: (r.title, series_artwork_url(r.connection_id, r.id))
+        for r in rows
+    }
+
+
+def _series_title_map(db: Session, app_user_id: str, series_ids: list[str]) -> dict[str, str]:
+    """Resolve series_id → title from CachedSeries where available."""
+    return {
+        series_id: title
+        for series_id, (title, _thumb) in _series_row_metadata_map(
+            db, app_user_id, series_ids
+        ).items()
+    }
 
 
 def _playlist_to_detail(
@@ -89,7 +107,7 @@ def _playlist_to_detail(
     app_user_id: str,
 ) -> PlaylistDetailResponse:
     row_series_ids = [r.series_id for r in playlist.rows]
-    title_map = _series_title_map(db, app_user_id, row_series_ids)
+    metadata_map = _series_row_metadata_map(db, app_user_id, row_series_ids)
 
     rows_out = [
         PlaylistSeriesRowResponse(
@@ -97,7 +115,8 @@ def _playlist_to_detail(
             mode=r.mode,
             completion_policy=r.completion_policy,
             completion_event=r.completion_event,
-            series_title=title_map.get(r.series_id),
+            series_title=metadata_map.get(r.series_id, (None, None))[0],
+            thumb_url=metadata_map.get(r.series_id, (None, None))[1],
         )
         for r in playlist.rows
     ]
