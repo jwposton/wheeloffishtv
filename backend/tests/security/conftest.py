@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 import pytest
-from alembic import command
 from alembic.config import Config
 from starlette.testclient import TestClient
 
+from alembic import command
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.db.session import reset_session_state
 from wheeloffish.main import create_app
