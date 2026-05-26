@@ -10,7 +10,7 @@ if [ "$(id -u)" = "0" ]; then
   usermod -o -u "$PUID" -g app app
   mkdir -p /data/artwork
   chown -R app:app /data
-  exec runuser -u app -- "$0" "$@"
+  exec su app -s /bin/sh -c 'exec "$0" "$@"' -- "$0" "$@"
 fi
 
 alembic upgrade head
