@@ -1,10 +1,9 @@
+import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
-import {
-  createPlaylistWithSeries,
-} from "@/api/playlists"
+import { createPlaylistWithSeries } from "@/api/playlists"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -27,6 +26,7 @@ export function QuickCreatePlaylistDialog({
   open,
   onOpenChange,
 }: QuickCreatePlaylistDialogProps) {
+  const queryClient = useQueryClient()
   const [name, setName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -40,6 +40,7 @@ export function QuickCreatePlaylistDialog({
     setIsSubmitting(true)
     try {
       const result = await createPlaylistWithSeries(trimmed, seriesId)
+      void queryClient.invalidateQueries({ queryKey: ["playlists"] })
       toast.success(`Added to ${result.name}`)
       setName("")
       onOpenChange(false)

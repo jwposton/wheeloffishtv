@@ -74,6 +74,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
   )
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [rowMutationsPending, setRowMutationsPending] = useState(false)
 
   function validate(): boolean {
     const errs: Record<string, string> = {}
@@ -118,7 +119,8 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
     }
   }
 
-  const isPending = createMutation.isPending || updateMutation.isPending
+  const isPending =
+    createMutation.isPending || updateMutation.isPending || rowMutationsPending
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-6 pb-20">
@@ -247,6 +249,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
           rows={rows}
           onRowsChange={setRows}
           playlistId={playlist?.id}
+          onRowMutationsPendingChange={setRowMutationsPending}
         />
         {errors.rows && <p className="text-xs text-destructive">{errors.rows}</p>}
       </section>

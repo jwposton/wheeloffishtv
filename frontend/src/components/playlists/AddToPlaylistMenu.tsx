@@ -2,6 +2,7 @@ import { useState, type ReactElement } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
+import { ApiError } from "@/api/client"
 import { useAppendPlaylistRow, usePlaylists } from "@/api/playlists"
 import { QuickCreatePlaylistDialog } from "@/components/playlists/QuickCreatePlaylistDialog"
 import {
@@ -34,7 +35,11 @@ function useAddToPlaylistHandlers(seriesId: string) {
         payload: { series_id: seriesId },
       })
       toast.success(`Added to ${playlistName}`)
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        toast.info(`Already in ${playlistName}`)
+        return
+      }
       toast.error("Failed to add to playlist")
     }
   }

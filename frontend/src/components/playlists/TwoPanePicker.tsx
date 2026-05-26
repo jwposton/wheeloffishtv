@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react"
 import { MoreVertical } from "lucide-react"
 import { toast } from "sonner"
 
+import { ApiError } from "@/api/client"
 import type { Series } from "@/api/types"
 import {
   useAppendPlaylistRow,
@@ -39,6 +40,7 @@ interface TwoPanePickerProps {
   rows: SeriesRow[]
   onRowsChange: (rows: SeriesRow[]) => void
   playlistId?: string
+  onRowMutationsPendingChange?: (pending: boolean) => void
 }
 
 function MemberTile({
@@ -245,7 +247,12 @@ function AvailablePane({
   )
 }
 
-export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerProps) {
+export function TwoPanePicker({
+  rows,
+  onRowsChange,
+  playlistId,
+  onRowMutationsPendingChange,
+}: TwoPanePickerProps) {
   const { user } = useAuth()
   const connectionId = user?.connection?.id
   const [searchInput, setSearchInput] = useState("")
@@ -255,6 +262,13 @@ export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerP
   const appendMutation = useAppendPlaylistRow()
   const removeMutation = useRemovePlaylistRow()
   const patchMutation = usePatchPlaylistRow()
+
+  const rowMutationsPending =
+    appendMutation.isPending || removeMutation.isPending || patchMutation.isPending
+
+  useEffect(() => {
+    onRowMutationsPendingChange?.(rowMutationsPending)
+  }, [rowMutationsPending, onRowMutationsPendingChange])
 
   const query = useSeriesInfiniteQuery(connectionId, debouncedQ)
   const catalogItems = useMemo(
@@ -329,7 +343,10 @@ export function TwoPanePicker({ rows, onRowsChange, playlistId }: TwoPanePickerP
           payload: { series_id: series.id },
         })
         toast.success(`Added ${series.title}`)
-      } catch {
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          return
+        }
         onRowsChange(previousRows)
         toast.error("Failed to add show")
       }
