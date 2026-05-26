@@ -1,5 +1,11 @@
 # Optional override: bind-mount SQLite data to the host for easy backup.
 # Copy to compose.override.yml: cp compose.override.yml.example compose.override.yml
+#
+# Set PUID/PGID in .env to match your host user (id -u / id -g), then:
+#   mkdir -p data
+#   docker compose up -d
+#
+# The entrypoint chowns /data to PUID:PGID on each start.
 
 services:
   app:

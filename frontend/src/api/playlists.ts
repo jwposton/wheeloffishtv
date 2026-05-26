@@ -45,7 +45,7 @@ export interface PlaylistSeriesRowResponse {
 
 export interface RebuildRunSummary {
   id: string
-  status: string
+  status: Exclude<RebuildStatus, null>
   started_at: string | null
   finished_at: string | null
   error_message: string | null

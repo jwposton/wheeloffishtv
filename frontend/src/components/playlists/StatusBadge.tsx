@@ -1,5 +1,7 @@
 import { Badge } from "@/components/ui/badge"
+import { WheelIcon } from "@/components/icons/WheelIcon"
 import { cn } from "@/lib/utils"
+import { isRebuildInProgress } from "@/lib/rebuild"
 import type { RebuildStatus } from "@/api/types"
 
 interface StatusBadgeProps {
@@ -35,9 +37,14 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     return <Badge variant="destructive">Failed</Badge>
   }
 
-  return (
-    <Badge variant="secondary">
-      Rebuilding&hellip;
-    </Badge>
-  )
+  if (isRebuildInProgress(status)) {
+    return (
+      <Badge variant="secondary">
+        <WheelIcon spinning />
+        Rebuilding&hellip;
+      </Badge>
+    )
+  }
+
+  return null
 }

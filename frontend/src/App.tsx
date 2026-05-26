@@ -15,16 +15,7 @@ import { AdminRoute } from "@/routes/AdminRoute"
 import { LibraryScopeGuard } from "@/routes/LibraryScopeGuard"
 import { ProtectedRoute } from "@/routes/ProtectedRoute"
 
-function HomePage() {
-  return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-2">
-      <h2 className="text-xl font-semibold">Home</h2>
-      <p className="text-muted-foreground text-sm">
-        Series browse and playlists ship in upcoming plans.
-      </p>
-    </div>
-  )
-}
+import { HomePage } from "@/pages/HomePage"
 
 function App() {
   return (
@@ -42,9 +33,9 @@ function App() {
             <Route path="/playlists/:id/edit" element={<PlaylistFormPage />} />
             <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
           </Route>
-          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/setup/admin" element={<AdminSetupPage />} />
           <Route element={<AdminRoute />}>
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/setup/libraries" element={<AdminLibrarySetupPage />} />
             <Route path="/settings/libraries" element={<SettingsLibrariesPage />} />
           </Route>

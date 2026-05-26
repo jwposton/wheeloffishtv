@@ -5,10 +5,12 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { RebuildButton } from "@/components/playlists/RebuildButton"
 import { RebuildBanner } from "@/components/playlists/RebuildBanner"
 import { OutputList } from "@/components/playlists/OutputList"
 import { PlaylistMembersPanel } from "@/components/playlists/PlaylistMembersPanel"
 import { usePlaylist, useDeletePlaylist, useRebuildPlaylist } from "@/api/playlists"
+import { isRebuildInProgress } from "@/lib/rebuild"
 import { cn } from "@/lib/utils"
 
 function DeleteConfirmDialog({
@@ -113,16 +115,14 @@ export function PlaylistDetailPage() {
     }
   }
 
-  const isRebuildRunning =
-    playlist?.last_rebuild?.status === "running" ||
-    playlist?.last_rebuild?.status === "queued"
+  const isRebuildRunning = isRebuildInProgress(playlist?.last_rebuild?.status)
 
   if (isLoading) {
     return (
       <div className="mx-auto flex max-w-6xl flex-col gap-4">
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-20 w-full rounded-xl" />
-        <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(240px,1fr)]">
           <Skeleton className="h-64 w-full rounded-xl" />
           <Skeleton className="h-64 w-full rounded-xl" />
         </div>
@@ -142,16 +142,13 @@ export function PlaylistDetailPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0">
-          <h2 className="text-xl font-semibold truncate">{playlist.name}</h2>
+          <h2 className="truncate text-2xl">{playlist.name}</h2>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
+          <RebuildButton
             onClick={() => void handleRebuild()}
-            disabled={isRebuildRunning || rebuildMutation.isPending}
-          >
-            {rebuildMutation.isPending || isRebuildRunning ? "Rebuilding…" : "Rebuild now"}
-          </Button>
+            spinning={rebuildMutation.isPending || isRebuildRunning}
+          />
           <Button
             size="sm"
             variant="outline"
@@ -174,12 +171,12 @@ export function PlaylistDetailPage() {
         providerPlaylistOpenUrl={playlist.provider_playlist_open_url}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(240px,1fr)]">
         <section className="flex flex-col gap-3">
           <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
             Shows ({playlist.rows.length})
           </h3>
-          <div className="rounded-xl border bg-card p-4">
+          <div className="wof-panel p-4">
             <PlaylistMembersPanel playlistId={playlist.id} rows={playlist.rows} />
           </div>
         </section>
@@ -188,7 +185,7 @@ export function PlaylistDetailPage() {
           <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
             Output — {playlist.episode_count} episodes
           </h3>
-          <div className="rounded-xl border bg-card p-4">
+          <div className="wof-panel p-4">
             <OutputList episodes={playlist.current_snapshot} />
           </div>
         </section>

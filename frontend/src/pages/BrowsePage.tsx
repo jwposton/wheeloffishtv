@@ -141,8 +141,8 @@ export function BrowsePage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold">Library</h2>
-        <p className="text-muted-foreground text-sm">
+        <h2 className="text-2xl">Library</h2>
+        <p className="text-sm text-muted-foreground">
           Search and scroll through in-scope TV series.
         </p>
       </div>
@@ -159,8 +159,8 @@ export function BrowsePage() {
       {showInitialSkeleton ? (
         <BrowseSkeleton layout={layout} />
       ) : showSyncingEmpty ? (
-        <div className="rounded-md border border-dashed p-8 text-center">
-          <p className="font-medium">Importing shows from Plex</p>
+        <div className="wof-panel border-dashed p-8 text-center">
+          <p className="font-heading text-lg">Importing shows from Plex</p>
           <p className="text-muted-foreground mt-1 text-sm">
             Titles appear here as they sync. If this takes more than a few
             minutes, use Retry sync below.
@@ -172,8 +172,8 @@ export function BrowsePage() {
           ) : null}
         </div>
       ) : showEmpty ? (
-        <div className="rounded-md border border-dashed p-8 text-center">
-          <p className="font-medium">No series found</p>
+        <div className="wof-panel border-dashed p-8 text-center">
+          <p className="font-heading text-lg">No series found</p>
           <p className="text-muted-foreground mt-1 text-sm">
             {debouncedQ
               ? "Try a different search term."

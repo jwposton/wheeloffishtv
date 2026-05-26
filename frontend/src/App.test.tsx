@@ -76,9 +76,7 @@ describe("App", () => {
     )
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "Wheel of Fish TV" }),
-      ).toBeInTheDocument()
+      expect(screen.getByAltText(/Wheel of Fish/i)).toBeInTheDocument()
       expect(screen.getByText("Sign in")).toBeInTheDocument()
       expect(
         screen.getByRole("button", { name: "Sign in with Plex" }),

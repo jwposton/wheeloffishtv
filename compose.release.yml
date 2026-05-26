@@ -8,16 +8,18 @@
 
 services:
   app:
-    image: ghcr.io/jwposton/wheeloffishtv:0.1.0
+    image: ghcr.io/jwposton/wheeloffishtv:latest
     ports:
       - 8000:8000
     env_file:
       - .env
     environment:
-      DATABASE_URL: sqlite:////data/wheeloffisht.db
+      DATABASE_URL: sqlite:////data/wheeloffish.db
       LOG_FORMAT: json
       LOG_LEVEL: INFO
       ENVIRONMENT: production
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
     volumes:
       - wof_data:/data
     restart: unless-stopped

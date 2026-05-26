@@ -26,9 +26,16 @@ describe("StatusBadge", () => {
     expect(screen.getByText("Partial")).toBeInTheDocument()
   })
 
-  it('renders "Rebuilding\u2026" when status is running', () => {
+  it('renders "Rebuilding\u2026" with a spinning wheel when status is running', () => {
     render(<StatusBadge status="running" />)
     expect(screen.getByText("Rebuilding\u2026")).toBeInTheDocument()
+    expect(screen.getByTestId("wheel-icon")).toHaveAttribute("data-spinning", "true")
+  })
+
+  it('renders "Rebuilding\u2026" with a spinning wheel when status is queued', () => {
+    render(<StatusBadge status="queued" />)
+    expect(screen.getByText("Rebuilding\u2026")).toBeInTheDocument()
+    expect(screen.getByTestId("wheel-icon")).toHaveAttribute("data-spinning", "true")
   })
 
   it("accepts all RebuildStatus values without TypeScript errors", () => {

@@ -37,7 +37,7 @@ export function RebuildBanner({
   const writebackStatus = (lastRebuild?.writeback_status ?? null) as WritebackStatusValue
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+    <div className="wof-panel flex flex-col gap-3 p-4">
       <div className="flex items-center gap-3">
         <StatusBadge status={status} />
         {lastRebuild?.finished_at && (

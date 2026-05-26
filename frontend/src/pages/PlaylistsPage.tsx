@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { toast } from "sonner"
 import { useEffect } from "react"
 
+import { WheelIcon } from "@/components/icons/WheelIcon"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlaylistCard } from "@/components/playlists/PlaylistCard"
@@ -31,7 +32,10 @@ export function PlaylistsPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold">Playlists</h2>
+        <div>
+          <h2 className="text-2xl">Playlists</h2>
+          <p className="text-sm text-muted-foreground">Your daily and weekly mixes</p>
+        </div>
         <Button size="sm" render={<Link to="/playlists/new" />}>
           New playlist
         </Button>
@@ -46,8 +50,13 @@ export function PlaylistsPage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-md border border-dashed p-8 text-center">
-          <p className="font-medium">No playlists yet</p>
+        <div className="wof-panel border-dashed p-8 text-center">
+          <div className="mx-auto mb-4 flex justify-center">
+            <div className="rounded-full bg-secondary/80 p-3 ring-1 ring-border/80">
+              <WheelIcon className="size-10" />
+            </div>
+          </div>
+          <p className="font-heading text-lg">No playlists yet</p>
           <p className="text-muted-foreground mt-1 text-sm">
             Create a playlist to mix episodes from your favorite shows on a
             daily or weekly schedule.

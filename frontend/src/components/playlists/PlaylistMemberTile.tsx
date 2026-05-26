@@ -39,25 +39,27 @@ export function PlaylistMemberTile({
     <>
       <ContextMenu>
         <ContextMenuTrigger className="block w-full">
-          <div className="relative flex flex-col gap-2 rounded-md text-left">
+          <div className="relative flex flex-col gap-1.5 rounded-md text-left">
             <div
               className={cn(
-                "relative flex flex-col gap-2 rounded-md text-left",
+                "relative flex flex-col gap-1.5 rounded-md text-left",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
               )}
             >
               <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
                 <SeriesPoster title={row.series_title} thumbUrl={row.thumb_url} />
               </div>
-              <span className="line-clamp-2 text-sm font-medium">{row.series_title}</span>
+              <span className="line-clamp-2 text-xs font-medium leading-tight">
+                {row.series_title}
+              </span>
               {row.mode === "disordered" ? (
-                <Badge variant="secondary" className="absolute top-2 left-2 text-xs">
+                <Badge variant="secondary" className="absolute top-1.5 left-1.5 px-1.5 py-0 text-[0.65rem]">
                   Random
                 </Badge>
               ) : null}
             </div>
             <div
-              className="absolute top-2 right-2"
+              className="absolute top-1.5 right-1.5"
               onClick={(event: MouseEvent) => event.stopPropagation()}
               onContextMenu={(event: MouseEvent) => event.stopPropagation()}
             >

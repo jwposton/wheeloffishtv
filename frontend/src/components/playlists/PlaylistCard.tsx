@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom"
 
+import { WheelIcon } from "@/components/icons/WheelIcon"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/playlists/StatusBadge"
 import { WritebackStatus } from "@/components/playlists/WritebackStatus"
 import { formatCadence } from "@/api/playlists"
+import { isRebuildInProgress } from "@/lib/rebuild"
 import type { PlaylistListItem } from "@/api/types"
 import type { WritebackStatus as WritebackStatusValue } from "@/api/types"
 
@@ -24,17 +26,29 @@ interface PlaylistCardProps {
 }
 
 export function PlaylistCard({ item }: PlaylistCardProps) {
+  const rebuilding = isRebuildInProgress(item.last_rebuild_status)
+
   return (
-    <Link to={`/playlists/${item.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
-      <Card className="hover:ring-foreground/20 transition-shadow h-full">
-        <CardHeader>
-          <CardTitle className="truncate">{item.name}</CardTitle>
+    <Link
+      to={`/playlists/${item.id}`}
+      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Card className="h-full border-border/80 bg-card/85 transition-all hover:border-accent/40 hover:shadow-lg hover:shadow-black/10">
+        <CardHeader className="grid-cols-1 gap-3">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-secondary/80 p-2 ring-1 ring-border/80">
+              <WheelIcon spinning={rebuilding} className="size-8" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="truncate text-base">{item.name}</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">{formatCadence(item)}</p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">{formatCadence(item)}</p>
           <div className="flex items-center justify-between gap-2">
             <StatusBadge status={item.last_rebuild_status} />
-            <span className="text-xs text-muted-foreground shrink-0">
+            <span className="shrink-0 text-xs text-muted-foreground">
               {formatRelativeTime(item.last_rebuild_at)}
             </span>
           </div>

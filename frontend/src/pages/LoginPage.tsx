@@ -6,6 +6,7 @@ import { fetchJson } from "@/api/client"
 import type { ProvidersMetaResponse } from "@/api/types"
 import { JellyfinLoginForm } from "@/components/auth/JellyfinLoginForm"
 import { PlexLoginButton } from "@/components/auth/PlexLoginButton"
+import { BrandMark } from "@/components/brand/BrandMark"
 import {
   Card,
   CardContent,
@@ -53,14 +54,17 @@ export function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center gap-6 p-8">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Wheel of Fish TV
-        </h1>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <BrandMark variant="hero" className="max-w-xs" />
+          <p className="text-sm text-muted-foreground">
+            Sign in with your household media server account.
+          </p>
+        </div>
         <ThemeToggle />
       </div>
 
-      <Card>
+      <Card className="wof-panel">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
           <CardDescription>

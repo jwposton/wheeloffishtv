@@ -112,9 +112,35 @@ describe("PlaylistDetailPage", () => {
     } as unknown as ReturnType<typeof useRebuildPlaylist>)
   })
 
-  it('renders the "Rebuild now" button', () => {
+  it('renders the rebuild control with a wheel icon', () => {
     renderDetailPage()
-    expect(screen.getByRole("button", { name: "Rebuild now" })).toBeInTheDocument()
+    const button = screen.getByRole("button", { name: "Rebuild" })
+    expect(button).toBeInTheDocument()
+    expect(button.querySelector('[data-testid="wheel-icon"]')).toBeInTheDocument()
+  })
+
+  it("shows a spinning rebuild button when a rebuild is running", () => {
+    mockUsePlaylist.mockReturnValue({
+      data: {
+        ...MOCK_PLAYLIST,
+        last_rebuild: {
+          ...MOCK_PLAYLIST.last_rebuild!,
+          status: "running",
+          finished_at: null,
+        },
+      },
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof usePlaylist>)
+
+    renderDetailPage()
+
+    const button = screen.getByRole("button", { name: "Rebuilding…" })
+    expect(button).toBeDisabled()
+    expect(button.querySelector('[data-testid="wheel-icon"]')).toHaveAttribute(
+      "data-spinning",
+      "true",
+    )
   })
 
   it("renders the output list with episode titles", () => {

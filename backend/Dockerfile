@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.12-slim-bookworm AS runtime
 
-RUN groupadd -g 1001 app && useradd -u 1001 -g app -m -d /app -s /bin/false app
+RUN groupadd -g 1000 app && useradd -u 1000 -g app -m -d /app -s /bin/false app
 
 WORKDIR /app
 
@@ -45,8 +45,6 @@ COPY --from=frontend-build --chown=app:app /frontend/dist /app/static/spa
 COPY --chown=app:app backend/docker-entrypoint.sh /app/docker-entrypoint.sh
 
 RUN mkdir -p /data/artwork && chown app:app /data /data/artwork && chmod +x /app/docker-entrypoint.sh
-
-USER app
 
 EXPOSE 8000
 

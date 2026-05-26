@@ -4,7 +4,7 @@ Self-hosted Dockerized Plex/Jellyfin random TV playlist builder. Users connect a
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Release notes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ MIT — see [LICENSE](LICENSE).
 Published multi-arch images (`linux/amd64`, `linux/arm64`) are on GitHub Container Registry:
 
 ```text
-ghcr.io/jwposton/wheeloffishtv:0.1.0
+ghcr.io/jwposton/wheeloffishtv:0.1.1
 ghcr.io/jwposton/wheeloffishtv:latest
 ```
 
@@ -75,19 +75,34 @@ Images are built automatically when a `v*` tag is pushed (see `.github/workflows
 | `LOG_LEVEL` | No | `INFO` | Log level |
 | `LOG_FORMAT` | No | `json` | `json` for production; `console` for local dev |
 | `ENVIRONMENT` | No | `production` | Environment label in logs and health |
+| `PUID` | No | `1000` | UID for `/data` and the app process (entrypoint remaps on start) |
+| `PGID` | No | `1000` | GID for `/data` and the app process |
 | `WOF_ENABLED_PROVIDERS` | No | `plex,jellyfin` | **Deprecated for operators** — use `WOF_PROVIDER` instead; retained for multi-provider test fixtures |
 | `WOF_PLEX_PRODUCT_NAME` | No | `Wheel of Fish TV` | Product name shown during Plex PIN flow |
 | `WOF_CATALOG_SYNC_CHUNK_SIZE` | No | `100` | Series fetched per sync chunk |
 | `WOF_CATALOG_PAGE_DEFAULT` | No | `50` | Default page size for series browse |
 | `WOF_SCOPED_LIBRARY_IDS` | No | — | Optional comma-separated library IDs to auto-scope |
 
-Optional bind-mount for host backups:
+## Data storage
+
+The entrypoint starts as **root**, remaps the internal `app` user to **`PUID`/`PGID`** (defaults `1000`), `chown`s `/data`, then drops privileges. There is **no** `user:` line in compose — same pattern as LinuxServer and many homelab images.
+
+**Named volume (default)** — no host setup:
 
 ```bash
-cp compose.override.yml.example compose.override.yml
+docker compose up -d
 ```
 
-This mounts `./data` to `/data` inside the container.
+**Bind mount (optional)** — host-visible `./data`:
+
+```bash
+mkdir -p data
+cp compose.override.yml.example compose.override.yml
+# set PUID/PGID in .env to match your host user: id -u && id -g
+docker compose up -d
+```
+
+The entrypoint fixes `/data` ownership on each start, so you usually do **not** need a manual host `chown`. Set `PUID`/`PGID` to your host uid/gid when using a bind mount (Synology/NAS installs often use something other than 1000).
 
 ## Backup
 
