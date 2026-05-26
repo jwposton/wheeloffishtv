@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
+import { VersionBadge } from "@/components/layout/VersionBadge"
 import { useAuth } from "@/hooks/useAuth"
 
 export function LoginPage() {
@@ -61,7 +62,10 @@ export function LoginPage() {
             Sign in with your household media server account.
           </p>
         </div>
-        <ThemeToggle />
+        <div className="flex shrink-0 items-center gap-1">
+          <VersionBadge />
+          <ThemeToggle />
+        </div>
       </div>
 
       <Card className="wof-panel">

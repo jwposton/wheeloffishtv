@@ -22,6 +22,13 @@ export interface ProvidersMetaResponse {
   oauth_callback_base: string
 }
 
+export interface VersionMetaResponse {
+  version: string
+  latest_version: string | null
+  update_available: boolean
+  release_url: string | null
+}
+
 export interface PlexOAuthStartResponse {
   pin_id: number
   auth_url: string

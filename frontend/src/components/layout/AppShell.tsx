@@ -5,6 +5,7 @@ import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router-d
 import { fetchJson } from "@/api/client"
 import { BrandMark } from "@/components/brand/BrandMark"
 import { ThemeToggle } from "@/components/layout/ThemeToggle"
+import { VersionBadge } from "@/components/layout/VersionBadge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/useAuth"
@@ -103,6 +104,7 @@ export function AppShell() {
             </nav>
           </div>
           <div className="flex items-center gap-2">
+            <VersionBadge />
             {user?.setup_mode ? (
               <Button variant="outline" size="sm" render={<Link to="/setup/admin" />}>
                 Admin setup
