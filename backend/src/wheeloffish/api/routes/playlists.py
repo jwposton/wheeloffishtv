@@ -8,6 +8,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from wheeloffish.api.deps import get_current_user, get_db
@@ -316,6 +317,23 @@ def delete_playlist(
     db.commit()
 
 
+def _require_cached_series(db: Session, series_id: str, app_user_id: str) -> None:
+    """Ensure series_id exists in the user's cached catalog before playlist mutation."""
+    exists = (
+        db.query(CachedSeries.id)
+        .filter(
+            CachedSeries.id == series_id,
+            CachedSeries.app_user_id == app_user_id,
+        )
+        .one_or_none()
+    )
+    if exists is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Series not found in catalog",
+        )
+
+
 def _get_playlist_row(
     db: Session,
     playlist_id: str,
@@ -343,6 +361,7 @@ def append_playlist_row(
 ) -> PlaylistDetailResponse:
     """Append one series row without full PUT replacement (D-20)."""
     playlist = _get_owned_playlist(db, playlist_id, user.id)
+    _require_cached_series(db, body.series_id, user.id)
 
     existing = (
         db.query(PlaylistSeriesRowOrm)
@@ -367,8 +386,15 @@ def append_playlist_row(
     )
     db.add(row)
     playlist.updated_at = datetime.now(UTC)
-    db.commit()
-    db.refresh(playlist)
+    try:
+        db.commit()
+        db.refresh(playlist)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Row already exists",
+        ) from None
     return _playlist_to_detail(db, playlist, user.id)
 
 

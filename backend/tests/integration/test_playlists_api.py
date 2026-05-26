@@ -307,10 +307,35 @@ def _create_empty_playlist(base_client: TestClient) -> str:
     return resp.json()["id"]
 
 
+def _seed_row_test_series(db_session, user: AppUser) -> None:
+    """Seed CachedSeries rows required by append/remove/patch row tests."""
+    from datetime import UTC, datetime
+
+    from wheeloffish.db.models.cached_series import CachedSeries
+
+    for series_id, native_id, title in [
+        (SERIES_ID_A, "show-alpha", "Alpha Show"),
+        (SERIES_ID_B, "show-beta", "Beta Show"),
+    ]:
+        db_session.add(
+            CachedSeries(
+                id=series_id,
+                app_user_id=user.id,
+                connection_id="conn-aaaa",
+                library_native_id="1",
+                native_id=native_id,
+                title=title,
+                synced_at=datetime.now(UTC),
+            )
+        )
+    db_session.commit()
+
+
 def test_append_row(base_client: TestClient, db_session) -> None:
     """POST /rows appends one series row with create defaults."""
     user = _make_user(db_session)
     _set_user(user)
+    _seed_row_test_series(db_session, user)
     playlist_id = _create_empty_playlist(base_client)
 
     append = base_client.post(
@@ -332,6 +357,7 @@ def test_append_row(base_client: TestClient, db_session) -> None:
 def test_append_row_duplicate_409(base_client: TestClient, db_session) -> None:
     user = _make_user(db_session)
     _set_user(user)
+    _seed_row_test_series(db_session, user)
     playlist_id = _create_empty_playlist(base_client)
 
     first = base_client.post(
@@ -347,9 +373,23 @@ def test_append_row_duplicate_409(base_client: TestClient, db_session) -> None:
     assert second.status_code == 409
 
 
+def test_append_row_unknown_series_422(base_client: TestClient, db_session) -> None:
+    """POST /rows rejects series_id not in the user's cached catalog."""
+    user = _make_user(db_session)
+    _set_user(user)
+    playlist_id = _create_empty_playlist(base_client)
+
+    resp = base_client.post(
+        f"/api/v1/playlists/{playlist_id}/rows",
+        json={"series_id": SERIES_ID_A},
+    )
+    assert resp.status_code == 422
+
+
 def test_remove_row(base_client: TestClient, db_session) -> None:
     user = _make_user(db_session)
     _set_user(user)
+    _seed_row_test_series(db_session, user)
     playlist_id = _create_empty_playlist(base_client)
 
     append = base_client.post(
@@ -369,6 +409,7 @@ def test_remove_row(base_client: TestClient, db_session) -> None:
 def test_patch_row_mode(base_client: TestClient, db_session) -> None:
     user = _make_user(db_session)
     _set_user(user)
+    _seed_row_test_series(db_session, user)
     playlist_id = _create_empty_playlist(base_client)
 
     append = base_client.post(
