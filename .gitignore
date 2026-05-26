@@ -1,11 +1,51 @@
+# --- Secrets & local config ---
 .env
-backend/.venv/
-backend/**/__pycache__/
-backend/test.db
-backend/.pytest_cache/
-backend/.ruff_cache/
+.env.*
+!.env.example
+compose.override.yml
+
+# --- Runtime / bind-mount data ---
 data/
 *.db
-reference_assets/
+
+# --- Python ---
+.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# --- Node / frontend (frontend/.gitignore adds Vite-specific rules) ---
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.tsbuildinfo
+
+# --- Docker / Compose ---
+# compose.override.yml.example is tracked; override is local-only (above)
+
+# --- OS & editor ---
 .DS_Store
+**/.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# --- Project scratch (not shipped) ---
 .tmp-crops/
+tmp/
+_reference-preview/
+
+# Designer source exports — production copies live in frontend/public/brand/
+reference_assets/
