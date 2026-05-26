@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Compact header bar (~33% shorter): smaller logo, tighter padding, `xs` action buttons
+- Version badge stacked below theme toggle and log out in the header (login page matches)
+
 ## [0.1.3] - 2026-05-26
 
 ### Added

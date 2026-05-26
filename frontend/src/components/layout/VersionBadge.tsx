@@ -6,7 +6,12 @@ import { cn } from "@/lib/utils"
 
 const VERSION_QUERY_KEY = ["meta", "version"] as const
 
-export function VersionBadge({ className }: { className?: string }) {
+interface VersionBadgeProps {
+  className?: string
+  stacked?: boolean
+}
+
+export function VersionBadge({ className, stacked = false }: VersionBadgeProps) {
   const { data } = useQuery({
     queryKey: VERSION_QUERY_KEY,
     queryFn: () => fetchJson<VersionMetaResponse>("/meta/version"),
@@ -23,6 +28,10 @@ export function VersionBadge({ className }: { className?: string }) {
     ? `Update available: v${data.latest_version}`
     : `Wheel of Fish TV ${label}`
 
+  const baseClass = stacked
+    ? "justify-center px-0 py-0 text-[9px] leading-none"
+    : "px-1.5 py-0.5 text-[10px]"
+
   if (data.update_available && data.release_url) {
     return (
       <a
@@ -31,12 +40,16 @@ export function VersionBadge({ className }: { className?: string }) {
         rel="noopener noreferrer"
         title={title}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums tracking-wide text-wof-orange/90 transition-colors hover:text-wof-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex items-center gap-1 rounded-md font-medium tabular-nums tracking-wide text-wof-orange/90 transition-colors hover:text-wof-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          baseClass,
           className,
         )}
       >
         <span
-          className="size-1.5 shrink-0 rounded-full bg-wof-orange motion-safe:animate-pulse"
+          className={cn(
+            "shrink-0 rounded-full bg-wof-orange motion-safe:animate-pulse",
+            stacked ? "size-1" : "size-1.5",
+          )}
           aria-hidden
         />
         <span>{label}</span>
@@ -49,7 +62,8 @@ export function VersionBadge({ className }: { className?: string }) {
     <span
       title={title}
       className={cn(
-        "select-none px-1.5 py-0.5 text-[10px] tabular-nums tracking-wide text-muted-foreground/55",
+        "select-none tabular-nums tracking-wide text-muted-foreground/55",
+        baseClass,
         className,
       )}
     >

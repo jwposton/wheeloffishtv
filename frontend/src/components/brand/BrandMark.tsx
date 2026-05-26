@@ -76,7 +76,7 @@ export function BrandMark({
         alt="Wheel of Fish TV"
         className={cn(
           "block h-auto w-auto shrink-0 object-contain object-left",
-          compact ? "h-20 w-auto sm:h-24 md:h-28" : "h-24 w-auto sm:h-28 md:h-32",
+          compact ? "h-14 w-auto sm:h-16 md:h-[4.75rem]" : "h-24 w-auto sm:h-28 md:h-32",
           className,
         )}
       />

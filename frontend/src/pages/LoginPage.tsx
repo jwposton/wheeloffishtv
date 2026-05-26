@@ -62,9 +62,9 @@ export function LoginPage() {
             Sign in with your household media server account.
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <VersionBadge />
-          <ThemeToggle />
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <ThemeToggle compact />
+          <VersionBadge stacked />
         </div>
       </div>
 

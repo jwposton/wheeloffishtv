@@ -87,45 +87,47 @@ export function AppShell() {
   return (
     <div className="flex min-h-svh flex-col">
       <header className="border-b border-border/70 bg-card/50 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:py-3">
-          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-1 sm:py-1.5">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <Link
               to="/"
               className="shrink-0 rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <BrandMark compact variant="header" />
             </Link>
-            <Separator orientation="vertical" className="hidden h-14 sm:block md:h-16" />
+            <Separator orientation="vertical" className="hidden h-10 sm:block md:h-11" />
             <nav
               aria-label="Main"
-              className="hidden items-center gap-5 sm:flex"
+              className="hidden items-center gap-4 sm:flex"
             >
               {navLinks}
             </nav>
           </div>
-          <div className="flex items-center gap-2">
-            <VersionBadge />
-            {user?.setup_mode ? (
-              <Button variant="outline" size="sm" render={<Link to="/setup/admin" />}>
-                Admin setup
+          <div className="flex shrink-0 flex-col items-end gap-0.5">
+            <div className="flex items-center gap-1.5">
+              {user?.setup_mode ? (
+                <Button variant="outline" size="xs" render={<Link to="/setup/admin" />}>
+                  Admin setup
+                </Button>
+              ) : null}
+              <ThemeToggle compact />
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={logout.isPending}
+                onClick={() => logout.mutate()}
+              >
+                <LogOutIcon />
+                Log out
               </Button>
-            ) : null}
-            <ThemeToggle />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={logout.isPending}
-              onClick={() => logout.mutate()}
-            >
-              <LogOutIcon />
-              Log out
-            </Button>
+            </div>
+            <VersionBadge stacked />
           </div>
         </div>
         <nav
           aria-label="Main"
-          className="mx-auto flex max-w-6xl gap-5 border-t border-border/60 px-4 py-2.5 sm:hidden"
+          className="mx-auto flex max-w-6xl gap-4 border-t border-border/60 px-4 py-2 sm:hidden"
         >
           {navLinks}
         </nav>
