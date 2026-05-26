@@ -1,2 +1,3 @@
 backend/tests/
+backend/Dockerfile
 frontend/node_modules/

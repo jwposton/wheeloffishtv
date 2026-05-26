@@ -48,6 +48,8 @@ RUN mkdir -p /data/artwork && chown app:app /data /data/artwork && chmod +x /app
 
 EXPOSE 8000
 
+# Entrypoint starts as root to remap PUID/PGID, then drops to `app` (see docker-entrypoint.sh).
+# nosemgrep: dockerfile.security.missing-user.missing-user
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Iterable
 
 import pytest
 from fastapi.routing import APIRoute
@@ -55,7 +54,10 @@ def _sample_path(route_path: str) -> str:
 
 
 def _is_public(method: str, path: str) -> bool:
-    return any(method == pub_method and re.match(pattern, path) for pub_method, pattern in PUBLIC_ROUTES)
+    return any(
+        method == pub_method and re.match(pattern, path)
+        for pub_method, pattern in PUBLIC_ROUTES
+    )
 
 
 def _protected_routes(app) -> list[tuple[str, str]]:
@@ -85,12 +87,14 @@ def test_unauthenticated_api_route_returns_401(
 ) -> None:
     url = _sample_path(route_path)
     if route_path.endswith("/callback"):
-        response = guard_client.request(method, url, params={"pin_id": PATH_PARAM_SAMPLES["pin_id"]})
+        pin_id = PATH_PARAM_SAMPLES["pin_id"]
+        response = guard_client.request(method, url, params={"pin_id": pin_id})
     else:
         response = guard_client.request(method, url)
 
     assert response.status_code == 401, (
-        f"Expected 401 for unauthenticated {method} {url}, got {response.status_code}: {response.text[:200]}"
+        f"Expected 401 for unauthenticated {method} {url}, "
+        f"got {response.status_code}: {response.text[:200]}"
     )
     assert response.json()["detail"]["code"] == "unauthenticated"
 
