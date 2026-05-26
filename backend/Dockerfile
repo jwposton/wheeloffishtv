@@ -29,7 +29,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.12-slim-bookworm AS runtime
 
-RUN groupadd -g 1000 app && useradd -u 1000 -g app -m -d /app -s /bin/false app
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -g 1000 app && useradd -u 1000 -g app -m -d /app -s /bin/false app
 
 WORKDIR /app
 
