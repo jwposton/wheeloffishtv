@@ -7,3 +7,5 @@ backend/.ruff_cache/
 data/
 *.db
 reference_assets/
+.DS_Store
+.tmp-crops/
