@@ -3,7 +3,7 @@ status: diagnosed
 phase: 06-library-playlist-assignment
 source: [06-01-SUMMARY.md, 06-02-SUMMARY.md, 06-03-SUMMARY.md, 06-04-SUMMARY.md, 06-05-SUMMARY.md]
 started: 2026-05-26T00:00:00Z
-updated: 2026-05-26T12:30:00Z
+updated: 2026-05-26T12:40:00Z
 ---
 
 ## Current Test
@@ -37,7 +37,7 @@ note: quick-add verified; sticky actions gap logged separately
 ### 5. Two-pane edit flow
 expected: Add/remove series in two-pane picker; row settings sheet opens from In pane
 result: issue
-reported: "Remove doesn't work. Instead of a sheet, want click/long-press context menu for playback, completion, remove — like add from Library"
+reported: "Remove doesn't work. Can't save row settings when altering existing or newly added show. Want click/long-press context menu for playback, completion, remove — like Library"
 severity: major
 
 ## Summary
@@ -107,6 +107,21 @@ blocked: 0
       issue: "seriesApiPath encodes IDs but row ops don't use it"
   missing:
     - "encodeURIComponent(seriesId) in removePlaylistRow and patchPlaylistRow URLs"
+  debug_session: .planning/debug/06-row-remove-url-encoding.md
+
+- truth: "Save row settings (mode/completion policy) persists for existing and newly added playlist rows"
+  status: failed
+  reason: "User reported: can't save row settings when altering an existing or newly added show on playlist edit"
+  severity: major
+  test: 5
+  root_cause: "Same CR-01 URL encoding bug — patchPlaylistRow sends PATCH to unencoded path; optimistic UI updates then reverts on failure with toast 'Failed to save row settings'"
+  artifacts:
+    - path: frontend/src/api/playlists.ts
+      issue: "patchPlaylistRow path segment unencoded"
+    - path: frontend/src/components/playlists/TwoPanePicker.tsx
+      issue: "handleSave calls patchMutation; fails silently to user except error toast"
+  missing:
+    - "encodeURIComponent(seriesId) in patchPlaylistRow (same fix as 06-06)"
   debug_session: .planning/debug/06-row-remove-url-encoding.md
 
 - truth: "In-pane row settings accessible via ⋯ or long-press context menu (playback, completion, remove)"
