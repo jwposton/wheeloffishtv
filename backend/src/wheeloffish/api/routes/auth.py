@@ -10,7 +10,6 @@ from wheeloffish.api.schemas.auth import (
     ConnectionSummary,
     LogoutResponse,
 )
-from wheeloffish.core.catalog_sync import install_libraries_configured
 from wheeloffish.core.auth import (
     get_env_connection,
     has_usable_media_credentials,
@@ -18,6 +17,7 @@ from wheeloffish.core.auth import (
     is_setup_mode,
     libraries_scoped,
 )
+from wheeloffish.core.catalog_sync import install_libraries_configured
 from wheeloffish.core.config import Settings
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.app_user import AppUser

@@ -5,10 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from wheeloffish.domain.ids import format_composite_id
 from wheeloffish.integrations.playlist_names import provider_playlist_display_name
-from wheeloffish.integrations.plex.client import PlexProvider
 from wheeloffish.integrations.plex import playlists as plex_playlists
+from wheeloffish.integrations.plex.client import PlexProvider
 
 CONNECTION_ID = "conn-test"
 

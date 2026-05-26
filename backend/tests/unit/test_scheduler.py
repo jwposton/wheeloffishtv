@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import zoneinfo
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from wheeloffish.core.playlist.cadence import parse_cron_time
 from wheeloffish.core.scheduler import create_scheduler
 
 

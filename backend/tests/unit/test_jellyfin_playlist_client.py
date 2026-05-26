@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from wheeloffish.domain.ids import format_composite_id
-from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 from wheeloffish.integrations.jellyfin import playlists as jellyfin_playlists
+from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 
 CONNECTION_ID = "conn-jf"
 USER_ID = "user-jf"

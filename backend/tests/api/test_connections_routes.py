@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 import respx
+from conftest import seed_cached_libraries
 from httpx import ASGITransport, AsyncClient, Response
 
 from wheeloffish.api.deps import get_db
@@ -14,7 +15,6 @@ from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.integrations.plex.auth import clear_pin_state, store_pin_state
 from wheeloffish.integrations.plex.client import PlexProvider
-from conftest import seed_cached_libraries
 from wheeloffish.main import app
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"

@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.api.deps import (
     get_app_user_id,
-    get_current_user,
     get_db,
     get_settings_dep,
     get_vault,

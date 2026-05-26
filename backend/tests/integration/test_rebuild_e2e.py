@@ -21,6 +21,8 @@ from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import format_composite_id
 from wheeloffish.domain.playlist import SeriesRebuildInput
 
+_ORCH = "wheeloffish.core.orchestrator"
+
 # Reuse stable IDs for e2e scenario
 APP_USER_ID = "00000000-0000-4000-8000-000000000777"
 CONNECTION_ID = "e2e-conn-aaaa-bbbb-cccc-ddddeeeeeeee"
@@ -132,8 +134,8 @@ async def test_rebuild_persists_snapshot(db_session, e2e_playlist):
     mock_provider.ping = AsyncMock(return_value=None)
 
     with (
-        patch("wheeloffish.core.orchestrator.build_provider_for_user", return_value=mock_provider),
-        patch("wheeloffish.core.orchestrator.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=mock_provider),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
     ):
         run = await rebuild_playlist(db_session, pl.id, trigger="e2e_test")
 

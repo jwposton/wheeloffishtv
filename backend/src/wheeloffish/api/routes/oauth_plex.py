@@ -19,7 +19,7 @@ from wheeloffish.core.connections import link_media_user
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
-from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized
 from wheeloffish.integrations.plex.auth import (
     clear_pin_state,
     create_pin_with_auth_url,
@@ -178,7 +178,10 @@ async def plex_oauth_callback(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "code": err.code,
-                "message": "Plex account cannot access this server — check home user library sharing",
+                "message": (
+                    "Plex account cannot access this server — "
+                    "check home user library sharing"
+                ),
             },
         ) from err
     except ProviderError as err:

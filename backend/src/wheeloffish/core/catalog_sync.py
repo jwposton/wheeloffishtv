@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import Settings, get_settings
-from wheeloffish.core.connections import build_provider_for_connection, build_plex_provider_for_user
+from wheeloffish.core.connections import build_plex_provider_for_user, build_provider_for_connection
 from wheeloffish.core.media_artwork import (
     artwork_cache_path,
     download_and_cache_artwork,

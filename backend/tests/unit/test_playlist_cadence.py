@@ -52,7 +52,7 @@ class TestIsDueWeekly:
         assert is_due(playlist, now) is False
 
     def test_weekly_dow_uses_local_weekday(self):
-        """America/New_York Saturday 1am local (= Friday UTC) must use local Saturday (weekday=5)."""
+        """NY Saturday 1am local (Friday UTC) uses local Saturday (weekday=5)."""
         # 2026-05-23 is a Saturday; at 01:00 NY time that is 06:00 UTC (still Sat local)
         saturday_ny = datetime(2026, 5, 23, 1, 0, tzinfo=NY_TZ)
         # Confirm this is indeed Saturday (weekday 5) locally

@@ -19,7 +19,6 @@ from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import format_composite_id
 from wheeloffish.domain.playlist import SeriesRebuildInput
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
@@ -27,6 +26,7 @@ from wheeloffish.domain.playlist import SeriesRebuildInput
 TEST_APP_USER_ID = "00000000-0000-4000-8000-000000000099"
 TEST_CONNECTION_ID = "conn-aaaabbbb-1111-2222-3333-444455556666"
 TEST_PROVIDER = "plex"
+_ORCH = "wheeloffish.core.orchestrator"
 
 
 def _ep(episode_id: str, season: int = 1, ep_index: int = 1) -> Episode:
@@ -84,7 +84,13 @@ def _seed_user_media_link(db, connection_id: str = TEST_CONNECTION_ID) -> UserMe
     return link
 
 
-def _seed_playlist(db, *, series_ids: list[str], cadence: str = "daily", dow: int | None = None) -> PlaylistOrm:
+def _seed_playlist(
+    db,
+    *,
+    series_ids: list[str],
+    cadence: str = "daily",
+    dow: int | None = None,
+) -> PlaylistOrm:
     playlist_id = str(uuid.uuid4())
     pl = PlaylistOrm(
         id=playlist_id,
@@ -148,8 +154,8 @@ async def test_row_skip_on_fetch_failure(db_session):
         return None  # sid_b fails
 
     with (
-        patch("wheeloffish.core.orchestrator.build_provider_for_user", return_value=_mock_provider()),
-        patch("wheeloffish.core.orchestrator.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
     ):
         run = await rebuild_playlist(db_session, pl.id, trigger="test")
 
@@ -171,7 +177,15 @@ async def test_all_excluded_marks_failed(db_session):
     pl = _seed_playlist(db_session, series_ids=[sid_a, sid_b])
 
     # Seed a prior successful run so D-17 can be verified
-    prior_snapshot = [{"episode_id": "prior-ep1", "series_id": sid_a, "slot_index": 0, "row_mode": "ordered", "title": "Old"}]
+    prior_snapshot = [
+        {
+            "episode_id": "prior-ep1",
+            "series_id": sid_a,
+            "slot_index": 0,
+            "row_mode": "ordered",
+            "title": "Old",
+        }
+    ]
     prior_run = RebuildRun(
         playlist_id=pl.id,
         status="succeeded",
@@ -190,8 +204,8 @@ async def test_all_excluded_marks_failed(db_session):
         return None  # both rows fail
 
     with (
-        patch("wheeloffish.core.orchestrator.build_provider_for_user", return_value=_mock_provider()),
-        patch("wheeloffish.core.orchestrator.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch_all_fail),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch_all_fail),
     ):
         run = await rebuild_playlist(db_session, pl.id, trigger="test")
 
@@ -223,8 +237,8 @@ async def test_empty_snapshot_row_warning(db_session):
         return good_input if series_id == sid_a else empty_input
 
     with (
-        patch("wheeloffish.core.orchestrator.build_provider_for_user", return_value=_mock_provider()),
-        patch("wheeloffish.core.orchestrator.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
     ):
         run = await rebuild_playlist(db_session, pl.id, trigger="test")
 
@@ -307,10 +321,14 @@ async def test_nightly_skips_non_due_weekly(db_session):
 
     mock_vault = MagicMock()
     with (
-        patch("wheeloffish.core.orchestrator.SecretsVault", return_value=mock_vault),
-        patch("wheeloffish.core.orchestrator.build_provider_for_user", return_value=_mock_provider()),
-        patch("wheeloffish.core.orchestrator.check_provider_reachable", new_callable=AsyncMock, return_value=True),
-        patch("wheeloffish.core.orchestrator.fetch_rebuild_inputs_for_row", new_callable=AsyncMock),
+        patch(f"{_ORCH}.SecretsVault", return_value=mock_vault),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(
+            f"{_ORCH}.check_provider_reachable",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", new_callable=AsyncMock),
     ):
         await run_nightly_batch(db_session, mock_settings)
 

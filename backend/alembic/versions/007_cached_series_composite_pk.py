@@ -1,6 +1,5 @@
 """Composite primary key on cached_series for per-user rows sharing series ids."""
 
-import sqlalchemy as sa
 
 from alembic import op
 

@@ -1,6 +1,11 @@
 """End-to-end golden-vector tests for PlaylistBuilder (PLT-01–06, SCH-02)."""
 
-from unit.fixtures.playlist_vectors import episode, fresh_series, multipart_group, playlist_single_row
+from unit.fixtures.playlist_vectors import (
+    episode,
+    fresh_series,
+    multipart_group,
+    playlist_single_row,
+)
 
 from wheeloffish.core.playlist import PlaylistBuilder
 from wheeloffish.domain.playlist import (
