@@ -47,5 +47,5 @@ Thumbs.db
 tmp/
 _reference-preview/
 
-# Designer source exports — production copies live in frontend/public/brand/
+# Designer source exports — production copies live in frontend/src/assets/brand/
 reference_assets/

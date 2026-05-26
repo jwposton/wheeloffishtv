@@ -41,7 +41,7 @@ MIT — see [LICENSE](LICENSE). Release notes: [CHANGELOG.md](CHANGELOG.md).
 Published multi-arch images (`linux/amd64`, `linux/arm64`) are on GitHub Container Registry:
 
 ```text
-ghcr.io/jwposton/wheeloffishtv:0.1.1
+ghcr.io/jwposton/wheeloffishtv:0.1.2
 ghcr.io/jwposton/wheeloffishtv:latest
 ```
 
