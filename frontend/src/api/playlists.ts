@@ -141,9 +141,10 @@ export async function removePlaylistRow(
   playlistId: string,
   seriesId: string,
 ): Promise<void> {
-  await fetchJson<void>(`/playlists/${playlistId}/rows/${seriesId}`, {
-    method: "DELETE",
-  })
+  await fetchJson<void>(
+    `/playlists/${playlistId}/rows/${encodeURIComponent(seriesId)}`,
+    { method: "DELETE" },
+  )
 }
 
 export async function patchPlaylistRow(
@@ -151,10 +152,10 @@ export async function patchPlaylistRow(
   seriesId: string,
   payload: PatchPlaylistRowPayload,
 ): Promise<PlaylistDetailResponse> {
-  return fetchJson<PlaylistDetailResponse>(`/playlists/${playlistId}/rows/${seriesId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  })
+  return fetchJson<PlaylistDetailResponse>(
+    `/playlists/${playlistId}/rows/${encodeURIComponent(seriesId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+  )
 }
 
 export async function createPlaylistWithSeries(
