@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- CI security workflow: Gitleaks, Semgrep, pip-audit, npm audit, Trivy image scan, and API auth guard regression tests ([SECURITY.md](SECURITY.md))
+
 ### Changed
 
 - Compact header bar (~33% shorter): smaller logo, tighter padding, `xs` action buttons

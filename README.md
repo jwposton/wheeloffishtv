@@ -218,6 +218,10 @@ Vite proxies `/api` to the backend. Use `npm run test -- --run` for unit tests a
 
 Manual keyboard, OAuth, and theme verification steps: `.planning/phases/03-minimal-operator-spa-shell/03-UAT-CHECKLIST.md`.
 
+## Security
+
+Automated scans (Gitleaks, Semgrep, pip-audit, npm audit, Trivy, API auth guard tests) run on every PR via [`.github/workflows/security.yml`](.github/workflows/security.yml). Local run: `./scripts/security-local.sh`. Details: [SECURITY.md](SECURITY.md).
+
 ## Development
 
 ```bash
@@ -225,6 +229,8 @@ cd backend
 uv sync
 export WOF_SECRET_KEY=$(openssl rand -hex 32)
 uv run pytest
+uv run pytest tests/security -q   # auth guard regression only
+uv run pip-audit                  # dependency CVE check
 uv run uvicorn wheeloffish.main:app --reload
 ```
 

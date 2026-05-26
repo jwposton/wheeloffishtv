@@ -52,5 +52,6 @@ def remove_connection(
     connection_id: str,
     db: Session = Depends(get_db),
     vault: SecretsVault = Depends(get_vault),
+    _app_user_id: str = Depends(get_app_user_id),
 ) -> None:
     delete_connection(db, vault, connection_id)

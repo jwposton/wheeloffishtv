@@ -1,0 +1,105 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  WOF_SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+jobs:
+  gitleaks:
+    name: Secret scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  semgrep:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/python
+            p/fastapi
+            p/owasp-top-ten
+
+  dependency-audit:
+    name: Python dependencies (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: cd backend && uv sync
+      - name: Audit locked dependencies
+        run: |
+          cd backend
+          uv export --frozen --no-dev --no-emit-project --no-hashes --no-header -q \
+            -o /tmp/wof-audit-requirements.txt
+          uv run pip-audit -r /tmp/wof-audit-requirements.txt
+
+  npm-audit:
+    name: Frontend dependencies (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Audit npm lockfile
+        run: cd frontend && npm ci && npm audit --audit-level=high
+
+  api-auth-guards:
+    name: API auth guard tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: cd backend && uv sync
+      - name: Run auth guard regression tests
+        run: cd backend && uv run pytest tests/security -q
+
+  container-scan:
+    name: Container scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image for scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          load: true
+          tags: wheeloffishtv:ci-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan image for CRITICAL/HIGH CVEs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: wheeloffishtv:ci-scan
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: true

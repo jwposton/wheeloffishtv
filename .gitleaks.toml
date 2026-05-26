@@ -1,0 +1,17 @@
+title = "Wheel of Fish TV gitleaks config"
+
+[allowlist]
+description = "CI placeholders, test fixtures, and sanitized provider tokens"
+paths = [
+  '''backend/tests/''',
+  '''\.github/workflows/''',
+  '''\.env\.example''',
+]
+regexes = [
+  '''SANITIZED_[A-Z_]+''',
+  '''plex-test-token''',
+  '''test-token''',
+  '''PLEX-TV-TOKEN''',
+  '''SERVER-SPECIFIC-TOKEN''',
+  '''0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef''',
+]
