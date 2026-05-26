@@ -2,6 +2,10 @@
 
 Self-hosted Dockerized Plex/Jellyfin random TV playlist builder. Users connect a media server, configure playlists with ordered or disordered show rows, and get daily rebuilt episode lists.
 
+## License
+
+MIT — see [LICENSE](LICENSE).
+
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
