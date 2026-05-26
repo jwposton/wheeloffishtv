@@ -8,7 +8,7 @@ dependencies = [
     "alembic>=1.13",
     "apscheduler~=3.11.2",
     "cryptography>=42.0",
-    "fastapi>=0.115",
+    "fastapi==0.136.1",
     "httpx>=0.27",
     "itsdangerous>=2.2",
     "psycopg[binary]>=3.1",

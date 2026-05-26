@@ -64,6 +64,7 @@ docker run --rm -v "$(pwd):/src" -w /src semgrep/semgrep:latest \
 | `EBADENGINE` / Node `v23.x` (npm) | ESLint targets Node 20.19+, **22.13+**, or **24+**. Node 23 is unsupported. Use `nvm use` in `frontend/` (see `.nvmrc`). CI uses Node 22. |
 | `26 passed, N warnings` (auth guard tests) | Tests pass; warnings from a single Alembic migration run are normal. Re-running migrations once per session keeps noise low. |
 | `command not found: gitleaks` | Install with Homebrew or use the Docker command above; CI installs Gitleaks automatically. |
+| `MAL-2026-4750` on `fastapi==0.136.3` (pip-audit) | Amazon Inspector flagged that PyPI release; upstream treats `fastar` in `[standard]` as intentional. This app installs plain `fastapi` (not `[standard]`). Backend pins `fastapi==0.136.1` until a newer release clears the advisory (see GitHub issue). |
 
 ## Operator hardening
 
