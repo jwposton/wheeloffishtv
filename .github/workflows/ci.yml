@@ -29,7 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          echo "WOF_SECRET_KEY=${{ env.WOF_SECRET_KEY }}" >> .env
       - name: Compose up
         run: docker compose up --wait --build
       - name: Compose down
@@ -42,7 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          echo "WOF_SECRET_KEY=${{ env.WOF_SECRET_KEY }}" >> .env
       - name: Compose up with postgres profile
         run: docker compose -f compose.yml -f compose.postgres.yml --profile postgres up --wait --build
       - name: Compose down
