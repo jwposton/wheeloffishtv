@@ -126,6 +126,38 @@ def test_list_playlists_scoped_to_user(base_client: TestClient, db_session) -> N
     assert resp_a.json()[0]["name"] == "A's Playlist"
 
 
+def test_list_playlists_filtered_by_series_id(base_client: TestClient, db_session) -> None:
+    """GET /playlists?series_id= returns only playlists containing that series."""
+    user = _make_user(db_session)
+    _set_user(user)
+
+    with_a = base_client.post(
+        "/api/v1/playlists",
+        json=_create_body(name="Has Show", rows=[{"series_id": SERIES_ID_A}]),
+    )
+    assert with_a.status_code == 201, with_a.text
+
+    without = base_client.post(
+        "/api/v1/playlists",
+        json={"name": "Empty", "rows": []},
+    )
+    assert without.status_code == 201, without.text
+
+    with_b = base_client.post(
+        "/api/v1/playlists",
+        json=_create_body(name="Other Show", rows=[{"series_id": SERIES_ID_B}]),
+    )
+    assert with_b.status_code == 201, with_b.text
+
+    filtered = base_client.get(f"/api/v1/playlists?series_id={SERIES_ID_A}")
+    assert filtered.status_code == 200
+    names = [item["name"] for item in filtered.json()]
+    assert names == ["Has Show"]
+
+    unfiltered = base_client.get("/api/v1/playlists")
+    assert len(unfiltered.json()) == 3
+
+
 def test_get_other_users_playlist_404(base_client: TestClient, db_session) -> None:
     """D-18: Cross-user access returns 404 (not 403 — avoids existence leakage)."""
     user_a = _make_user(db_session, "user-a")

@@ -1,6 +1,6 @@
 # Roadmap — Wheel of Fish TV
 
-**Milestone:** v1 self-host MVP  
+**Milestone:** v0.1.0 feature-complete self-host release (provider writeback) → v0.2.0 polish  
 **Mode default:** MVP vertical slices (per-phase **Mode:** mvp)
 
 ---
@@ -17,7 +17,8 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 4 | 6/6 | Complete    | 2026-05-25 |
 | 5 | 6/6 | Complete   | 2026-05-25 |
 | 6 | 7/7 | Complete + gap closure    | 2026-05-26 |
-| 7 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion |
+| 7 | Provider playlist writeback | Push rebuilt snapshots to native Plex/Jellyfin playlists | EXP-01 | Complete 2026-05-26 |
+| 8 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion | post-v0.1.0 |
 
 *(Phase numbers align with REQ traceability columns — adjust if phasedown needed later.)*
 
@@ -67,7 +68,7 @@ Requirements: INT-01, INT-02, INT-03
 2. Admin scopes libraries in UI; non-admins see holding page until scoped  
 3. Series browser: grid/list toggle, infinite scroll, debounced search, sync banner, detail with up-next preview  
 4. Light/dark theme from day one; keyboard nav baseline on browse grid  
-5. Storybook deferred to Phase 7 (D-20)  
+5. Storybook deferred to Phase 8 (D-20)  
 
 **Plans:**
 **Wave 1**
@@ -224,17 +225,56 @@ Requirements: PLT-03 (membership UX completion), WEB-01 (Library assignment slic
 
 ---
 
-### Phase 7: UX polish & release readiness
+### Phase 7: Provider playlist writeback
+
+**Goal:** As a self-host operator, I want each rebuilt WheelOfFish playlist to appear as a native Plex or Jellyfin playlist I can play in my media client, **so that** nightly output is consumable without manual copy-paste from the SPA.  
+**Mode:** mvp  
+**Release gate:** **v0.1.0** — feature-complete MVP after this phase validates  
+
+**Success criteria**
+
+1. After successful or partial rebuild, orchestrator pushes episode ordering to a linked provider playlist (create-on-first-rebuild if missing)  
+2. Plex path uses stable playlist update API; Jellyfin path uses native playlist/items API (ship Plex-first if parity costly — same pattern as Phase 6 metadata)  
+3. Rebuild run records writeback status (success / skipped / failed + error); UI surfaces last writeback alongside rebuild status  
+4. Writeback failure does not discard persisted snapshot; operator can retry via manual rebuild  
+5. Episode IDs in snapshot map deterministically to provider-native episode keys already used by catalog sync  
+
+**Out of scope (Phase 7):** M3U/JSON export fallback (follow-up if APIs insufficient), bi-directional sync from provider edits, multi-playlist fan-out to multiple servers  
+
+Requirements: EXP-01 (new), INT-01 glue  
+
+**Supersedes:** Former Phase 7 “UX polish” slot — polish deferred to Phase 8 per 2026-05-25 decision  
+
+**Next:** `/gsd-execute-phase 7` (or execute plans 07-01 → 07-03)
+
+**Wave 1**
+
+- [x] 07-01-PLAN.md — Schema, Plex playlist client, writeback service, orchestrator hook (EXP-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 07-02-PLAN.md — Jellyfin playlist parity + push_snapshot dispatch
+
+**Wave 3** *(blocked on Waves 1–2)*
+
+- [x] 07-03-PLAN.md — Rename/delete lifecycle, SPA WritebackStatus + open link, UAT/validation (EXP-01, WEB-01)
+
+---
+
+### Phase 8: UX polish & release readiness
 
 **Goal:** Elevate slick factor, tighten empty/error states, performance budgets, screenshots for README.  
 **Mode:** mvp  
 **UI hint:** yes  
+**Release target:** v0.2.0 (post feature-complete v0.1.0)  
 
 **Success criteria**
 
 1. Lighthouse / axe critical issues resolved baseline  
 2. README quickstart validated on clean machine (<15 min excluding media server setup)  
 3. DEMO GIF or loom script optional placeholder noted  
+4. Jellyfin metadata parity spike (deferred from Phase 6 stubs) if not done in Phase 7  
+5. Storybook / visual regression stub (D-20)  
 
 Requirements: WEB-01 (completion), residual polish tying earlier gaps
 
@@ -246,12 +286,23 @@ Requirements: WEB-01 (completion), residual polish tying earlier gaps
 - PLT-\* **4** primarily  
 - SCH-\* **5**  
 - PLT-03 UX completion **6**  
-- WEB-\* **3 + 6 + 7**  
+- WEB-\* **3 + 6 + 8** (polish)  
+- EXP-\* **7** (provider writeback — v0.1.0 gate)  
 - DEP-\* **1**  
 
 Everything mapped ✓  
 
 ---
 
+## Release milestones
+
+| Tag | Gate | Contents |
+|-----|------|----------|
+| **v0.1.0** | Phase 7 complete + validation | Authoring, rebuild, Library UX, **native Plex/Jellyfin playlist writeback** |
+| **v0.2.0** | Phase 8 complete | UX polish, accessibility, README/DEMO hardening |
+
+---
+
 *Roadmap authored: 2026-05-24*  
+*Amended: 2026-05-25 — Phase 7 = provider writeback (v0.1.0); Phase 8 = polish*  
 *Maintenance:* update via `/gsd-transition` + `/gsd-plan-phase`*

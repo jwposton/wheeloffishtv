@@ -34,6 +34,8 @@ class Playlist(Base):
     )
     refresh_cadence: Mapped[str] = mapped_column(String(16), nullable=False, default="daily")
     refresh_day_of_week: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_playlist_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    provider_kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

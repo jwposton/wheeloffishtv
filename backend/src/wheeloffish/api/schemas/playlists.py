@@ -85,6 +85,10 @@ class RebuildRunSummary(BaseModel):
     error_message: str | None = None
     slots_filled: int | None = None
     slots_requested: int | None = None
+    writeback_status: str | None = None
+    writeback_error: str | None = None
+    writeback_warnings: list[dict] | None = None
+    writeback_at: datetime | None = None
 
 
 class SnapshotEpisode(BaseModel):
@@ -117,6 +121,9 @@ class PlaylistDetailResponse(BaseModel):
     current_snapshot: list[SnapshotEpisode]
     last_rebuild: RebuildRunSummary | None
     recent_runs: list[RebuildRunSummary]
+    provider_playlist_id: str | None = None
+    provider_kind: str | None = None
+    provider_playlist_open_url: str | None = None
 
 
 class PlaylistListItem(BaseModel):
@@ -126,3 +133,7 @@ class PlaylistListItem(BaseModel):
     refresh_day_of_week: int | None
     last_rebuild_status: str | None
     last_rebuild_at: datetime | None
+    last_writeback_status: str | None = None
+    provider_playlist_id: str | None = None
+    provider_kind: str | None = None
+    provider_playlist_open_url: str | None = None

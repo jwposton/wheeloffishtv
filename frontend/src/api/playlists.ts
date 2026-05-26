@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { fetchJson } from "@/api/client"
-import type { PlaylistListItem, RebuildStatus, RefreshCadence } from "@/api/types"
+import type { PlaylistListItem, RebuildStatus, RefreshCadence, WritebackStatus } from "@/api/types"
 
 const WEEKDAY_NAMES = [
   "Monday",
@@ -51,6 +51,10 @@ export interface RebuildRunSummary {
   error_message: string | null
   slots_filled: number | null
   slots_requested: number | null
+  writeback_status?: WritebackStatus
+  writeback_error?: string | null
+  writeback_warnings?: Array<{ episode_id?: string | null; reason?: string }> | null
+  writeback_at?: string | null
 }
 
 export interface PlaylistDetailResponse {
@@ -65,6 +69,9 @@ export interface PlaylistDetailResponse {
   current_snapshot: SnapshotEpisode[]
   last_rebuild: RebuildRunSummary | null
   recent_runs: RebuildRunSummary[]
+  provider_playlist_id?: string | null
+  provider_kind?: string | null
+  provider_playlist_open_url?: string | null
 }
 
 export interface PlaylistSeriesRowPayload {
@@ -87,8 +94,11 @@ export type PlaylistUpdatePayload = Partial<PlaylistCreatePayload>
 
 // ── Fetch functions ────────────────────────────────────────────────────────
 
-export async function fetchPlaylists(): Promise<PlaylistListItem[]> {
-  return fetchJson<PlaylistListItem[]>("/playlists")
+export async function fetchPlaylists(seriesId?: string): Promise<PlaylistListItem[]> {
+  const query = seriesId
+    ? `?series_id=${encodeURIComponent(seriesId)}`
+    : ""
+  return fetchJson<PlaylistListItem[]>(`/playlists${query}`)
 }
 
 export async function fetchPlaylist(id: string): Promise<PlaylistDetailResponse> {
@@ -113,8 +123,8 @@ export async function deletePlaylist(id: string): Promise<void> {
   await fetchJson<void>(`/playlists/${id}`, { method: "DELETE" })
 }
 
-export async function triggerRebuild(id: string): Promise<{ rebuild_run_id: string }> {
-  return fetchJson<{ rebuild_run_id: string }>(`/playlists/${id}/rebuild`, { method: "POST" })
+export async function triggerRebuild(id: string): Promise<RebuildRunSummary> {
+  return fetchJson<RebuildRunSummary>(`/playlists/${id}/rebuild`, { method: "POST" })
 }
 
 export interface AppendPlaylistRowPayload {
@@ -185,7 +195,16 @@ export async function createPlaylistWithSeries(
 export function usePlaylists() {
   return useQuery({
     queryKey: ["playlists", "list"],
-    queryFn: fetchPlaylists,
+    queryFn: () => fetchPlaylists(),
+    staleTime: 30_000,
+  })
+}
+
+export function usePlaylistsContainingSeries(seriesId: string | undefined) {
+  return useQuery({
+    queryKey: ["playlists", "containing", seriesId],
+    queryFn: () => fetchPlaylists(seriesId!),
+    enabled: Boolean(seriesId),
     staleTime: 30_000,
   })
 }

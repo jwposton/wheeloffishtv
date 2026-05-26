@@ -31,6 +31,10 @@ vi.mock("@/components/playlists/AddToPlaylistMenu", () => ({
   AddToPlaylistContextMenuItems: () => null,
 }))
 
+vi.mock("@/components/series/SeriesPlaylistsSection", () => ({
+  SeriesPlaylistsSection: () => <div data-testid="series-playlists-section" />,
+}))
+
 import { useAuth } from "@/hooks/useAuth"
 import { useSeriesDetail } from "@/hooks/useSeriesDetail"
 import { useSeriesEpisodes } from "@/hooks/useSeriesEpisodes"

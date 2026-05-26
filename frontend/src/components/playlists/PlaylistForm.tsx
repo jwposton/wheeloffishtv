@@ -50,7 +50,9 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
   const updateMutation = useUpdatePlaylist()
 
   const [name, setName] = useState(playlist?.name ?? "")
-  const [episodeCount, setEpisodeCount] = useState(playlist?.episode_count ?? 20)
+  const [episodeCountInput, setEpisodeCountInput] = useState(
+    String(playlist?.episode_count ?? 20),
+  )
   const [slotAllocation, setSlotAllocation] = useState<SlotAllocation>(
     playlist?.slot_allocation ?? "wild",
   )
@@ -76,10 +78,15 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [rowMutationsPending, setRowMutationsPending] = useState(false)
 
+  function parsedEpisodeCount(): number {
+    const parsed = Number.parseInt(episodeCountInput, 10)
+    return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
+  }
+
   function validate(): boolean {
     const errs: Record<string, string> = {}
     if (!name.trim()) errs.name = "Name is required."
-    if (episodeCount < 1) errs.episode_count = "Episode count must be at least 1."
+    if (parsedEpisodeCount() < 1) errs.episode_count = "Episode count must be at least 1."
     if (cadence === "weekly" && dow == null) errs.dow = "Day of week is required for weekly cadence."
     if (rows.length === 0) errs.rows = "Add at least one series."
     setErrors(errs)
@@ -92,7 +99,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
 
     const payload: PlaylistCreatePayload = {
       name: name.trim(),
-      episode_count: episodeCount,
+      episode_count: parsedEpisodeCount(),
       slot_allocation: slotAllocation,
       default_completion_policy: defaultCompletionPolicy,
       refresh_cadence: cadence,
@@ -124,121 +131,131 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-6 pb-20">
-      {/* Section 1: Basics */}
       <section className="flex flex-col gap-4 rounded-xl border bg-card p-4">
-        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Basics</h3>
+        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+          Playlist settings
+        </h3>
 
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="playlist-name">Name</Label>
-          <Input
-            id="playlist-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="My Playlist"
-            aria-invalid={Boolean(errors.name)}
-          />
-          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+        <div className="grid gap-4">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="playlist-name">Name</Label>
+            <Input
+              id="playlist-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My Playlist"
+              aria-invalid={Boolean(errors.name)}
+            />
+            {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="episode-count">Episode count</Label>
+              <Input
+                id="episode-count"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={episodeCountInput}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/\D/g, "")
+                  setEpisodeCountInput(next)
+                }}
+                onBlur={() => {
+                  setEpisodeCountInput(String(parsedEpisodeCount()))
+                }}
+                className="w-full max-w-none"
+                aria-invalid={Boolean(errors.episode_count)}
+              />
+              {errors.episode_count && (
+                <p className="text-xs text-destructive">{errors.episode_count}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="slot-allocation">Slot allocation</Label>
+              <select
+                id="slot-allocation"
+                value={slotAllocation}
+                onChange={(e) => setSlotAllocation(e.target.value as SlotAllocation)}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {SLOT_ALLOCATION_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {SLOT_ALLOCATION_LABELS[opt]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1 sm:col-span-2 xl:col-span-1">
+              <Label htmlFor="default-completion">Default completion policy</Label>
+              <select
+                id="default-completion"
+                value={defaultCompletionPolicy}
+                onChange={(e) =>
+                  setDefaultCompletionPolicy(e.target.value as CompletionPolicy)
+                }
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {(Object.keys(COMPLETION_POLICY_LABELS) as CompletionPolicy[]).map((k) => (
+                  <option key={k} value={k}>
+                    {COMPLETION_POLICY_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="episode-count">Episode count</Label>
-          <Input
-            id="episode-count"
-            type="number"
-            min={1}
-            value={episodeCount}
-            onChange={(e) => setEpisodeCount(Number(e.target.value))}
-            className="w-24"
-            aria-invalid={Boolean(errors.episode_count)}
-          />
-          {errors.episode_count && (
-            <p className="text-xs text-destructive">{errors.episode_count}</p>
+        <div className="flex flex-col gap-3 border-t pt-4 lg:flex-row lg:flex-wrap lg:items-end lg:gap-6">
+          <div className="flex items-center gap-4" role="radiogroup" aria-label="Refresh cadence">
+            <span className="text-sm font-medium">Refresh</span>
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="radio"
+                name="cadence"
+                value="daily"
+                checked={cadence === "daily"}
+                onChange={() => setCadence("daily")}
+                className="accent-primary"
+              />
+              Daily
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="radio"
+                name="cadence"
+                value="weekly"
+                checked={cadence === "weekly"}
+                onChange={() => setCadence("weekly")}
+                className="accent-primary"
+              />
+              Weekly
+            </label>
+          </div>
+
+          {cadence === "weekly" && (
+            <div className="flex flex-col gap-1 lg:min-w-[180px]">
+              <Label htmlFor="day-of-week">Day of week</Label>
+              <select
+                id="day-of-week"
+                value={dow}
+                onChange={(e) => setDow(Number(e.target.value))}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-invalid={Boolean(errors.dow)}
+              >
+                {DOW_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {errors.dow && <p className="text-xs text-destructive">{errors.dow}</p>}
+            </div>
           )}
         </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="slot-allocation">Slot allocation</Label>
-          <select
-            id="slot-allocation"
-            value={slotAllocation}
-            onChange={(e) => setSlotAllocation(e.target.value as SlotAllocation)}
-            className="h-8 w-fit rounded-lg border border-input bg-transparent px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {SLOT_ALLOCATION_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {SLOT_ALLOCATION_LABELS[opt]}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="default-completion">Default completion policy</Label>
-          <select
-            id="default-completion"
-            value={defaultCompletionPolicy}
-            onChange={(e) =>
-              setDefaultCompletionPolicy(e.target.value as CompletionPolicy)
-            }
-            className="h-8 w-fit rounded-lg border border-input bg-transparent px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {(Object.keys(COMPLETION_POLICY_LABELS) as CompletionPolicy[]).map((k) => (
-              <option key={k} value={k}>
-                {COMPLETION_POLICY_LABELS[k]}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
-
-      {/* Section 2: Schedule */}
-      <section className="flex flex-col gap-4 rounded-xl border bg-card p-4">
-        <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Schedule</h3>
-
-        <div className="flex items-center gap-4" role="radiogroup" aria-label="Refresh cadence">
-          <label className="flex items-center gap-2 cursor-pointer text-sm">
-            <input
-              type="radio"
-              name="cadence"
-              value="daily"
-              checked={cadence === "daily"}
-              onChange={() => setCadence("daily")}
-              className="accent-primary"
-            />
-            Daily
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer text-sm">
-            <input
-              type="radio"
-              name="cadence"
-              value="weekly"
-              checked={cadence === "weekly"}
-              onChange={() => setCadence("weekly")}
-              className="accent-primary"
-            />
-            Weekly
-          </label>
-        </div>
-
-        {cadence === "weekly" && (
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="day-of-week">Day of week</Label>
-            <select
-              id="day-of-week"
-              value={dow}
-              onChange={(e) => setDow(Number(e.target.value))}
-              className="h-8 w-fit rounded-lg border border-input bg-transparent px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-invalid={Boolean(errors.dow)}
-            >
-              {DOW_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {errors.dow && <p className="text-xs text-destructive">{errors.dow}</p>}
-          </div>
-        )}
       </section>
 
       {/* Section 3: Series rows */}

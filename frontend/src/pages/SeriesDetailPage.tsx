@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ResumePreview } from "@/components/browse/ResumePreview"
 import { AddToPlaylistMenu } from "@/components/playlists/AddToPlaylistMenu"
 import { SeriesMetadataHero } from "@/components/series/SeriesMetadataHero"
+import { SeriesPlaylistsSection } from "@/components/series/SeriesPlaylistsSection"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/hooks/useAuth"
@@ -133,10 +134,14 @@ export function SeriesDetailPage() {
       ) : series ? (
         <>
           <SeriesMetadataHero series={series} headingRef={headingRef} />
-          <AddToPlaylistMenu
-            seriesId={series.id}
-            trigger={<Button>Add to playlist</Button>}
-          />
+          <div className="flex flex-col gap-4">
+            <AddToPlaylistMenu
+              seriesId={series.id}
+              showAdvancedLink
+              trigger={<Button>Add to playlist</Button>}
+            />
+            <SeriesPlaylistsSection seriesId={series.id} />
+          </div>
         </>
       ) : null}
 

@@ -2,8 +2,10 @@ import { Link } from "react-router-dom"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/playlists/StatusBadge"
+import { WritebackStatus } from "@/components/playlists/WritebackStatus"
 import { formatCadence } from "@/api/playlists"
 import type { PlaylistListItem } from "@/api/types"
+import type { WritebackStatus as WritebackStatusValue } from "@/api/types"
 
 function formatRelativeTime(isoString: string | null): string {
   if (!isoString) return "Never"
@@ -36,6 +38,12 @@ export function PlaylistCard({ item }: PlaylistCardProps) {
               {formatRelativeTime(item.last_rebuild_at)}
             </span>
           </div>
+          <WritebackStatus
+            status={(item.last_writeback_status ?? null) as WritebackStatusValue}
+            providerKind={item.provider_kind}
+            openUrl={item.provider_playlist_open_url}
+            compact
+          />
         </CardContent>
       </Card>
     </Link>

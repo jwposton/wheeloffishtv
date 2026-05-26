@@ -19,12 +19,14 @@ interface QuickCreatePlaylistDialogProps {
   seriesId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  showAdvancedLink?: boolean
 }
 
 export function QuickCreatePlaylistDialog({
   seriesId,
   open,
   onOpenChange,
+  showAdvancedLink = false,
 }: QuickCreatePlaylistDialogProps) {
   const queryClient = useQueryClient()
   const [name, setName] = useState("")
@@ -71,13 +73,17 @@ export function QuickCreatePlaylistDialog({
             />
           </div>
           <DialogFooter className="mt-2 border-t-0 bg-transparent p-0">
-            <Link
-              to={advancedHref}
-              className="text-muted-foreground hover:text-foreground mr-auto text-sm underline-offset-4 hover:underline"
-              onClick={() => onOpenChange(false)}
-            >
-              Advanced…
-            </Link>
+            {showAdvancedLink ? (
+              <Link
+                to={advancedHref}
+                className="text-muted-foreground hover:text-foreground mr-auto text-sm underline-offset-4 hover:underline"
+                onClick={() => onOpenChange(false)}
+              >
+                Advanced…
+              </Link>
+            ) : (
+              <span className="mr-auto" />
+            )}
             <Button
               type="submit"
               disabled={!name.trim() || isSubmitting}

@@ -24,7 +24,7 @@ function renderDropdownMenu() {
           variant="dropdown"
           onModeChange={vi.fn()}
           onPolicyChange={vi.fn()}
-          onRemove={vi.fn()}
+          onRemoveRequest={vi.fn()}
         />
       </DropdownMenuContent>
     </DropdownMenu>,

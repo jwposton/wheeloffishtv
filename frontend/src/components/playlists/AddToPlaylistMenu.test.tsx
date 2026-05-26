@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it, vi, beforeEach } from "vitest"
 
+import { ApiError } from "@/api/client"
 import type { PlaylistListItem } from "@/api/types"
 
 vi.mock("@/api/playlists", async (importOriginal) => {
@@ -14,6 +15,16 @@ vi.mock("@/api/playlists", async (importOriginal) => {
     createPlaylistWithSeries: vi.fn(),
   }
 })
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+  },
+}))
+
+import { toast } from "sonner"
 
 import {
   usePlaylists,
@@ -33,6 +44,7 @@ import {
 
 const mockUsePlaylists = vi.mocked(usePlaylists)
 const mockUseAppendPlaylistRow = vi.mocked(useAppendPlaylistRow)
+const mockMutateAsync = vi.fn()
 
 const MOCK_PLAYLISTS: PlaylistListItem[] = [
   {
@@ -88,13 +100,15 @@ function renderQuickCreate(open = true) {
 
 describe("AddToPlaylistMenu", () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     mockUsePlaylists.mockReturnValue({
       data: MOCK_PLAYLISTS,
       isLoading: false,
       isError: false,
     } as ReturnType<typeof usePlaylists>)
+    mockMutateAsync.mockResolvedValue({})
     mockUseAppendPlaylistRow.mockReturnValue({
-      mutateAsync: vi.fn(),
+      mutateAsync: mockMutateAsync,
       isPending: false,
     } as unknown as ReturnType<typeof useAppendPlaylistRow>)
   })
@@ -120,8 +134,19 @@ describe("AddToPlaylistMenu", () => {
     })
   })
 
-  it("shows Advanced… link in dropdown with encoded seriesId", async () => {
-    renderMenu()
+  it("shows Advanced… link in dropdown when enabled", async () => {
+    const queryClient = makeQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <AddToPlaylistMenu
+            seriesId="series-abc"
+            showAdvancedLink
+            trigger={<Button type="button">Open menu</Button>}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
 
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }))
 
@@ -132,7 +157,18 @@ describe("AddToPlaylistMenu", () => {
     expect(advanced?.getAttribute("href")).toContain("seriesId=series-abc")
   })
 
-  it("shows Advanced… in context menu variant", async () => {
+  it("hides Advanced… on library menus by default", async () => {
+    renderMenu()
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }))
+
+    await waitFor(() => {
+      expect(screen.getByText("Weeknight Mix")).toBeInTheDocument()
+    })
+    expect(screen.queryByText("Advanced…")).not.toBeInTheDocument()
+  })
+
+  it("shows Advanced… in context menu variant when enabled", async () => {
     const queryClient = makeQueryClient()
     render(
       <QueryClientProvider client={queryClient}>
@@ -140,7 +176,7 @@ describe("AddToPlaylistMenu", () => {
           <ContextMenu open>
             <ContextMenuTrigger render={<Button type="button">Tile</Button>} />
             <ContextMenuContent>
-              <AddToPlaylistContextMenuItems seriesId="series-abc" />
+              <AddToPlaylistContextMenuItems seriesId="series-abc" showAdvancedLink />
             </ContextMenuContent>
           </ContextMenu>
         </MemoryRouter>
@@ -153,6 +189,48 @@ describe("AddToPlaylistMenu", () => {
     const advanced = screen.getByText("Advanced…").closest("a")
     expect(advanced?.getAttribute("href")).toContain("seriesId=series-abc")
   })
+
+  it("reports duplicate append as info feedback instead of error toast", async () => {
+    mockMutateAsync.mockRejectedValue(new ApiError("conflict", 409, { detail: "Row already exists" }))
+    const onAppendFeedback = vi.fn()
+
+    const queryClient = makeQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <AddToPlaylistMenu
+            seriesId="series-abc"
+            onAppendFeedback={onAppendFeedback}
+            trigger={<Button type="button">Open menu</Button>}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }))
+    fireEvent.click(await screen.findByText("Weeknight Mix"))
+
+    await waitFor(() => {
+      expect(onAppendFeedback).toHaveBeenCalledWith({
+        variant: "info",
+        message: "Already in Weeknight Mix",
+      })
+    })
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it("falls back to corner toast when no poster feedback handler is provided", async () => {
+    mockMutateAsync.mockRejectedValue(new ApiError("conflict", 409, { detail: "Row already exists" }))
+    renderMenu()
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }))
+    fireEvent.click(await screen.findByText("Weeknight Mix"))
+
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalledWith("Already in Weeknight Mix")
+    })
+    expect(toast.error).not.toHaveBeenCalled()
+  })
 })
 
 describe("QuickCreatePlaylistDialog", () => {
@@ -161,9 +239,26 @@ describe("QuickCreatePlaylistDialog", () => {
     expect(screen.getByRole("button", { name: "Create and add" })).toBeInTheDocument()
   })
 
-  it("Advanced link includes seriesId query param", () => {
-    renderQuickCreate()
+  it("Advanced link includes seriesId query param when enabled", () => {
+    const queryClient = makeQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <QuickCreatePlaylistDialog
+            seriesId="series-abc"
+            open
+            onOpenChange={() => {}}
+            showAdvancedLink
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
     const link = screen.getByRole("link", { name: /Advanced/i })
     expect(link.getAttribute("href")).toContain("seriesId=series-abc")
+  })
+
+  it("hides Advanced link in quick create by default", () => {
+    renderQuickCreate()
+    expect(screen.queryByRole("link", { name: /Advanced/i })).not.toBeInTheDocument()
   })
 })

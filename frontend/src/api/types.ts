@@ -123,6 +123,13 @@ export type RebuildStatus =
   | "queued"
   | null
 
+export type WritebackStatus =
+  | "succeeded"
+  | "partial"
+  | "failed"
+  | "skipped"
+  | null
+
 export type RefreshCadence = "daily" | "weekly"
 
 export interface PlaylistListItem {
@@ -132,4 +139,8 @@ export interface PlaylistListItem {
   refresh_day_of_week: number | null
   last_rebuild_status: RebuildStatus
   last_rebuild_at: string | null
+  last_writeback_status?: WritebackStatus
+  provider_playlist_id?: string | null
+  provider_kind?: string | null
+  provider_playlist_open_url?: string | null
 }

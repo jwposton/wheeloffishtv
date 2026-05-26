@@ -19,6 +19,11 @@ from wheeloffish.core.playlist.rebuild_inputs import (
     check_provider_reachable,
     fetch_rebuild_inputs_for_row,
 )
+from wheeloffish.core.provider_writeback import (
+    WritebackResult,
+    apply_writeback_result,
+    push_snapshot,
+)
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
@@ -181,6 +186,21 @@ async def rebuild_playlist(db: Session, playlist_id: str, *, trigger: str) -> Re
     run.slots_requested = result.slots_requested
     run.slots_filled = result.slots_filled
     run.finished_at = datetime.now(UTC)
+    db.commit()
+
+    try:
+        writeback_result = await push_snapshot(
+            db, playlist_orm, run, snapshot, provider
+        )
+        db.refresh(run)
+        apply_writeback_result(run, writeback_result)
+    except Exception as exc:
+        log.warning("writeback_failed", error=str(exc))
+        db.refresh(run)
+        apply_writeback_result(
+            run,
+            WritebackResult(status="failed", error=str(exc)),
+        )
     db.commit()
 
     prune_rebuild_history(db, playlist_id, keep=3)

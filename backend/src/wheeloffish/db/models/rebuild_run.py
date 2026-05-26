@@ -34,6 +34,12 @@ class RebuildRun(Base):
     slots_filled: Mapped[int | None] = mapped_column(Integer, nullable=True)
     row_outcomes_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     snapshot_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    writeback_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    writeback_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    writeback_warnings: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    writeback_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

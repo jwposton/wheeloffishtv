@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { RebuildBanner } from "@/components/playlists/RebuildBanner"
 import { OutputList } from "@/components/playlists/OutputList"
+import { PlaylistMembersPanel } from "@/components/playlists/PlaylistMembersPanel"
 import { usePlaylist, useDeletePlaylist, useRebuildPlaylist } from "@/api/playlists"
 import { cn } from "@/lib/utils"
 
@@ -97,10 +98,18 @@ export function PlaylistDetailPage() {
   async function handleRebuild() {
     if (!id) return
     try {
-      await rebuildMutation.mutateAsync(id)
-      toast.success("Rebuild queued")
+      const run = await rebuildMutation.mutateAsync(id)
+      if (run.status === "failed") {
+        toast.error(run.error_message ?? "Rebuild failed")
+        return
+      }
+      if (run.status === "partial") {
+        toast.success("Rebuild complete with warnings")
+        return
+      }
+      toast.success("Rebuild complete")
     } catch {
-      toast.error("Failed to queue rebuild")
+      toast.error("Failed to rebuild playlist")
     }
   }
 
@@ -110,25 +119,27 @@ export function PlaylistDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4">
         <Skeleton className="h-8 w-56" />
         <Skeleton className="h-20 w-full rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-xl" />
+        <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_1fr]">
+          <Skeleton className="h-64 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
       </div>
     )
   }
 
   if (isError || !playlist) {
     return (
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-6xl">
         <p className="text-sm text-destructive">Failed to load playlist. Please try again.</p>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      {/* Header */}
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0">
           <h2 className="text-xl font-semibold truncate">{playlist.name}</h2>
@@ -156,18 +167,32 @@ export function PlaylistDetailPage() {
         </div>
       </div>
 
-      {/* Rebuild status banner */}
-      <RebuildBanner lastRebuild={playlist.last_rebuild} />
+      <RebuildBanner
+        lastRebuild={playlist.last_rebuild}
+        snapshot={playlist.current_snapshot}
+        providerKind={playlist.provider_kind}
+        providerPlaylistOpenUrl={playlist.provider_playlist_open_url}
+      />
 
-      {/* Output list */}
-      <section>
-        <h3 className="mb-3 font-medium text-sm text-muted-foreground uppercase tracking-wide">
-          Output — {playlist.episode_count} episodes
-        </h3>
-        <div className="rounded-xl border bg-card p-4">
-          <OutputList episodes={playlist.current_snapshot} />
-        </div>
-      </section>
+      <div className="grid gap-6 lg:grid-cols-[minmax(240px,320px)_1fr]">
+        <section className="flex flex-col gap-3">
+          <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+            Shows ({playlist.rows.length})
+          </h3>
+          <div className="rounded-xl border bg-card p-4">
+            <PlaylistMembersPanel playlistId={playlist.id} rows={playlist.rows} />
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+            Output — {playlist.episode_count} episodes
+          </h3>
+          <div className="rounded-xl border bg-card p-4">
+            <OutputList episodes={playlist.current_snapshot} />
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

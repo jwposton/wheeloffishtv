@@ -5,6 +5,7 @@ import httpx
 from wheeloffish.domain.dto import Episode, Library, PagedSeries
 from wheeloffish.integrations.errors import (
     ProviderError,
+    ProviderNotFound,
     ProviderSSLError,
     ProviderUnauthorized,
     ProviderUnreachable,
@@ -59,6 +60,8 @@ class JellyfinProvider:
 
         if response.status_code == 401:
             raise ProviderUnauthorized()
+        if response.status_code == 404:
+            raise ProviderNotFound(f"Jellyfin API error: {response.status_code}")
         if response.status_code >= 400:
             raise ProviderError(f"Jellyfin API error: {response.status_code}")
         return response

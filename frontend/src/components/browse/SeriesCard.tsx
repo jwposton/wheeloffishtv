@@ -3,9 +3,11 @@ import { MoreVertical } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import type { Series } from "@/api/types"
+import { PosterFeedbackOverlay } from "@/components/browse/PosterFeedbackOverlay"
 import {
   AddToPlaylistContextMenuItems,
   AddToPlaylistMenu,
+  type AppendFeedback,
 } from "@/components/playlists/AddToPlaylistMenu"
 import { SeriesPoster } from "@/components/browse/SeriesPoster"
 import { Button } from "@/components/ui/button"
@@ -14,6 +16,7 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { useTransientFeedback } from "@/hooks/useTransientFeedback"
 import { seriesDetailRoute } from "@/lib/seriesId"
 import { cn } from "@/lib/utils"
 
@@ -38,10 +41,17 @@ function PosterThumb({
   )
 }
 
-function SeriesActionsMenu({ seriesId }: { seriesId: string }) {
+function SeriesActionsMenu({
+  seriesId,
+  onAppendFeedback,
+}: {
+  seriesId: string
+  onAppendFeedback: (feedback: AppendFeedback) => void
+}) {
   return (
     <AddToPlaylistMenu
       seriesId={seriesId}
+      onAppendFeedback={onAppendFeedback}
       trigger={
         <Button
           type="button"
@@ -60,6 +70,7 @@ function SeriesActionsMenu({ seriesId }: { seriesId: string }) {
 
 export function SeriesCard({ series, variant }: SeriesCardProps) {
   const navigate = useNavigate()
+  const { feedback, showFeedback } = useTransientFeedback()
 
   const handleActivate = () => {
     navigate(seriesDetailRoute(series.id))
@@ -96,8 +107,9 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
             tabIndex={0}
             onKeyDown={handleKeyDown}
           >
-            <div className="aspect-[2/3] w-12 shrink-0 overflow-hidden rounded-sm border bg-white">
+            <div className="relative aspect-[2/3] w-12 shrink-0 overflow-hidden rounded-sm border bg-white">
               <PosterThumb series={series} compact />
+              <PosterFeedbackOverlay feedback={feedback} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{series.title}</p>
@@ -110,12 +122,18 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
               onClick={(event) => event.stopPropagation()}
               onContextMenu={(event) => event.stopPropagation()}
             >
-              <SeriesActionsMenu seriesId={series.id} />
+              <SeriesActionsMenu
+                seriesId={series.id}
+                onAppendFeedback={showFeedback}
+              />
             </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent onClick={(event) => event.stopPropagation()}>
-          <AddToPlaylistContextMenuItems seriesId={series.id} />
+          <AddToPlaylistContextMenuItems
+            seriesId={series.id}
+            onAppendFeedback={showFeedback}
+          />
         </ContextMenuContent>
       </ContextMenu>
     )
@@ -134,8 +152,9 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
               focusRing,
             )}
           >
-            <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
               <PosterThumb series={series} />
+              <PosterFeedbackOverlay feedback={feedback} />
             </div>
             <span className="line-clamp-2 text-sm font-medium">{series.title}</span>
           </button>
@@ -144,12 +163,18 @@ export function SeriesCard({ series, variant }: SeriesCardProps) {
             onClick={(event) => event.stopPropagation()}
             onContextMenu={(event) => event.stopPropagation()}
           >
-            <SeriesActionsMenu seriesId={series.id} />
+            <SeriesActionsMenu
+              seriesId={series.id}
+              onAppendFeedback={showFeedback}
+            />
           </div>
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent onClick={(event) => event.stopPropagation()}>
-        <AddToPlaylistContextMenuItems seriesId={series.id} />
+        <AddToPlaylistContextMenuItems
+          seriesId={series.id}
+          onAppendFeedback={showFeedback}
+        />
       </ContextMenuContent>
     </ContextMenu>
   )

@@ -21,10 +21,11 @@ Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect
 ### Active
 
 - [ ] Connect user-configured Plex and/or Jellyfin; list libraries & shows user can attach to playlists
+- [ ] **Push rebuilt playlists to native Plex/Jellyfin playlists (EXP-01)** — v0.1.0 release gate
 - [ ] Ordered vs disordered per **playlist × show**
 - [ ] Policies when a show’s season (or library rules) completes: remove on next refresh vs restart vs switch to disordered
 - [ ] Daily full rebuild scheduler; multipart episodes grouped back-to-back (ordered flows)
-- [ ] Modern, polished SPA web UI for all configuration
+- [ ] Modern, polished SPA web UI for all configuration *(functional complete; visual polish deferred to Phase 8 / v0.2.0)*
 
 ### Out of Scope
 
@@ -56,6 +57,7 @@ Technical notes for later phases:
 | Python backend | User preference + strong async HTTP client story | — Pending |
 | Daily batch rebuild | Predictable load; simpler than continuous mutation | — Pending |
 | No global WheelOfFish playlist | User creates their own mixed playlists; admin global pool cancelled (2026-05-25) | — Decided |
+| v0.1.0 before polish | Provider writeback (Phase 7) gates first release; UX polish is Phase 8 / v0.2.0 | — Decided 2026-05-25 |
 
 ## Evolution
 
@@ -77,4 +79,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 after Phase 6 plan 05 (Library assignment complete; WheelOfFish cancelled)*
+*Last updated: 2026-05-25 after roadmap amendment (Phase 7 writeback = v0.1.0; Phase 8 polish)*

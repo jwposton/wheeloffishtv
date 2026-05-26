@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react"
-import { MoreVertical } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
-import { ApiError } from "@/api/client"
+import { isAlreadyInPlaylistError } from "@/api/client"
 import type { Series } from "@/api/types"
 import {
   useAppendPlaylistRow,
@@ -12,20 +11,8 @@ import {
   type RowMode,
 } from "@/api/playlists"
 import { SeriesPoster } from "@/components/browse/SeriesPoster"
-import { PlaylistRowMenuItems } from "@/components/playlists/PlaylistRowMenuItems"
+import { PlaylistMemberTile } from "@/components/playlists/PlaylistMemberTile"
 import { type SeriesRow } from "@/components/playlists/RowSettingsSheet"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -43,80 +30,37 @@ interface TwoPanePickerProps {
   onRowMutationsPendingChange?: (pending: boolean) => void
 }
 
-function MemberTile({
-  row,
+function InPlaylistPane({
+  rows,
   onModeChange,
   onPolicyChange,
   onRemove,
 }: {
-  row: SeriesRow
-  onModeChange: (mode: RowMode) => void
-  onPolicyChange: (policy: CompletionPolicy) => void
-  onRemove: () => void
+  rows: SeriesRow[]
+  onModeChange: (row: SeriesRow, mode: RowMode) => void
+  onPolicyChange: (row: SeriesRow, policy: CompletionPolicy) => void
+  onRemove: (seriesId: string) => void
 }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No shows yet — pick from Available to add.
+      </p>
+    )
+  }
+
   return (
-    <ContextMenu>
-      <ContextMenuTrigger className="block w-full">
-        <div className="relative flex flex-col gap-2 rounded-md text-left">
-          <div
-            className={cn(
-              "relative flex flex-col gap-2 rounded-md text-left",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-            )}
-          >
-            <div className="aspect-[2/3] w-full overflow-hidden rounded-md border bg-white">
-              <SeriesPoster title={row.series_title} thumbUrl={row.thumb_url} />
-            </div>
-            <span className="line-clamp-2 text-sm font-medium">{row.series_title}</span>
-            {row.mode === "disordered" ? (
-              <Badge variant="secondary" className="absolute top-2 left-2 text-xs">
-                Random
-              </Badge>
-            ) : null}
-          </div>
-          <div
-            className="absolute top-2 right-2"
-            onClick={(event: MouseEvent) => event.stopPropagation()}
-            onContextMenu={(event: MouseEvent) => event.stopPropagation()}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon-xs"
-                    className="bg-background/90 shadow-sm backdrop-blur-sm"
-                    aria-label="Series actions"
-                    onClick={(event: MouseEvent) => event.stopPropagation()}
-                  >
-                    <MoreVertical />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-                <PlaylistRowMenuItems
-                  row={row}
-                  variant="dropdown"
-                  onModeChange={onModeChange}
-                  onPolicyChange={onPolicyChange}
-                  onRemove={onRemove}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent onClick={(event) => event.stopPropagation()}>
-        <PlaylistRowMenuItems
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {rows.map((row) => (
+        <PlaylistMemberTile
+          key={row.series_id}
           row={row}
-          variant="context"
-          onModeChange={onModeChange}
-          onPolicyChange={onPolicyChange}
-          onRemove={onRemove}
+          onModeChange={(mode) => onModeChange(row, mode)}
+          onPolicyChange={(policy) => onPolicyChange(row, policy)}
+          onRemove={() => onRemove(row.series_id)}
         />
-      </ContextMenuContent>
-    </ContextMenu>
+      ))}
+    </div>
   )
 }
 
@@ -156,40 +100,6 @@ function TileGridSkeleton() {
           <Skeleton className="aspect-[2/3] w-full" />
           <Skeleton className="h-4 w-3/4" />
         </div>
-      ))}
-    </div>
-  )
-}
-
-function InPlaylistPane({
-  rows,
-  onModeChange,
-  onPolicyChange,
-  onRemove,
-}: {
-  rows: SeriesRow[]
-  onModeChange: (row: SeriesRow, mode: RowMode) => void
-  onPolicyChange: (row: SeriesRow, policy: CompletionPolicy) => void
-  onRemove: (seriesId: string) => void
-}) {
-  if (rows.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No shows yet — pick from Available to add.
-      </p>
-    )
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-      {rows.map((row) => (
-        <MemberTile
-          key={row.series_id}
-          row={row}
-          onModeChange={(mode) => onModeChange(row, mode)}
-          onPolicyChange={(policy) => onPolicyChange(row, policy)}
-          onRemove={() => onRemove(row.series_id)}
-        />
       ))}
     </div>
   )
@@ -344,7 +254,7 @@ export function TwoPanePicker({
         })
         toast.success(`Added ${series.title}`)
       } catch (error) {
-        if (error instanceof ApiError && error.status === 409) {
+        if (isAlreadyInPlaylistError(error)) {
           return
         }
         onRowsChange(previousRows)

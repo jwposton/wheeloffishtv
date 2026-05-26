@@ -1,42 +1,52 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: ready_to_plan
-last_updated: 2026-05-26T00:00:18.967Z
+milestone: v0.1.0
+milestone_name: feature-complete MVP (provider writeback)
+status: uat_complete
+last_updated: 2026-05-26T02:02:00.000Z
 progress:
-  total_phases: 7
-  completed_phases: 3
-  total_plans: 17
-  completed_plans: 37
-  percent: 43
-stopped_at: Phase 06 complete (5/5) — ready to discuss Phase 7
+  total_phases: 8
+  completed_phases: 7
+  total_plans: 40
+  completed_plans: 40
+  percent: 88
+stopped_at: Phase 07 UAT pass — ready to tag v0.1.0
 ---
 
 # State — Wheel of Fish TV
 
-**Updated:** 2026-05-25 (Phase 6 complete — series detail hero + metadata)
-
-## Project reference
-
-See: `.planning/PROJECT.md` (updated 2026-05-25)
-
-**Core value:** Mixed random TV playlists across chosen shows honoring true resume semantics per series whenever `ordered`; users manage playlists via Library-centric UX.
+**Updated:** 2026-05-26 (Phase 7 executed — provider writeback)
 
 ## Current phase
 
-Phase **6 — Library & playlist assignment** — **complete** (5/5 plans).
+Phase **7 — Provider playlist writeback** — **complete** (3/3 plans).
 
-**Stopped at:** Completed 06-05-PLAN.md
-
-**Next action:** Phase 6 validation (06-VALIDATION.md)
+**Release gate:** UAT passed 2026-05-26 — tag **v0.1.0**.
 
 ## Immediate next actions
 
-1. Run Phase 6 validation UAT (06-VALIDATION.md)
-2. Begin Phase 7 UX polish when validation passes
+1. Commit Phase 6–7 + UAT fixes
+2. Tag **v0.1.0**
+3. Begin Phase 8 UX polish
 
-## Decisions (Phase 4)
+## Decisions (Phase 7 — plan 2026-05-25)
+
+- **07-01:** Plex writeback via clear+replace items; guid→ratingKey resolution
+- **07-02:** Jellyfin uses media item ids directly; entry ids for clear
+- **07-03:** `provider_playlist_open_url` computed server-side; WritebackStatus component
+- **Schema:** migration 009 — provider link on playlists, writeback audit on rebuild_runs
+
+- Plex playlists are **server/account scoped** — no library picker
+- Provider name **`{name} [WoF]`**; rename syncs; delete removes provider playlist
+- **`provider_playlist_id`** on WheelOfFish playlist is ownership source of truth
+- Create provider playlist on **first successful rebuild**; full item replace each rebuild
+- Partial writeback OK — skip unmapped episodes with warnings
+- UI: separate writeback status + **open in Plex/Jellyfin** link
+- **Plex-first** for v0.1.0; Jellyfin in 07-02 wave if quick else v0.1.1
+
+- **Phase 7 = provider playlist writeback** — push rebuild snapshots to native Plex/Jellyfin playlists; **v0.1.0 release gate**
+- **Phase 8 = UX polish** — former Phase 7 scope deferred post-v0.1.0 (target v0.2.0)
+- Export/push no longer out of scope for MVP — it is the delivery mechanism for playback in Plex/Jellyfin clients
 
 - Import fixtures via `unit.fixtures` path for pytest testpaths compatibility
 - Default `completion_event=SERIES_COMPLETE` per research assumption A4
@@ -61,7 +71,7 @@ Phase **6 — Library & playlist assignment** — **complete** (5/5 plans).
 - WOF_PROVIDER drives single-provider installs; legacy WOF_ENABLED_PROVIDERS retained for multi-provider tests
 - Session cookie https_only only when ENVIRONMENT=production
 - ProtectedRoute requires has_media_link (not just session bootstrap)
-- Storybook deferred to Phase 7 (D-20)
+- Storybook deferred to Phase 8 (D-20)
 
 ## Decisions (Phase 6 — planning)
 
@@ -99,7 +109,7 @@ Phase **6 — Library & playlist assignment** — **complete** (5/5 plans).
 ## Decisions (Phase 6 — plan 01)
 
 - Missing Plex metadata fields present as None/[] defaults — not omitted keys
-- Jellyfin Phase 6 stubs defer real Overview/Genres mapping to Phase 7 spike
+- Jellyfin Phase 6 stubs defer real Overview/Genres mapping to Phase 8 polish spike (or Phase 7 if cheap)
 - Genre extraction filters malformed entries; wrong-type string fields coerced to None via `_str_or_none`
 
 ## Decisions (Phase 5 — planning)
@@ -146,6 +156,7 @@ Phase **6 — Library & playlist assignment** — **complete** (5/5 plans).
 
 ## Working notes
 
+- **Backlog:** `.planning/BACKLOG.md` (BL-01: remove confirmation "don't ask again")
 - Phase 6 plan 05: `.planning/phases/06-library-playlist-assignment/06-05-SUMMARY.md`
 - Phase 6 plan 04: `.planning/phases/06-library-playlist-assignment/06-04-SUMMARY.md`
 - Phase 6 plan 03: `.planning/phases/06-library-playlist-assignment/06-03-SUMMARY.md`

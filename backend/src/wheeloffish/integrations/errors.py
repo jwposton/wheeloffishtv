@@ -25,3 +25,10 @@ class ProviderDisabled(ProviderError):
 
 class ProviderWrongType(ProviderError):
     code = "wrong_type"
+
+
+class ProviderNotFound(ProviderError):
+    code = "not_found"
+
+    def __init__(self, message: str = "Provider resource not found") -> None:
+        super().__init__(message)

@@ -1,6 +1,7 @@
 import { StatusBadge } from "@/components/playlists/StatusBadge"
-import type { RebuildRunSummary } from "@/api/playlists"
-import type { RebuildStatus } from "@/api/types"
+import { WritebackStatus } from "@/components/playlists/WritebackStatus"
+import type { RebuildRunSummary, SnapshotEpisode } from "@/api/playlists"
+import type { RebuildStatus, WritebackStatus as WritebackStatusValue } from "@/api/types"
 
 function formatRelativeTime(isoString: string | null): string {
   if (!isoString) return "Never"
@@ -16,13 +17,27 @@ function formatRelativeTime(isoString: string | null): string {
 
 interface RebuildBannerProps {
   lastRebuild: RebuildRunSummary | null
+  snapshot?: SnapshotEpisode[]
+  providerKind?: string | null
+  providerPlaylistOpenUrl?: string | null
 }
 
-export function RebuildBanner({ lastRebuild }: RebuildBannerProps) {
+function episodeTitlesById(snapshot: SnapshotEpisode[] | undefined): Record<string, string> {
+  if (!snapshot?.length) return {}
+  return Object.fromEntries(snapshot.map((ep) => [ep.episode_id, ep.title]))
+}
+
+export function RebuildBanner({
+  lastRebuild,
+  snapshot,
+  providerKind,
+  providerPlaylistOpenUrl,
+}: RebuildBannerProps) {
   const status = (lastRebuild?.status ?? null) as RebuildStatus
+  const writebackStatus = (lastRebuild?.writeback_status ?? null) as WritebackStatusValue
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+    <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
       <div className="flex items-center gap-3">
         <StatusBadge status={status} />
         {lastRebuild?.finished_at && (
@@ -44,6 +59,15 @@ export function RebuildBanner({ lastRebuild }: RebuildBannerProps) {
           Last rebuild completed with warnings — some series were skipped.
         </p>
       )}
+
+      <WritebackStatus
+        status={writebackStatus}
+        error={lastRebuild?.writeback_error}
+        warnings={lastRebuild?.writeback_warnings}
+        episodeTitlesById={episodeTitlesById(snapshot)}
+        providerKind={providerKind}
+        openUrl={providerPlaylistOpenUrl}
+      />
     </div>
   )
 }

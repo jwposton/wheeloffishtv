@@ -10,6 +10,7 @@
 - [ ] **INT-01**: Operator can register one configured **Plex** OR **Jellyfin** server (base URL + auth material) scoped to their account  
 - [ ] **INT-02**: System can enumerate **libraries** and **TV series** the user may attach to playlists (with paging/search to stay usable at scale)  
 - [ ] **INT-03**: System maintains enough **episode + watch-position metadata** cache to compute “earliest unfinished / partial / next” reliably per series for **ordered** rows  
+- [x] **EXP-01**: After each successful or partial rebuild, system **writes the emitted episode list** to a **native Plex or Jellyfin playlist** linked to the WheelOfFish playlist so users play output in their media client  
 
 ### Playlists & tuning
 
@@ -32,7 +33,7 @@
 
 ### Presentation (Web UI)
 
-- [x] **WEB-01**: SPA covers **authentication**, connection setup, playlist CRUD, show membership, tuning flags (`ordered`/`disordered`, completion policies), **manual “rebuild now”** (optional shortcut), and surfaced job status/logs for last refresh  
+- [x] **WEB-01**: SPA covers **authentication**, connection setup, playlist CRUD, show membership, tuning flags (`ordered`/`disordered`, completion policies), **manual “rebuild now”**, surfaced job status/logs for last refresh, and **provider writeback status** once EXP-01 ships  
 
 ### Packaging
 
@@ -51,7 +52,7 @@ Deferred (not in roadmap v1):
 
 | Feature | Reason |
 |---------|--------|
-| First-class in-app playback | Consume via Plex/Jellyfin clients; MVP targets playlist authoring / export contract |
+| First-class in-app playback | Consume via Plex/Jellyfin clients; WheelOfFish authors + exports playlists (EXP-01) |
 | Licensed content scraping outside configured servers | Compliance & scope |
 | Hosted multi-tenant SaaS billing | Explicit self-host persona |
 | Global WheelOfFish admin playlist (ADM-01/02) | Cancelled 2026-05-25 — users manage their own playlists via Library UX (Phase 6) |
@@ -74,18 +75,19 @@ Deferred (not in roadmap v1):
 | ADM-01 | — | Cancelled (2026-05-25) |
 | ADM-02 | — | Cancelled (2026-05-25) |
 | PLT-03 UX | Phase 6 | Complete (Library assignment + two-pane editor) |
-| WEB-01 | Phase 3 (+ Phase 7 polish tie-in) | Complete |
+| EXP-01 | Phase 7 | Complete (Plex + Jellyfin writeback) |
+| WEB-01 | Phase 3 (+ Phase 8 polish tie-in) | Complete (writeback status UI pending EXP-01) |
 | DEP-01 | Phase 1 | Pending |
 
 **Coverage:**
 
-- v1 requirements: **15** total  
-- Mapped to phases: **15**  
+- v1 requirements: **16** total  
+- Mapped to phases: **16**  
 - Unmapped: **0** ✓  
 
-> **Note:** `WEB-01` deliberately spans SPA work starting once APIs exist — Phase 7 focuses on slick polish/accessibility/visual QA while Phase 3 delivers foundational screens.
+> **Note:** `WEB-01` deliberately spans SPA work starting once APIs exist — Phase 8 focuses on slick polish/accessibility/visual QA while Phase 3 delivers foundational screens. EXP-01 writeback status UI completes the functional WEB-01 slice in Phase 7.
 
 ---
 
 *Requirements defined: 2026-05-24*  
-*Last updated: 2026-05-25 after Phase 6 plan 05 (PLT-03 UX complete; ADM cancelled)*
+*Last updated: 2026-05-25 after roadmap amendment (EXP-01 added; Phase 7 writeback = v0.1.0 gate)*

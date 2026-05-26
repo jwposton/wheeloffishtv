@@ -2,7 +2,7 @@ import { useState, type ReactElement } from "react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
-import { ApiError } from "@/api/client"
+import { getApiErrorStatus, isAlreadyInPlaylistError } from "@/api/client"
 import { useAppendPlaylistRow, usePlaylists } from "@/api/playlists"
 import { QuickCreatePlaylistDialog } from "@/components/playlists/QuickCreatePlaylistDialog"
 import {
@@ -16,13 +16,42 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import type { TransientFeedback } from "@/hooks/useTransientFeedback"
 
-interface AddToPlaylistMenuProps {
+export type AppendFeedback = TransientFeedback
+
+interface AddToPlaylistHandlersOptions {
+  onAppendFeedback?: (feedback: AppendFeedback) => void
+  showAdvancedLink?: boolean
+}
+
+interface AddToPlaylistMenuProps extends AddToPlaylistHandlersOptions {
   seriesId: string
   trigger: ReactElement
 }
 
-function useAddToPlaylistHandlers(seriesId: string) {
+function notifyAppendFeedback(
+  feedback: AppendFeedback,
+  onAppendFeedback?: (feedback: AppendFeedback) => void,
+) {
+  if (onAppendFeedback) {
+    onAppendFeedback(feedback)
+    return
+  }
+
+  if (feedback.variant === "success") {
+    toast.success(feedback.message)
+  } else if (feedback.variant === "info") {
+    toast.info(feedback.message)
+  } else {
+    toast.error(feedback.message)
+  }
+}
+
+function useAddToPlaylistHandlers(
+  seriesId: string,
+  { onAppendFeedback, showAdvancedLink = false }: AddToPlaylistHandlersOptions = {},
+) {
   const { data: playlists, isLoading } = usePlaylists()
   const appendMutation = useAppendPlaylistRow()
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
@@ -34,13 +63,28 @@ function useAddToPlaylistHandlers(seriesId: string) {
         playlistId,
         payload: { series_id: seriesId },
       })
-      toast.success(`Added to ${playlistName}`)
+      notifyAppendFeedback(
+        { variant: "success", message: `Added to ${playlistName}` },
+        onAppendFeedback,
+      )
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        toast.info(`Already in ${playlistName}`)
+      if (isAlreadyInPlaylistError(error)) {
+        notifyAppendFeedback(
+          { variant: "info", message: `Already in ${playlistName}` },
+          onAppendFeedback,
+        )
         return
       }
-      toast.error("Failed to add to playlist")
+      notifyAppendFeedback(
+        {
+          variant: "error",
+          message:
+            getApiErrorStatus(error) === 422
+              ? "Show not in your library"
+              : "Could not add to playlist",
+        },
+        onAppendFeedback,
+      )
     }
   }
 
@@ -58,10 +102,19 @@ function useAddToPlaylistHandlers(seriesId: string) {
     openQuickCreate,
     appendPending: appendMutation.isPending,
     advancedHref,
+    showAdvancedLink,
   }
 }
 
-export function AddToPlaylistContextMenuItems({ seriesId }: { seriesId: string }) {
+export function AddToPlaylistContextMenuItems({
+  seriesId,
+  onAppendFeedback,
+  showAdvancedLink = false,
+}: {
+  seriesId: string
+  onAppendFeedback?: (feedback: AppendFeedback) => void
+  showAdvancedLink?: boolean
+}) {
   const {
     playlists,
     isLoading,
@@ -71,7 +124,8 @@ export function AddToPlaylistContextMenuItems({ seriesId }: { seriesId: string }
     openQuickCreate,
     appendPending,
     advancedHref,
-  } = useAddToPlaylistHandlers(seriesId)
+    showAdvancedLink: showAdvanced,
+  } = useAddToPlaylistHandlers(seriesId, { onAppendFeedback, showAdvancedLink })
 
   return (
     <>
@@ -93,22 +147,30 @@ export function AddToPlaylistContextMenuItems({ seriesId }: { seriesId: string }
       )}
       <ContextMenuSeparator />
       <ContextMenuItem onClick={openQuickCreate}>Create new playlist…</ContextMenuItem>
-      <ContextMenuItem
-        render={<Link to={advancedHref} />}
-        onClick={(event) => event.stopPropagation()}
-      >
-        Advanced…
-      </ContextMenuItem>
+      {showAdvanced ? (
+        <ContextMenuItem
+          render={<Link to={advancedHref} />}
+          onClick={(event) => event.stopPropagation()}
+        >
+          Advanced…
+        </ContextMenuItem>
+      ) : null}
       <QuickCreatePlaylistDialog
         seriesId={seriesId}
         open={quickCreateOpen}
         onOpenChange={setQuickCreateOpen}
+        showAdvancedLink={showAdvanced}
       />
     </>
   )
 }
 
-export function AddToPlaylistMenu({ seriesId, trigger }: AddToPlaylistMenuProps) {
+export function AddToPlaylistMenu({
+  seriesId,
+  trigger,
+  onAppendFeedback,
+  showAdvancedLink = false,
+}: AddToPlaylistMenuProps) {
   const {
     playlists,
     isLoading,
@@ -118,7 +180,8 @@ export function AddToPlaylistMenu({ seriesId, trigger }: AddToPlaylistMenuProps)
     openQuickCreate,
     appendPending,
     advancedHref,
-  } = useAddToPlaylistHandlers(seriesId)
+    showAdvancedLink: showAdvanced,
+  } = useAddToPlaylistHandlers(seriesId, { onAppendFeedback, showAdvancedLink })
 
   return (
     <>
@@ -145,18 +208,21 @@ export function AddToPlaylistMenu({ seriesId, trigger }: AddToPlaylistMenuProps)
           <DropdownMenuItem onClick={openQuickCreate}>
             Create new playlist…
           </DropdownMenuItem>
-          <DropdownMenuItem
-            render={<Link to={advancedHref} />}
-            onClick={(event) => event.stopPropagation()}
-          >
-            Advanced…
-          </DropdownMenuItem>
+          {showAdvanced ? (
+            <DropdownMenuItem
+              render={<Link to={advancedHref} />}
+              onClick={(event) => event.stopPropagation()}
+            >
+              Advanced…
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
       <QuickCreatePlaylistDialog
         seriesId={seriesId}
         open={quickCreateOpen}
         onOpenChange={setQuickCreateOpen}
+        showAdvancedLink={showAdvanced}
       />
     </>
   )

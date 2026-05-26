@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -23,15 +23,59 @@ from wheeloffish.api.schemas.playlists import (
     RebuildRunSummary,
     SnapshotEpisode,
 )
+from wheeloffish.core.config import get_settings
+from wheeloffish.core.connections import build_provider_for_user
 from wheeloffish.core.media_artwork import series_artwork_url
 from wheeloffish.core.orchestrator import run_manual_rebuild
+from wheeloffish.core.provider_playlist_urls import provider_playlist_open_url
+from wheeloffish.core.provider_writeback import delete_linked, rename_linked
+from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.cached_series import CachedSeries
+from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
 from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.db.models.rebuild_run import RebuildRun
+from wheeloffish.domain.ids import parse_composite_id
 
 router = APIRouter(prefix="/playlists", tags=["playlists"])
+
+
+def _connection_for_playlist(db: Session, playlist: PlaylistOrm) -> Connection | None:
+    if not playlist.rows:
+        return None
+    try:
+        connection_id, _, _ = parse_composite_id(playlist.rows[0].series_id)
+    except ValueError:
+        return None
+    return db.query(Connection).filter(Connection.id == connection_id).one_or_none()
+
+
+def _playlist_open_url(db: Session, playlist: PlaylistOrm) -> str | None:
+    if not playlist.provider_playlist_id or not playlist.provider_kind:
+        return None
+    connection = _connection_for_playlist(db, playlist)
+    if connection is None:
+        return None
+    return provider_playlist_open_url(
+        base_url=connection.base_url,
+        provider_kind=playlist.provider_kind,
+        provider_playlist_id=playlist.provider_playlist_id,
+        verify_ssl=connection.verify_ssl,
+    )
+
+
+async def _with_provider_for_playlist(
+    db: Session,
+    playlist: PlaylistOrm,
+    app_user_id: str,
+):
+    connection = _connection_for_playlist(db, playlist)
+    if connection is None:
+        return None
+    settings = get_settings()
+    vault = SecretsVault(db, settings)
+    return build_provider_for_user(db, vault, connection, app_user_id, settings=settings)
 
 
 def _get_owned_playlist(db: Session, playlist_id: str, app_user_id: str) -> PlaylistOrm:
@@ -67,6 +111,10 @@ def _rebuild_run_to_summary(run: RebuildRun) -> RebuildRunSummary:
         error_message=run.error_message,
         slots_filled=run.slots_filled,
         slots_requested=run.slots_requested,
+        writeback_status=run.writeback_status,
+        writeback_error=run.writeback_error,
+        writeback_warnings=run.writeback_warnings,
+        writeback_at=run.writeback_at,
     )
 
 
@@ -176,21 +224,28 @@ def _playlist_to_detail(
         current_snapshot=snapshot_out,
         last_rebuild=last_rebuild,
         recent_runs=recent_runs,
+        provider_playlist_id=playlist.provider_playlist_id,
+        provider_kind=playlist.provider_kind,
+        provider_playlist_open_url=_playlist_open_url(db, playlist),
     )
 
 
 @router.get("", response_model=list[PlaylistListItem])
 def list_playlists(
+    series_id: str | None = Query(default=None, min_length=1),
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ) -> list[PlaylistListItem]:
-    """List all playlists owned by the current user (D-18)."""
-    playlists = (
-        db.query(PlaylistOrm)
-        .filter(PlaylistOrm.app_user_id == user.id)
-        .order_by(PlaylistOrm.created_at.desc())
-        .all()
-    )
+    """List all playlists owned by the current user (D-18).
+
+    When ``series_id`` is provided, return only playlists that include that series row.
+    """
+    query = db.query(PlaylistOrm).filter(PlaylistOrm.app_user_id == user.id)
+    if series_id is not None:
+        query = query.join(PlaylistSeriesRowOrm).filter(
+            PlaylistSeriesRowOrm.series_id == series_id,
+        )
+    playlists = query.order_by(PlaylistOrm.created_at.desc()).distinct().all()
     result = []
     for pl in playlists:
         latest = _latest_run(db, pl.id)
@@ -202,6 +257,10 @@ def list_playlists(
                 refresh_day_of_week=pl.refresh_day_of_week,
                 last_rebuild_status=latest.status if latest else None,
                 last_rebuild_at=latest.finished_at if latest else None,
+                last_writeback_status=latest.writeback_status if latest else None,
+                provider_playlist_id=pl.provider_playlist_id,
+                provider_kind=pl.provider_kind,
+                provider_playlist_open_url=_playlist_open_url(db, pl),
             )
         )
     return result
@@ -260,7 +319,7 @@ def get_playlist(
 
 
 @router.put("/{playlist_id}", response_model=PlaylistDetailResponse)
-def update_playlist(
+async def update_playlist(
     playlist_id: str,
     body: PlaylistUpdateRequest,
     db: Session = Depends(get_db),
@@ -268,6 +327,7 @@ def update_playlist(
 ) -> PlaylistDetailResponse:
     """Update playlist config and/or rows (ownership-gated, D-18)."""
     playlist = _get_owned_playlist(db, playlist_id, user.id)
+    previous_name = playlist.name
 
     if body.name is not None:
         playlist.name = body.name
@@ -302,17 +362,31 @@ def update_playlist(
     playlist.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(playlist)
+
+    if (
+        body.name is not None
+        and body.name != previous_name
+        and playlist.provider_playlist_id
+    ):
+        provider = await _with_provider_for_playlist(db, playlist, user.id)
+        if provider is not None:
+            await rename_linked(playlist, provider, db)
+
     return _playlist_to_detail(db, playlist, user.id)
 
 
 @router.delete("/{playlist_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_playlist(
+async def delete_playlist(
     playlist_id: str,
     db: Session = Depends(get_db),
     user: AppUser = Depends(get_current_user),
 ) -> None:
     """Delete a playlist and cascade (ownership-gated, D-18)."""
     playlist = _get_owned_playlist(db, playlist_id, user.id)
+    if playlist.provider_playlist_id:
+        provider = await _with_provider_for_playlist(db, playlist, user.id)
+        if provider is not None:
+            await delete_linked(playlist, provider)
     db.delete(playlist)
     db.commit()
 
