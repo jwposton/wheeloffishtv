@@ -36,12 +36,32 @@ MIT — see [LICENSE](LICENSE). Release notes: [CHANGELOG.md](CHANGELOG.md).
 
    The `app` service should show `healthy`.
 
+5. Open the app (default `http://localhost:8000`), sign in with Plex or Jellyfin, and use **Settings → Libraries** if you want to limit which TV libraries appear in Browse. On first link, all TV libraries from your account are in scope by default.
+
+### First run (browser)
+
+| Step | What happens |
+|------|----------------|
+| 1 | Operator sets `.env` (`WOF_SECRET_KEY`, `WOF_PROVIDER`, `WOF_MEDIA_SERVER_URL`, `WOF_OAUTH_CALLBACK_BASE`) and starts the stack |
+| 2 | User opens the app and completes Plex PIN OAuth or Jellyfin login |
+| 3 | App redirects to **Library**; background catalog sync runs if needed |
+| 4 | Optional: **Settings → Libraries** narrows in-scope TV libraries (per signed-in user) |
+| 5 | User creates playlists, adds shows from Library, triggers rebuilds; playlists sync to Plex/Jellyfin as `{name} [WoF]` |
+
+There is **no** admin env var, setup wizard, or “wait for operator” holding page. Media server URL and provider stay in `.env`; library visibility is per user in the UI.
+
+### Upgrading from older installs
+
+If your `.env` still has `WOF_ADMIN_PROVIDER_USER_ID` or `WOF_ADMIN_USERNAME`, you can remove them — they are ignored. Library scope is stored per user in the database. Use **Settings → Libraries** instead of the removed `/setup/admin` flow.
+
+API clients should use `PUT /api/v1/connections/{id}/library-scope` (not `/api/v1/admin/...`). `GET /api/v1/auth/me` returns `has_media_link` and `libraries_scoped` only (no `is_admin` or `setup_mode`).
+
 ## Release deployment (pre-built image)
 
 Published multi-arch images (`linux/amd64`, `linux/arm64`) are on GitHub Container Registry:
 
 ```text
-ghcr.io/jwposton/wheeloffishtv:0.1.3
+ghcr.io/jwposton/wheeloffishtv:0.1.4
 ghcr.io/jwposton/wheeloffishtv:latest
 ```
 
@@ -67,8 +87,6 @@ Images are built automatically when a `v*` tag is pushed (see `.github/workflows
 | `WOF_MEDIA_SERVER_URL` | Yes | — | Media server base URL (no trailing slash) |
 | `WOF_MEDIA_SERVER_DISPLAY_NAME` | No | `Media Server` | Display name in Settings |
 | `WOF_VERIFY_SSL` | No | `true` | Verify TLS when connecting to media server |
-| `WOF_ADMIN_PROVIDER_USER_ID` | No | — | Admin provider user ID (set after first OAuth login) |
-| `WOF_ADMIN_USERNAME` | No | — | Optional secondary admin match on username/email |
 | `WOF_OAUTH_CALLBACK_BASE` | No | `http://localhost:8000` | Base URL for OAuth callback redirects |
 | `WOF_SESSION_DAYS` | No | — | Session cookie TTL in days; unset = long-lived |
 | `DATABASE_URL` | No | `sqlite:////data/wheeloffish.db` | SQLAlchemy database URL |
@@ -81,7 +99,11 @@ Images are built automatically when a `v*` tag is pushed (see `.github/workflows
 | `WOF_PLEX_PRODUCT_NAME` | No | `Wheel of Fish TV` | Product name shown during Plex PIN flow |
 | `WOF_CATALOG_SYNC_CHUNK_SIZE` | No | `100` | Series fetched per sync chunk |
 | `WOF_CATALOG_PAGE_DEFAULT` | No | `50` | Default page size for series browse |
-| `WOF_SCOPED_LIBRARY_IDS` | No | — | Optional comma-separated library IDs to auto-scope |
+| `WOF_SCOPED_LIBRARY_IDS` | No | — | Optional comma-separated library native IDs to mark in-scope on sync (bootstrap only; users normally manage scope in **Settings → Libraries**) |
+| `WOF_INSTALL_TIMEZONE` | No | `UTC` | IANA timezone for nightly rebuild schedule |
+| `WOF_REBUILD_CRON` | No | `04:00` | Local rebuild time (`HH:MM` in install timezone) |
+| `WOF_ARTWORK_CACHE_DIR` | No | `/data/artwork` | On-disk poster cache |
+| `WOF_ARTWORK_CACHE_TTL_DAYS` | No | `30` | Poster cache TTL (days; `0` = never expire) |
 
 ## Data storage
 
@@ -125,7 +147,7 @@ Main-branch CI runs a Postgres profile smoke test to guard portability.
 
 ## Reverse proxy
 
-This repository ships the API service only — no bundled HTTPS reverse proxy. Terminate TLS with your own infrastructure (Caddy, Traefik, nginx, etc.) upstream of the app HTTP port when the SPA lands in Phase 3.
+The production image serves the API and SPA on one HTTP port. Terminate TLS with your own reverse proxy (Caddy, Traefik, nginx, etc.) and set `WOF_OAUTH_CALLBACK_BASE` to the public HTTPS origin users use in the browser.
 
 ## Phase 2 — Connections and catalog
 
@@ -154,11 +176,11 @@ Use `POST /api/v1/connections/{id}/test` to verify connectivity.
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/v1/connections/{id}/libraries` | TV libraries (cached, in-scope only) |
-| `GET /api/v1/connections/{id}/series` | Paginated cached series browse (`page`, `limit`, `q`) |
+| `GET /api/v1/connections/{id}/libraries` | All cached TV libraries for the signed-in user, each with `in_scope` |
+| `GET /api/v1/connections/{id}/series` | Paginated series browse — **in-scope libraries only** (`page`, `limit`, `q`) |
 | `POST /api/v1/connections/{id}/sync` | Trigger background series sync (202) |
 | `GET /api/v1/connections/{id}/sync/status` | Poll sync progress |
-| `PUT /api/v1/admin/connections/{id}/library-scope` | Admin: set in-scope library IDs |
+| `PUT /api/v1/connections/{id}/library-scope` | Set in-scope library IDs for the signed-in user |
 
 ### Resume preview (UAT)
 
@@ -169,30 +191,30 @@ Use `POST /api/v1/connections/{id}/test` to verify connectivity.
 
 Compare resume output to Plex On Deck or Jellyfin Next Up. See `.planning/phases/02-media-ingestion-catalogs/02-UAT-CHECKLIST.md` for manual verification steps.
 
-## Phase 3 — Operator SPA
+## Web UI
 
-Phase 3 ships the React/Vite SPA served from the same container as the API. Users sign in via media-server OAuth only — there is no standalone local username/password login and no in-app server setup wizard.
+The React/Vite SPA is served from the same container as the API. Users sign in with Plex PIN OAuth or Jellyfin credentials only — there is no local username/password account and no in-app media-server URL wizard (server URL lives in `.env`).
 
-### Operator setup (before `docker compose up`)
-
-Configure connection settings in `.env` (D-06, D-09). The runtime reads env on boot and upserts the single `connections` row; changing server URL or provider requires editing `.env` and restarting the container (D-08).
+### Install-time configuration (`.env`)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `WOF_PROVIDER` | Yes | `plex` or `jellyfin` — one provider per install (D-02) |
+| `WOF_SECRET_KEY` | Yes | 64-char hex; encrypts stored tokens |
+| `WOF_PROVIDER` | Yes | `plex` or `jellyfin` — one provider per install |
 | `WOF_MEDIA_SERVER_URL` | Yes | Base URL of your Plex or Jellyfin server |
-| `WOF_MEDIA_SERVER_DISPLAY_NAME` | No | Friendly label shown in Settings |
-| `WOF_VERIFY_SSL` | No | Verify TLS when connecting to the media server |
-| `WOF_ADMIN_PROVIDER_USER_ID` | After first login | Provider user ID for admin RBAC (D-03) |
-| `WOF_ADMIN_USERNAME` | No | Optional secondary admin match on username/email |
-| `WOF_OAUTH_CALLBACK_BASE` | Yes | Public base URL for OAuth redirects |
-| `WOF_SESSION_DAYS` | No | Session cookie TTL in days; unset = long-lived (D-05) |
+| `WOF_OAUTH_CALLBACK_BASE` | Yes | Public URL for OAuth redirects (HTTPS in production) |
+| `WOF_MEDIA_SERVER_DISPLAY_NAME` | No | Label in Settings |
+| `WOF_VERIFY_SSL` | No | TLS verification for media server API calls |
+| `WOF_SESSION_DAYS` | No | Session cookie TTL; unset = long-lived |
 
-Copy `.env.example` to `.env`, set `WOF_SECRET_KEY`, provider, and media server URL before starting the stack.
+Changing provider or server URL requires editing `.env` and restarting the container.
 
-### Admin discovery (D-04)
+### Per-user library scope
 
-If `WOF_ADMIN_PROVIDER_USER_ID` is unset on first OAuth login, the app enters **setup mode**: users may browse once libraries are scoped, but admin actions (library scope) are blocked until the operator copies the signed-in provider user ID from **Setup → Admin** (`/setup/admin`) into `.env` and restarts.
+- Scope is stored **per signed-in user** (`app_user_id`), not install-wide.
+- After first OAuth link, **all TV libraries** visible to that account are in scope until the user changes **Settings → Libraries**.
+- `GET /api/v1/auth/me` exposes `libraries_scoped` (at least one in-scope library) and `has_media_link`.
+- If Browse is blocked, the app redirects to **Settings → Libraries** until scope is set (or defaults apply after sync).
 
 ### Local frontend development
 
@@ -206,17 +228,17 @@ npm run dev
 
 Vite proxies `/api` to the backend. Use `npm run test -- --run` for unit tests and `npm run build` for production assets (bundled into the backend image via multi-stage Docker build).
 
-### SPA features (Phase 3 scope)
+### SPA features
 
-- Login wall: Plex PIN OAuth or Jellyfin username/password
-- Admin library scope UI with first-run checklist and Settings → Libraries
-- Series browse: grid/list toggle, infinite scroll, debounced search, sync banner
-- Series detail at `/series/{composite_id}` with read-only resume/up-next preview (D-16)
-- Light/dark theme toggle with `prefers-color-scheme` default (D-18)
+- Login: Plex PIN OAuth or Jellyfin username/password
+- **Settings → Libraries** for per-user TV library scope (any linked user)
+- Library browse: grid/list toggle, infinite scroll, debounced search, sync banner
+- Playlists: two-pane editor, rebuild controls, provider writeback status
+- Series detail at `/series/{id}` with read-only resume preview
+- Playlist edit: optional **Don’t ask again** on remove-from-playlist confirmation (resets after save or leaving the page)
+- Light/dark theme toggle
 
-**Storybook** is explicitly deferred to Phase 7 (D-20) — no Storybook config in this phase.
-
-Manual keyboard, OAuth, and theme verification steps: `.planning/phases/03-minimal-operator-spa-shell/03-UAT-CHECKLIST.md`.
+Manual verification: `.planning/phases/03-minimal-operator-spa-shell/03-UAT-CHECKLIST.md` (updated for per-user scope; some historical rows may still mention removed admin flows).
 
 ## Security
 

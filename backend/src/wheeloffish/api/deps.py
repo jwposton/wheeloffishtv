@@ -3,7 +3,6 @@ from collections.abc import Generator
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from wheeloffish.core.auth import is_admin, is_setup_mode
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.app_user import AppUser
@@ -45,15 +44,3 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> AppUser
 
 def get_app_user_id(user: AppUser = Depends(get_current_user)) -> str:
     return user.id
-
-
-def require_admin(
-    user: AppUser = Depends(get_current_user),
-    settings: Settings = Depends(get_settings_dep),
-) -> AppUser:
-    if is_setup_mode(settings) or not is_admin(user, settings):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "forbidden"},
-        )
-    return user

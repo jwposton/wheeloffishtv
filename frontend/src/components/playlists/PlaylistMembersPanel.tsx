@@ -24,9 +24,16 @@ function toSeriesRow(row: PlaylistSeriesRowResponse): SeriesRow {
 interface PlaylistMembersPanelProps {
   playlistId: string
   rows: PlaylistSeriesRowResponse[]
+  skipRemoveConfirm?: boolean
+  onEnableSkipRemoveConfirm?: () => void
 }
 
-export function PlaylistMembersPanel({ playlistId, rows }: PlaylistMembersPanelProps) {
+export function PlaylistMembersPanel({
+  playlistId,
+  rows,
+  skipRemoveConfirm = false,
+  onEnableSkipRemoveConfirm,
+}: PlaylistMembersPanelProps) {
   const removeMutation = useRemovePlaylistRow()
   const patchMutation = usePatchPlaylistRow()
 
@@ -87,6 +94,8 @@ export function PlaylistMembersPanel({ playlistId, rows }: PlaylistMembersPanelP
           onModeChange={(mode) => handleModeChange(row, mode)}
           onPolicyChange={(policy) => handlePolicyChange(row, policy)}
           onRemove={() => void handleRemove(row.series_id, row.series_title)}
+          skipRemoveConfirm={skipRemoveConfirm}
+          onEnableSkipRemoveConfirm={onEnableSkipRemoveConfirm}
         />
       ))}
     </div>

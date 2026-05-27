@@ -11,7 +11,7 @@ from wheeloffish.api.schemas.oauth import (
     PlexOAuthStartResponse,
     PlexOAuthStatusResponse,
 )
-from wheeloffish.core.auth import is_setup_mode, upsert_app_user
+from wheeloffish.core.auth import upsert_app_user
 from wheeloffish.core.boot import sync_connection_from_env
 from wheeloffish.core.catalog_sync import ensure_libraries_cached, trigger_sync
 from wheeloffish.core.config import Settings
@@ -196,6 +196,5 @@ async def plex_oauth_callback(
     finally:
         clear_pin_state(pin_id)
 
-    redirect_path = "/setup" if is_setup_mode(settings) else "/browse"
-    redirect_url = f"{settings.WOF_OAUTH_CALLBACK_BASE.rstrip('/')}{redirect_path}"
+    redirect_url = f"{settings.WOF_OAUTH_CALLBACK_BASE.rstrip('/')}/browse"
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)

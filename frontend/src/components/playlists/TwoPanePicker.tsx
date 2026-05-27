@@ -28,6 +28,8 @@ interface TwoPanePickerProps {
   onRowsChange: (rows: SeriesRow[]) => void
   playlistId?: string
   onRowMutationsPendingChange?: (pending: boolean) => void
+  skipRemoveConfirm?: boolean
+  onEnableSkipRemoveConfirm?: () => void
 }
 
 function InPlaylistPane({
@@ -35,11 +37,15 @@ function InPlaylistPane({
   onModeChange,
   onPolicyChange,
   onRemove,
+  skipRemoveConfirm,
+  onEnableSkipRemoveConfirm,
 }: {
   rows: SeriesRow[]
   onModeChange: (row: SeriesRow, mode: RowMode) => void
   onPolicyChange: (row: SeriesRow, policy: CompletionPolicy) => void
   onRemove: (seriesId: string) => void
+  skipRemoveConfirm: boolean
+  onEnableSkipRemoveConfirm: () => void
 }) {
   if (rows.length === 0) {
     return (
@@ -58,6 +64,8 @@ function InPlaylistPane({
           onModeChange={(mode) => onModeChange(row, mode)}
           onPolicyChange={(policy) => onPolicyChange(row, policy)}
           onRemove={() => onRemove(row.series_id)}
+          skipRemoveConfirm={skipRemoveConfirm}
+          onEnableSkipRemoveConfirm={onEnableSkipRemoveConfirm}
         />
       ))}
     </div>
@@ -162,6 +170,8 @@ export function TwoPanePicker({
   onRowsChange,
   playlistId,
   onRowMutationsPendingChange,
+  skipRemoveConfirm = false,
+  onEnableSkipRemoveConfirm = () => {},
 }: TwoPanePickerProps) {
   const { user } = useAuth()
   const connectionId = user?.connection?.id
@@ -333,6 +343,8 @@ export function TwoPanePicker({
         onModeChange={handleModeChange}
         onPolicyChange={handlePolicyChange}
         onRemove={(seriesId) => void handleRemove(seriesId)}
+        skipRemoveConfirm={skipRemoveConfirm}
+        onEnableSkipRemoveConfirm={onEnableSkipRemoveConfirm}
       />
     </div>
   )

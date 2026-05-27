@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { LogOutIcon } from "lucide-react"
-import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom"
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom"
 
 import { fetchJson } from "@/api/client"
 import { BrandMark } from "@/components/brand/BrandMark"
@@ -11,32 +11,6 @@ import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/useAuth"
 import { useSessionCatalogRefresh } from "@/hooks/useSessionCatalogRefresh"
 import { cn } from "@/lib/utils"
-
-function SetupModeGate() {
-  const { user } = useAuth()
-  const location = useLocation()
-
-  if (!user?.setup_mode) {
-    return null
-  }
-
-  const allowedPaths = ["/setup/admin"]
-  if (user.libraries_scoped || user.install_libraries_configured) {
-    allowedPaths.push("/browse")
-  }
-
-  const isAllowed = allowedPaths.some(
-    (path) =>
-      location.pathname === path ||
-      location.pathname.startsWith(`${path}/`),
-  )
-
-  if (isAllowed) {
-    return null
-  }
-
-  return <Navigate to="/setup/admin" replace />
-}
 
 export function AppShell() {
   const navigate = useNavigate()
@@ -54,7 +28,7 @@ export function AppShell() {
     },
   })
 
-  const showSettingsNav = Boolean(user?.is_admin && !user?.setup_mode)
+  const showSettingsNav = Boolean(user?.has_media_link)
 
   const navLinkClass = (path: string) => {
     const active =
@@ -105,11 +79,6 @@ export function AppShell() {
           </div>
           <div className="flex shrink-0 flex-col items-end gap-0.5">
             <div className="flex items-center gap-1.5">
-              {user?.setup_mode ? (
-                <Button variant="outline" size="xs" render={<Link to="/setup/admin" />}>
-                  Admin setup
-                </Button>
-              ) : null}
               <ThemeToggle compact />
               <Button
                 type="button"
@@ -134,7 +103,6 @@ export function AppShell() {
       </header>
 
       <main className="flex-1 px-4 py-6">
-        <SetupModeGate />
         <Outlet />
       </main>
     </div>

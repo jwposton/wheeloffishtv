@@ -23,12 +23,9 @@ const baseUser: AuthMeResponse = {
   app_user_id: "user-1",
   provider_user_id: "plex-123",
   provider_username: "operator",
-  is_admin: false,
-  setup_mode: false,
   connection: null,
   has_media_link: true,
   libraries_scoped: true,
-  install_libraries_configured: true,
 }
 
 function renderAppShell(initialPath = "/browse") {
@@ -78,37 +75,23 @@ describe("AppShell navigation", () => {
     }
   })
 
-  it("hides Settings for non-admin users", () => {
-    renderAppShell()
-
-    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument()
-  })
-
-  it("shows Settings for admin users outside setup mode", () => {
+  it("hides Settings when user has no media link", () => {
     mockUseAuth.mockReturnValue({
-      user: { ...baseUser, is_admin: true },
+      user: { ...baseUser, has_media_link: false },
       isLoading: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
     })
 
+    renderAppShell()
+
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument()
+  })
+
+  it("shows Settings for linked users", () => {
     renderAppShell()
 
     expect(screen.getAllByRole("link", { name: "Settings" })).toHaveLength(2)
-  })
-
-  it("hides Settings for admin users still in setup mode", () => {
-    mockUseAuth.mockReturnValue({
-      user: { ...baseUser, is_admin: true, setup_mode: true },
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    })
-
-    renderAppShell()
-
-    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument()
   })
 })

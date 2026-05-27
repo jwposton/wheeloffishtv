@@ -36,7 +36,6 @@ def _clear_overrides() -> None:
 def phase3_settings(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("WOF_PROVIDER", "plex")
     monkeypatch.setenv("WOF_MEDIA_SERVER_URL", "https://plex.example.com")
-    monkeypatch.setenv("WOF_ADMIN_PROVIDER_USER_ID", "admin-plex-user")
     monkeypatch.setenv("ENVIRONMENT", "development")
     get_settings.cache_clear()
     yield get_settings()
@@ -66,31 +65,6 @@ def authenticated_client(auth_client, db_session):
     app.dependency_overrides.pop(get_current_user, None)
 
 
-@pytest.fixture
-def admin_client(auth_client, db_session, phase3_settings):
-    user = AppUser(
-        provider_user_id=phase3_settings.WOF_ADMIN_PROVIDER_USER_ID,
-        provider_username="admin",
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    _authenticate_client(auth_client, user)
-    yield auth_client, user
-    app.dependency_overrides.pop(get_current_user, None)
-
-
-@pytest.fixture
-def non_admin_client(auth_client, db_session):
-    user = AppUser(provider_user_id="not-admin", provider_username="viewer")
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    _authenticate_client(auth_client, user)
-    yield auth_client, user
-    app.dependency_overrides.pop(get_current_user, None)
-
-
 def test_auth_me_unauthenticated_returns_401(auth_client: TestClient) -> None:
     response = auth_client.get("/api/v1/auth/me")
     assert response.status_code == 401
@@ -109,48 +83,35 @@ def test_bootstrap_session_returns_200_and_sets_cookie(auth_client: TestClient, 
     assert db_session.query(AppUser).count() == 1
 
 
-def test_auth_me_includes_setup_mode_when_admin_unset(
-    auth_client: TestClient, db_session, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("WOF_ADMIN_PROVIDER_USER_ID", "")
-    get_settings.cache_clear()
-
-    user = AppUser(provider_user_id="setup-user")
-    db_session.add(user)
-    db_session.commit()
-    _authenticate_client(auth_client, user)
-
-    response = auth_client.get("/api/v1/auth/me")
+def test_auth_me_omits_admin_fields(authenticated_client) -> None:
+    client, _user = authenticated_client
+    response = client.get("/api/v1/auth/me")
     assert response.status_code == 200
-    assert response.json()["setup_mode"] is True
-    app.dependency_overrides.pop(get_current_user, None)
+    body = response.json()
+    assert "is_admin" not in body
+    assert "setup_mode" not in body
+    assert "install_libraries_configured" not in body
 
 
-def test_non_admin_require_admin_returns_403(
-    non_admin_client, db_session, phase3_settings
+def test_library_scope_put_allowed_for_any_linked_user(
+    authenticated_client, db_session, phase3_settings
 ) -> None:
-    client, _user = non_admin_client
+    client, _user = authenticated_client
     connection = sync_connection_from_env(db_session, phase3_settings)
+    from conftest import seed_cached_libraries
+
+    seed_cached_libraries(
+        db_session,
+        connection.id,
+        [{"native_id": "1", "title": "TV", "in_scope": True}],
+        app_user_id=_user.id,
+    )
 
     response = client.put(
-        f"/api/v1/admin/connections/{connection.id}/library-scope",
-        json={"in_scope_library_native_ids": []},
+        f"/api/v1/connections/{connection.id}/library-scope",
+        json={"in_scope_library_native_ids": ["1"]},
     )
-    assert response.status_code == 403
-    assert response.json()["detail"]["code"] == "forbidden"
-
-
-def test_admin_passes_require_admin(
-    admin_client, db_session, phase3_settings
-) -> None:
-    client, _user = admin_client
-    connection = sync_connection_from_env(db_session, phase3_settings)
-
-    response = client.put(
-        f"/api/v1/admin/connections/{connection.id}/library-scope",
-        json={"in_scope_library_native_ids": []},
-    )
-    assert response.status_code == 422
+    assert response.status_code == 200
 
 
 @pytest.mark.parametrize("start_body", [{}, None])

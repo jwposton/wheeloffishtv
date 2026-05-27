@@ -4,13 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from wheeloffish.api.deps import (
-    get_app_user_id,
-    get_db,
-    get_settings_dep,
-    get_vault,
-    require_admin,
-)
+from wheeloffish.api.deps import get_app_user_id, get_db, get_settings_dep, get_vault
 from wheeloffish.api.schemas.catalog import (
     LibraryScopeResponse,
     LibraryScopeUpdate,
@@ -53,7 +47,6 @@ from wheeloffish.integrations.errors import ProviderError
 from wheeloffish.integrations.plex.client import PlexProvider
 
 router = APIRouter(tags=["catalog"])
-admin_router = APIRouter(prefix="/admin", tags=["catalog-admin"])
 session_router = APIRouter(prefix="/session", tags=["catalog-session"])
 
 
@@ -274,31 +267,11 @@ async def get_connection_libraries(
     await ensure_libraries_cached(
         db, vault, connection_id, app_user_id, settings=settings
     )
-    libraries = get_in_scope_libraries(db, connection_id, app_user_id)
-    return [cached_library_to_dto(row, connection.provider_type) for row in libraries]
-
-
-@admin_router.get(
-    "/connections/{connection_id}/libraries",
-    response_model=list[Library],
-)
-async def get_admin_connection_libraries(
-    connection_id: str,
-    db: Session = Depends(get_db),
-    vault: SecretsVault = Depends(get_vault),
-    settings: Settings = Depends(get_settings_dep),
-    app_user_id: str = Depends(get_app_user_id),
-    _: None = Depends(require_admin),
-) -> list[Library]:
-    connection = _get_connection_or_404(db, connection_id)
-    await ensure_libraries_cached(
-        db, vault, connection_id, app_user_id, settings=settings
-    )
     libraries = get_all_libraries(db, connection_id, app_user_id)
     return [cached_library_to_dto(row, connection.provider_type) for row in libraries]
 
 
-@admin_router.put(
+@router.put(
     "/connections/{connection_id}/library-scope",
     response_model=LibraryScopeResponse,
 )
@@ -307,7 +280,6 @@ def put_library_scope(
     body: LibraryScopeUpdate,
     db: Session = Depends(get_db),
     app_user_id: str = Depends(get_app_user_id),
-    _: None = Depends(require_admin),
 ) -> LibraryScopeResponse:
     _get_connection_or_404(db, connection_id)
     try:

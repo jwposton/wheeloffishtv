@@ -5,7 +5,7 @@ import type { Library, LibraryScopeResponse, LibraryScopeUpdate } from "@/api/ty
 import { authQueryKey } from "@/hooks/useAuth"
 
 export function libraryScopeQueryKey(connectionId: string) {
-  return ["admin", "libraries", connectionId] as const
+  return ["libraries", "scope", connectionId] as const
 }
 
 export function useLibraryScope(connectionId: string | undefined) {
@@ -14,14 +14,14 @@ export function useLibraryScope(connectionId: string | undefined) {
   const librariesQuery = useQuery({
     queryKey: libraryScopeQueryKey(connectionId ?? ""),
     queryFn: () =>
-      fetchJson<Library[]>(`/admin/connections/${connectionId}/libraries`),
+      fetchJson<Library[]>(`/connections/${connectionId}/libraries`),
     enabled: Boolean(connectionId),
   })
 
   const saveScope = useMutation({
     mutationFn: (body: LibraryScopeUpdate) =>
       fetchJson<LibraryScopeResponse>(
-        `/admin/connections/${connectionId}/library-scope`,
+        `/connections/${connectionId}/library-scope`,
         {
           method: "PUT",
           body: JSON.stringify(body),

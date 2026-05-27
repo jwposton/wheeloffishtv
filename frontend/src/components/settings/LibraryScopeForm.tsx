@@ -40,10 +40,6 @@ export function LibraryScopeForm({ onSaveSuccess }: LibraryScopeFormProps) {
     }
   }, [libraries, initialized])
 
-  if (!user?.is_admin || user.setup_mode) {
-    return null
-  }
-
   function toggleLibrary(nativeId: string, checked: boolean) {
     setSelectedIds((current) => {
       const next = new Set(current)
@@ -76,14 +72,21 @@ export function LibraryScopeForm({ onSaveSuccess }: LibraryScopeFormProps) {
     )
   }
 
+  if (!user?.has_media_link) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Link your media account from the login page to manage library scope.
+      </p>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>TV libraries in scope</CardTitle>
         <CardDescription>
-          Choose which TV libraries are available on this install. Each
-          household member sees libraries they can access on the configured
-          server, filtered to your selection.
+          Choose which TV libraries appear in Browse for your account on this
+          install.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

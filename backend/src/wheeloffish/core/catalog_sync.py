@@ -72,22 +72,23 @@ def get_install_allowlist(connection: Connection, settings: Settings) -> set[str
     return _scoped_library_id_set(settings)
 
 
-def install_libraries_configured(connection: Connection, settings: Settings) -> bool:
-    """True once admin (or env) has defined the install library allowlist."""
-    if connection.library_allowlist_native_ids is not None:
-        return True
-    return _scoped_library_id_set(settings) is not None
-
-
-def _library_in_scope(
+def _resolve_library_in_scope(
     native_id: str,
     connection: Connection,
     settings: Settings,
+    *,
+    existing_row: CachedLibrary | None,
+    user_has_scoped_libraries: bool,
 ) -> bool:
+    """Per-user in_scope for cached libraries during sync."""
     allowlist = get_install_allowlist(connection, settings)
-    if allowlist is None:
-        return False
-    return native_id in allowlist
+    if allowlist is not None:
+        return native_id in allowlist
+    if not user_has_scoped_libraries:
+        return True
+    if existing_row is not None:
+        return existing_row.in_scope
+    return False
 
 
 def _apply_allowlist_to_connection_libraries(
@@ -310,13 +311,20 @@ async def ensure_libraries_cached(
         .all()
     )
     by_native_id = {row.native_id: row for row in existing}
+    user_has_scoped_libraries = any(row.in_scope for row in existing)
     seen_native_ids: set[str] = set()
     rows: list[CachedLibrary] = []
 
     for library in libraries:
         seen_native_ids.add(library.native_id)
-        in_scope = _library_in_scope(library.native_id, connection, resolved_settings)
         row = by_native_id.get(library.native_id)
+        in_scope = _resolve_library_in_scope(
+            library.native_id,
+            connection,
+            resolved_settings,
+            existing_row=row,
+            user_has_scoped_libraries=user_has_scoped_libraries,
+        )
         if row is None:
             row = CachedLibrary(
                 id=str(uuid.uuid4()),
@@ -387,12 +395,15 @@ def update_library_scope(
     if connection is None:
         raise ValueError("Connection not found")
 
-    admin_libraries = get_all_libraries(db, connection_id, app_user_id)
-    if not admin_libraries:
+    libraries = get_all_libraries(db, connection_id, app_user_id)
+    if not libraries:
         raise ValueError("No cached libraries for connection")
 
-    connection.library_allowlist_native_ids = list(in_scope_library_native_ids)
-    _apply_allowlist_to_connection_libraries(db, connection, get_settings())
+    in_scope_set = set(in_scope_library_native_ids)
+    now = datetime.now(UTC)
+    for library in libraries:
+        library.in_scope = library.native_id in in_scope_set
+        library.synced_at = now
     db.commit()
     return get_all_libraries(db, connection_id, app_user_id)
 

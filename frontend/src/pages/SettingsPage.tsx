@@ -29,7 +29,7 @@ export function SettingsPage() {
       <div>
         <h2 className="text-xl font-semibold">Settings</h2>
         <p className="text-muted-foreground text-sm">
-          Household preferences and connection details.
+          Your account preferences and connection details.
         </p>
       </div>
 
@@ -60,12 +60,12 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {user?.is_admin && !user.setup_mode ? (
+      {user?.has_media_link ? (
         <Card>
           <CardHeader>
             <CardTitle>Libraries</CardTitle>
             <CardDescription>
-              Choose which TV libraries appear in Browse for your household.
+              Choose which TV libraries appear in Browse for your account.
             </CardDescription>
           </CardHeader>
           <CardContent>

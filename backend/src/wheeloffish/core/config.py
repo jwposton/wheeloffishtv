@@ -23,8 +23,6 @@ class Settings(BaseSettings):
     WOF_MEDIA_SERVER_URL: str = "http://localhost:32400"
     WOF_MEDIA_SERVER_DISPLAY_NAME: str = "Media Server"
     WOF_VERIFY_SSL: bool = True
-    WOF_ADMIN_PROVIDER_USER_ID: str = ""
-    WOF_ADMIN_USERNAME: str = ""
     WOF_SESSION_DAYS: int | None = None
     WOF_ENABLED_PROVIDERS: str = "plex,jellyfin"
     WOF_PLEX_PRODUCT_NAME: str = "Wheel of Fish TV"

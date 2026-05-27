@@ -17,12 +17,9 @@ const authenticatedUser: AuthMeResponse = {
   app_user_id: "user-1",
   provider_user_id: "plex-123",
   provider_username: "operator",
-  is_admin: false,
-  setup_mode: false,
   connection: null,
   has_media_link: true,
   libraries_scoped: false,
-  install_libraries_configured: false,
 }
 
 function renderProtected(initialPath = "/") {

@@ -73,10 +73,22 @@ Before exposing the app to your LAN or the internet:
 1. **Generate a unique `WOF_SECRET_KEY`** per install (`openssl rand -hex 32`). Anyone with this key and a copy of `/data` can decrypt stored media-server tokens.
 2. **Terminate TLS** at a reverse proxy (Caddy, Traefik, nginx). Set `WOF_OAUTH_CALLBACK_BASE` to the public HTTPS URL users hit in the browser.
 3. **Set `ENVIRONMENT=production`** so session cookies use `Secure` / HTTPS-only semantics.
-4. **Configure admin** via `WOF_ADMIN_PROVIDER_USER_ID` (and optionally `WOF_ADMIN_USERNAME`) after first OAuth login; avoid leaving setup mode open on a reachable host.
-5. **Do not publish port 8000** to the open internet until admin and library scope are configured.
+4. **Do not publish port 8000** to the open internet until you are comfortable with who can reach the install and sign in.
+5. **Treat library scope as per-user:** any user who can sign in and link their Plex/Jellyfin account can change which libraries they see in Browse via **Settings → Libraries**. This is not a shared household allowlist unless every household member uses the same app account.
 6. **Treat backups as secret**: `wheeloffish.db` (or Postgres) contains Fernet-encrypted tokens; protect backup storage like credentials.
 7. **Keep images updated**: pull new `ghcr.io` tags when releases include security fixes.
+
+## Access control model
+
+| Layer | Who can do what |
+|-------|-----------------|
+| Install config | Operator with host access — `.env` sets one media server URL and provider |
+| Sign-in | Anyone who can complete Plex/Jellyfin OAuth against that server |
+| Library scope | Each signed-in user sets their own in-scope TV libraries |
+| Playlists | Each user owns their playlists and rebuild history |
+| Catalog APIs | Session cookie required; scoped to the authenticated `app_user_id` |
+
+There is no separate “admin” role in the application. Optional `WOF_SCOPED_LIBRARY_IDS` in `.env` only bootstraps which library native IDs are marked in-scope on sync; ongoing scope changes are per user in the UI.
 
 ## Trust boundaries
 
@@ -85,7 +97,7 @@ Before exposing the app to your LAN or the internet:
 | `WOF_SECRET_KEY` | Decrypt all vault secrets for that install |
 | Session cookie | Act as that app user (playlist/catalog APIs) |
 | Plex/Jellyfin user token (vault) | API access as that user on the linked media server |
-| `.env` on disk | Connection URL, admin IDs, encryption key |
+| `.env` on disk | Connection URL, encryption key |
 
 The app stores provider tokens with Fernet (`SecretsVault`) keyed by `WOF_SECRET_KEY`. Logs should not contain raw tokens; report any leak in application logging.
 

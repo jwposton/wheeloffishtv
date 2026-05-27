@@ -8,46 +8,6 @@ from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.user_media_link import UserMediaLink
 
 
-def get_admin_app_user(db: Session, settings: Settings) -> AppUser | None:
-    """Resolve the configured admin AppUser, if one exists in the database."""
-    if settings.WOF_ADMIN_PROVIDER_USER_ID:
-        user = (
-            db.query(AppUser)
-            .filter(AppUser.provider_user_id == settings.WOF_ADMIN_PROVIDER_USER_ID)
-            .one_or_none()
-        )
-        if user is not None:
-            return user
-    if settings.WOF_ADMIN_USERNAME:
-        user = (
-            db.query(AppUser)
-            .filter(
-                (AppUser.provider_username == settings.WOF_ADMIN_USERNAME)
-                | (AppUser.provider_email == settings.WOF_ADMIN_USERNAME)
-            )
-            .one_or_none()
-        )
-        if user is not None:
-            return user
-    return None
-
-
-def is_admin(app_user: AppUser, settings: Settings) -> bool:
-    if settings.WOF_ADMIN_PROVIDER_USER_ID:
-        if app_user.provider_user_id == settings.WOF_ADMIN_PROVIDER_USER_ID:
-            return True
-    if settings.WOF_ADMIN_USERNAME:
-        if app_user.provider_username == settings.WOF_ADMIN_USERNAME:
-            return True
-        if app_user.provider_email == settings.WOF_ADMIN_USERNAME:
-            return True
-    return False
-
-
-def is_setup_mode(settings: Settings) -> bool:
-    return not bool(settings.WOF_ADMIN_PROVIDER_USER_ID.strip())
-
-
 def upsert_app_user(
     db: Session,
     *,

@@ -13,11 +13,8 @@ from wheeloffish.api.schemas.auth import (
 from wheeloffish.core.auth import (
     get_env_connection,
     has_usable_media_credentials,
-    is_admin,
-    is_setup_mode,
     libraries_scoped,
 )
-from wheeloffish.core.catalog_sync import install_libraries_configured
 from wheeloffish.core.config import Settings
 from wheeloffish.core.secrets import SecretsVault
 from wheeloffish.db.models.app_user import AppUser
@@ -36,7 +33,6 @@ def auth_me(
     connection_summary = None
     linked = False
     scoped = False
-    install_configured = False
     if connection is not None:
         connection_summary = ConnectionSummary(
             id=connection.id,
@@ -46,18 +42,14 @@ def auth_me(
         )
         linked = has_usable_media_credentials(db, vault, connection, user.id)
         scoped = libraries_scoped(db, connection.id, user.id)
-        install_configured = install_libraries_configured(connection, settings)
 
     return AuthMeResponse(
         app_user_id=user.id,
         provider_user_id=user.provider_user_id,
         provider_username=user.provider_username,
-        is_admin=is_admin(user, settings),
-        setup_mode=is_setup_mode(settings),
         connection=connection_summary,
         has_media_link=linked,
         libraries_scoped=scoped,
-        install_libraries_configured=install_configured,
     )
 
 

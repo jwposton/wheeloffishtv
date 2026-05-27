@@ -7,14 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-27
+
 ### Added
 
 - CI security workflow: Gitleaks, Semgrep, pip-audit, npm audit, Trivy image scan, and API auth guard regression tests ([SECURITY.md](SECURITY.md))
+- **Don’t ask again** on remove-from-playlist confirmation (session-scoped; resets on save or leaving the edit/detail page)
 
 ### Changed
 
+- **Per-user library scope:** any signed-in user with a media link can manage **Settings → Libraries**; first sync defaults all TV libraries in scope
+- `GET /api/v1/connections/{id}/libraries` returns all libraries with `in_scope` flags; series browse still filters to in-scope only
 - Compact header bar (~33% shorter): smaller logo, tighter padding, `xs` action buttons
 - Version badge stacked below theme toggle and log out in the header (login page matches)
+
+### Removed
+
+- Admin RBAC: `WOF_ADMIN_PROVIDER_USER_ID`, `WOF_ADMIN_USERNAME`, setup mode, `/setup/admin`, `/api/v1/admin/*`, and `is_admin` / `setup_mode` on `/auth/me`
+- Non-admin “wait for admin” holding page (replaced by redirect to **Settings → Libraries** when scope is unset)
+
+### Migration
+
+- Remove unused `WOF_ADMIN_*` entries from `.env` after upgrade
+- Replace API calls to `PUT /api/v1/admin/connections/{id}/library-scope` with `PUT /api/v1/connections/{id}/library-scope`
 
 ## [0.1.3] - 2026-05-26
 

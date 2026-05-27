@@ -156,13 +156,6 @@ def seed_cached_libraries(
     from wheeloffish.db.models.cached_library import CachedLibrary
     from wheeloffish.db.models.connection import Connection
 
-    in_scope_ids = [spec["native_id"] for spec in libraries if spec.get("in_scope")]
-    if in_scope_ids:
-        connection = (
-            db_session.query(Connection).filter(Connection.id == connection_id).one()
-        )
-        connection.library_allowlist_native_ids = in_scope_ids
-
     now = datetime.now(UTC)
     rows = []
     for spec in libraries:

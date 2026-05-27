@@ -1,4 +1,4 @@
-import { LibraryScopeForm } from "@/components/admin/LibraryScopeForm"
+import { LibraryScopeForm } from "@/components/settings/LibraryScopeForm"
 
 export function SettingsLibrariesPage() {
   return (
@@ -6,8 +6,7 @@ export function SettingsLibrariesPage() {
       <div>
         <h2 className="text-xl font-semibold">Libraries</h2>
         <p className="text-muted-foreground text-sm">
-          Update which TV libraries are in scope for Browse. Changes apply to
-          everyone in your household.
+          Update which TV libraries are in scope for Browse on your account.
         </p>
       </div>
 

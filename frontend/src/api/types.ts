@@ -9,12 +9,9 @@ export interface AuthMeResponse {
   app_user_id: string
   provider_user_id: string
   provider_username: string | null
-  is_admin: boolean
-  setup_mode: boolean
   connection: ConnectionSummary | null
   has_media_link: boolean
   libraries_scoped: boolean
-  install_libraries_configured: boolean
 }
 
 export interface ProvidersMetaResponse {

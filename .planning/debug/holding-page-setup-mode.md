@@ -1,12 +1,7 @@
 # Debug: Holding page vs setup mode
 
-**UAT Test:** 8  
-**Symptom:** Without admin env defined, non-admin sees populated browse instead of holding page.
+**Status:** Superseded 2026-05-26 (BL-02).
 
-## Root Cause
+`HoldingPage`, setup mode, and `WOF_ADMIN_*` were removed. When `libraries_scoped` is false, `LibraryScopeGuard` redirects to **Settings → Libraries**. First catalog sync defaults all TV libraries in scope for new users.
 
-Test conflated `setup_mode` (admin env unset) with `libraries_scoped=false`. Libraries were scoped in prior UAT steps; D-04 allows browse when scoped even in setup mode.
-
-## Fix Direction
-
-Re-test with zero scoped libraries. Optional setup_mode banner for clarity.
+Historical note: earlier UAT conflated `setup_mode` (admin env unset) with `libraries_scoped=false`. Re-test unscoped behavior by clearing all in-scope flags in **Settings → Libraries**, not by omitting admin env vars.

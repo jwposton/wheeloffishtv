@@ -1,8 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 
 import { AppShell } from "@/components/layout/AppShell"
-import { AdminLibrarySetupPage } from "@/pages/AdminLibrarySetupPage"
-import { AdminSetupPage } from "@/pages/AdminSetupPage"
 import { BrowsePage } from "@/pages/BrowsePage"
 import { SeriesDetailPage } from "@/pages/SeriesDetailPage"
 import { LoginPage } from "@/pages/LoginPage"
@@ -11,7 +9,6 @@ import { PlaylistFormPage } from "@/pages/PlaylistFormPage"
 import { PlaylistDetailPage } from "@/pages/PlaylistDetailPage"
 import { SettingsLibrariesPage } from "@/pages/SettingsLibrariesPage"
 import { SettingsPage } from "@/pages/SettingsPage"
-import { AdminRoute } from "@/routes/AdminRoute"
 import { LibraryScopeGuard } from "@/routes/LibraryScopeGuard"
 import { ProtectedRoute } from "@/routes/ProtectedRoute"
 
@@ -24,6 +21,8 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/libraries" element={<SettingsLibrariesPage />} />
           <Route element={<LibraryScopeGuard />}>
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/series" element={<SeriesDetailPage />} />
@@ -32,12 +31,6 @@ function App() {
             <Route path="/playlists/new" element={<PlaylistFormPage />} />
             <Route path="/playlists/:id/edit" element={<PlaylistFormPage />} />
             <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
-          </Route>
-          <Route path="/setup/admin" element={<AdminSetupPage />} />
-          <Route element={<AdminRoute />}>
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/setup/libraries" element={<AdminLibrarySetupPage />} />
-            <Route path="/settings/libraries" element={<SettingsLibrariesPage />} />
           </Route>
         </Route>
       </Route>

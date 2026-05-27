@@ -106,7 +106,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(connections.router, prefix="/api/v1")
     app.include_router(catalog.router, prefix="/api/v1")
-    app.include_router(catalog.admin_router, prefix="/api/v1")
     app.include_router(catalog.session_router, prefix="/api/v1")
     app.include_router(oauth_plex.router, prefix="/api/v1")
     app.include_router(oauth_jellyfin.router, prefix="/api/v1")

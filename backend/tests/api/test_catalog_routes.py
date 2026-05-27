@@ -9,7 +9,7 @@ from conftest import APP_USER_ID, seed_cached_libraries, seed_cached_series, see
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import inspect
 
-from wheeloffish.api.deps import get_app_user_id, get_current_user, get_db, require_admin
+from wheeloffish.api.deps import get_app_user_id, get_current_user, get_db
 from wheeloffish.core.config import get_settings
 from wheeloffish.core.resume import ResumeService
 from wheeloffish.db.models.app_user import AppUser
@@ -39,19 +39,15 @@ def sync_task_collector(monkeypatch: pytest.MonkeyPatch):
 @pytest.fixture
 async def catalog_client(db_engine, db_session, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("WOF_ENABLED_PROVIDERS", "plex,jellyfin")
-    monkeypatch.setenv("WOF_ADMIN_PROVIDER_USER_ID", "catalog-test-admin")
     get_settings.cache_clear()
 
-    admin_user = AppUser(provider_user_id="catalog-test-admin", provider_username="admin")
     regular_user = AppUser(
         id=APP_USER_ID,
         provider_user_id="catalog-user",
         provider_username="viewer",
     )
-    db_session.add(admin_user)
     db_session.add(regular_user)
     db_session.commit()
-    db_session.refresh(admin_user)
     db_session.refresh(regular_user)
 
     def override_get_db():
@@ -60,7 +56,6 @@ async def catalog_client(db_engine, db_session, monkeypatch: pytest.MonkeyPatch)
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: regular_user
     app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
-    app.dependency_overrides[require_admin] = lambda: admin_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
@@ -343,12 +338,13 @@ async def test_library_scope_filter(
 
     assert response.status_code == 200
     libraries = response.json()
-    assert len(libraries) == 1
-    assert libraries[0]["native_id"] == "1"
-    assert libraries[0]["title"] == "In Scope TV"
+    assert len(libraries) == 2
+    in_scope_only = [lib for lib in libraries if lib["in_scope"]]
+    assert len(in_scope_only) == 1
+    assert in_scope_only[0]["native_id"] == "1"
 
     scope_response = await catalog_client.put(
-        f"/api/v1/admin/connections/{connection.id}/library-scope",
+        f"/api/v1/connections/{connection.id}/library-scope",
         json={"in_scope_library_native_ids": ["2"]},
     )
     assert scope_response.status_code == 200
@@ -359,8 +355,9 @@ async def test_library_scope_filter(
     libraries_response = await catalog_client.get(
         f"/api/v1/connections/{connection.id}/libraries"
     )
-    assert len(libraries_response.json()) == 1
-    assert libraries_response.json()[0]["native_id"] == "2"
+    in_scope_after = [lib for lib in libraries_response.json() if lib["in_scope"]]
+    assert len(in_scope_after) == 1
+    assert in_scope_after[0]["native_id"] == "2"
 
 
 @pytest.mark.asyncio
@@ -533,69 +530,6 @@ async def test_resume_per_user_isolation(
     assert response_user2.json()["episode_id"] == user2_episodes[1].id
 
 
-@pytest.fixture
-async def setup_mode_catalog_client(db_engine, db_session, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("WOF_ENABLED_PROVIDERS", "plex,jellyfin")
-    monkeypatch.setenv("WOF_ADMIN_PROVIDER_USER_ID", "")
-    get_settings.cache_clear()
-
-    user = AppUser(id=APP_USER_ID, provider_user_id="setup-user", provider_username="viewer")
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-
-    def override_get_db():
-        yield db_session
-
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user] = lambda: user
-    app.dependency_overrides[get_app_user_id] = lambda: APP_USER_ID
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield client
-    app.dependency_overrides.clear()
-    get_settings.cache_clear()
-
-
-@pytest.mark.asyncio
-async def test_setup_mode_series_browse_allowed(
-    setup_mode_catalog_client, connection_factory, db_session
-) -> None:
-    connection = await connection_factory()
-    seed_cached_libraries(
-        db_session,
-        connection.id,
-        [{"native_id": "1", "title": "TV Shows", "in_scope": True}],
-    )
-    seed_cached_series(db_session, connection.id, 5, library_native_id="1")
-
-    response = await setup_mode_catalog_client.get(
-        f"/api/v1/connections/{connection.id}/series",
-    )
-
-    assert response.status_code == 200
-    assert response.json()["total"] == 5
-
-
-@pytest.mark.asyncio
-async def test_setup_mode_blocks_admin_library_scope_put(
-    setup_mode_catalog_client, connection_factory, db_session
-) -> None:
-    connection = await connection_factory()
-    seed_cached_libraries(
-        db_session,
-        connection.id,
-        [{"native_id": "1", "title": "TV Shows", "in_scope": True}],
-    )
-
-    response = await setup_mode_catalog_client.put(
-        f"/api/v1/admin/connections/{connection.id}/library-scope",
-        json={"in_scope_library_native_ids": ["1"]},
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"]["code"] == "forbidden"
-
-
 def _mock_library_list_provider(connection_id: str) -> MagicMock:
     provider = MagicMock()
     provider.list_libraries = AsyncMock(
@@ -622,7 +556,7 @@ def _mock_library_list_provider(connection_id: str) -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_admin_get_libraries_includes_in_scope_flag(
+async def test_get_libraries_includes_in_scope_flag(
     catalog_client, connection_factory, db_session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     connection = await connection_factory()
@@ -640,7 +574,7 @@ async def test_admin_get_libraries_includes_in_scope_flag(
     )
 
     response = await catalog_client.get(
-        f"/api/v1/admin/connections/{connection.id}/libraries"
+        f"/api/v1/connections/{connection.id}/libraries"
     )
 
     assert response.status_code == 200
@@ -652,7 +586,7 @@ async def test_admin_get_libraries_includes_in_scope_flag(
 
 
 @pytest.mark.asyncio
-async def test_admin_library_scope_put_succeeds(
+async def test_library_scope_put_succeeds(
     catalog_client, connection_factory, db_session
 ) -> None:
     connection = await connection_factory()
@@ -666,7 +600,7 @@ async def test_admin_library_scope_put_succeeds(
     )
 
     response = await catalog_client.put(
-        f"/api/v1/admin/connections/{connection.id}/library-scope",
+        f"/api/v1/connections/{connection.id}/library-scope",
         json={"in_scope_library_native_ids": ["2"]},
     )
 

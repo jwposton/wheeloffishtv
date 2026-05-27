@@ -25,6 +25,8 @@ interface PlaylistMemberTileProps {
   onModeChange: (mode: RowMode) => void
   onPolicyChange: (policy: CompletionPolicy) => void
   onRemove: () => void
+  skipRemoveConfirm?: boolean
+  onEnableSkipRemoveConfirm?: () => void
 }
 
 export function PlaylistMemberTile({
@@ -32,8 +34,28 @@ export function PlaylistMemberTile({
   onModeChange,
   onPolicyChange,
   onRemove,
+  skipRemoveConfirm = false,
+  onEnableSkipRemoveConfirm,
 }: PlaylistMemberTileProps) {
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
+  const [dontAskAgain, setDontAskAgain] = useState(false)
+
+  function requestRemove() {
+    if (skipRemoveConfirm) {
+      onRemove()
+      return
+    }
+    setDontAskAgain(false)
+    setConfirmRemoveOpen(true)
+  }
+
+  function confirmRemove() {
+    if (dontAskAgain) {
+      onEnableSkipRemoveConfirm?.()
+    }
+    onRemove()
+    setConfirmRemoveOpen(false)
+  }
 
   return (
     <>
@@ -84,7 +106,7 @@ export function PlaylistMemberTile({
                     variant="dropdown"
                     onModeChange={onModeChange}
                     onPolicyChange={onPolicyChange}
-                    onRemoveRequest={() => setConfirmRemoveOpen(true)}
+                    onRemoveRequest={requestRemove}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -97,7 +119,7 @@ export function PlaylistMemberTile({
             variant="context"
             onModeChange={onModeChange}
             onPolicyChange={onPolicyChange}
-            onRemoveRequest={() => setConfirmRemoveOpen(true)}
+            onRemoveRequest={requestRemove}
           />
         </ContextMenuContent>
       </ContextMenu>
@@ -106,10 +128,9 @@ export function PlaylistMemberTile({
         open={confirmRemoveOpen}
         onOpenChange={setConfirmRemoveOpen}
         seriesTitle={row.series_title}
-        onConfirm={() => {
-          onRemove()
-          setConfirmRemoveOpen(false)
-        }}
+        dontAskAgain={dontAskAgain}
+        onDontAskAgainChange={setDontAskAgain}
+        onConfirm={confirmRemove}
       />
     </>
   )

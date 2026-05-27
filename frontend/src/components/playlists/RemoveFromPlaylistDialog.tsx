@@ -1,12 +1,16 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 interface RemoveFromPlaylistDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   seriesTitle: string
+  dontAskAgain: boolean
+  onDontAskAgainChange: (checked: boolean) => void
   onConfirm: () => void
 }
 
@@ -14,6 +18,8 @@ export function RemoveFromPlaylistDialog({
   open,
   onOpenChange,
   seriesTitle,
+  dontAskAgain,
+  onDontAskAgainChange,
   onConfirm,
 }: RemoveFromPlaylistDialogProps) {
   return (
@@ -40,6 +46,16 @@ export function RemoveFromPlaylistDialog({
             <AlertDialog.Description className="mt-2 text-sm text-muted-foreground">
               Remove {seriesTitle} from this playlist?
             </AlertDialog.Description>
+            <div className="mt-4 flex items-center gap-2">
+              <Checkbox
+                id="remove-dont-ask-again"
+                checked={dontAskAgain}
+                onCheckedChange={(checked) => onDontAskAgainChange(checked === true)}
+              />
+              <Label htmlFor="remove-dont-ask-again" className="cursor-pointer font-normal">
+                Don&apos;t ask again
+              </Label>
+            </div>
             <div className="mt-4 flex justify-end gap-2">
               <AlertDialog.Close render={<Button variant="outline" size="sm" />}>
                 Cancel

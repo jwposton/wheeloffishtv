@@ -1,4 +1,6 @@
 import { useState } from "react"
+
+import { useRemoveConfirmSession } from "@/hooks/useRemoveConfirmSession"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -77,6 +79,11 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [rowMutationsPending, setRowMutationsPending] = useState(false)
+  const {
+    skipRemoveConfirm,
+    enableSkipRemoveConfirm,
+    resetSkipRemoveConfirm,
+  } = useRemoveConfirmSession()
 
   function parsedEpisodeCount(): number {
     const parsed = Number.parseInt(episodeCountInput, 10)
@@ -114,10 +121,12 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
     try {
       if (mode === "create") {
         const result = await createMutation.mutateAsync(payload)
+        resetSkipRemoveConfirm()
         toast.success("Playlist created")
         navigate(`/playlists/${result.id}`)
       } else if (playlist) {
         await updateMutation.mutateAsync({ id: playlist.id, payload })
+        resetSkipRemoveConfirm()
         toast.success("Playlist saved")
         navigate(`/playlists/${playlist.id}`)
       }
@@ -267,6 +276,8 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
           onRowsChange={setRows}
           playlistId={playlist?.id}
           onRowMutationsPendingChange={setRowMutationsPending}
+          skipRemoveConfirm={skipRemoveConfirm}
+          onEnableSkipRemoveConfirm={enableSkipRemoveConfirm}
         />
         {errors.rows && <p className="text-xs text-destructive">{errors.rows}</p>}
       </section>

@@ -25,8 +25,8 @@ Phase **7 — Provider playlist writeback** — **complete** (3/3 plans).
 
 ## Immediate next actions
 
-1. Commit Phase 6–7 + UAT fixes
-2. Tag **v0.1.0**
+1. Commit backlog items (BL-01, BL-02) + doc updates
+2. Tag **v0.1.4** (or next patch) with CHANGELOG
 3. Begin Phase 8 UX polish
 
 ## Decisions (Phase 7 — plan 2026-05-25)
@@ -156,7 +156,7 @@ Phase **7 — Provider playlist writeback** — **complete** (3/3 plans).
 
 ## Working notes
 
-- **Backlog:** `.planning/BACKLOG.md` (BL-01: remove confirmation "don't ask again")
+- **Backlog:** `.planning/BACKLOG.md` (BL-01, BL-02 completed 2026-05-26)
 - Phase 6 plan 05: `.planning/phases/06-library-playlist-assignment/06-05-SUMMARY.md`
 - Phase 6 plan 04: `.planning/phases/06-library-playlist-assignment/06-04-SUMMARY.md`
 - Phase 6 plan 03: `.planning/phases/06-library-playlist-assignment/06-03-SUMMARY.md`

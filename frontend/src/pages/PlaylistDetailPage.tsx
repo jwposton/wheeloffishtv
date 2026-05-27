@@ -10,6 +10,7 @@ import { RebuildBanner } from "@/components/playlists/RebuildBanner"
 import { OutputList } from "@/components/playlists/OutputList"
 import { PlaylistMembersPanel } from "@/components/playlists/PlaylistMembersPanel"
 import { usePlaylist, useDeletePlaylist, useRebuildPlaylist } from "@/api/playlists"
+import { useRemoveConfirmSession } from "@/hooks/useRemoveConfirmSession"
 import { isRebuildInProgress } from "@/lib/rebuild"
 import { cn } from "@/lib/utils"
 
@@ -83,6 +84,10 @@ export function PlaylistDetailPage() {
   const deleteMutation = useDeletePlaylist()
   const rebuildMutation = useRebuildPlaylist()
   const [isDeleting, setIsDeleting] = useState(false)
+  const {
+    skipRemoveConfirm,
+    enableSkipRemoveConfirm,
+  } = useRemoveConfirmSession()
 
   async function handleDelete() {
     if (!id) return
@@ -177,7 +182,12 @@ export function PlaylistDetailPage() {
             Shows ({playlist.rows.length})
           </h3>
           <div className="wof-panel p-4">
-            <PlaylistMembersPanel playlistId={playlist.id} rows={playlist.rows} />
+            <PlaylistMembersPanel
+              playlistId={playlist.id}
+              rows={playlist.rows}
+              skipRemoveConfirm={skipRemoveConfirm}
+              onEnableSkipRemoveConfirm={enableSkipRemoveConfirm}
+            />
           </div>
         </section>
 

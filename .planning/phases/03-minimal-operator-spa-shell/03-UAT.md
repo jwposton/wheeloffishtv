@@ -6,6 +6,8 @@ started: 2026-05-25T18:00:00Z
 updated: 2026-05-25T19:05:00Z
 ---
 
+> **Historical UAT log (2026-05-25).** Tests 3–5 reference admin setup mode removed in BL-02 (2026-05-26). For current manual steps see [03-UAT-CHECKLIST.md](./03-UAT-CHECKLIST.md).
+
 ## Current Test
 
 [testing complete]

@@ -13,7 +13,7 @@ from wheeloffish.integrations.errors import (
 
 CLIENT = "WheelOfFishTV"
 DEVICE = "Server"
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 
 # Admin API keys are 32-char hex strings — unsupported for per-user linking (D-13).
 _API_KEY_PATTERN = re.compile(r"^[a-fA-F0-9]{32}$")

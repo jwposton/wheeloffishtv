@@ -12,12 +12,9 @@ class AuthMeResponse(BaseModel):
     app_user_id: str
     provider_user_id: str
     provider_username: str | None
-    is_admin: bool
-    setup_mode: bool
     connection: ConnectionSummary | None
     has_media_link: bool
     libraries_scoped: bool
-    install_libraries_configured: bool
 
 
 class BootstrapSessionResponse(BaseModel):

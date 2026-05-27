@@ -20,12 +20,15 @@ Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect
 
 ### Active
 
-- [ ] Connect user-configured Plex and/or Jellyfin; list libraries & shows user can attach to playlists
-- [ ] **Push rebuilt playlists to native Plex/Jellyfin playlists (EXP-01)** — v0.1.0 release gate
-- [ ] Ordered vs disordered per **playlist × show**
-- [ ] Policies when a show’s season (or library rules) completes: remove on next refresh vs restart vs switch to disordered
-- [ ] Daily full rebuild scheduler; multipart episodes grouped back-to-back (ordered flows)
-- [ ] Modern, polished SPA web UI for all configuration *(functional complete; visual polish deferred to Phase 8 / v0.2.0)*
+- [ ] Modern, polished SPA web UI *(functional complete; visual polish deferred to Phase 8 / v0.2.0)*
+
+### Validated (post–v0.1.0 backlog)
+
+- ✓ Per-user library scope in **Settings → Libraries** (no admin RBAC) — BL-02, 2026-05-26
+- ✓ Playlist remove confirmation “don’t ask again” (session-scoped) — BL-01, 2026-05-26
+- ✓ Connect Plex/Jellyfin; list libraries & shows for playlists — Phases 2–3, 6
+- ✓ Push rebuilt playlists to native Plex/Jellyfin playlists (EXP-01) — Phase 7
+- ✓ Ordered vs disordered per playlist × show; completion policies; daily rebuild — Phases 4–5
 
 ### Out of Scope
 
