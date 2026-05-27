@@ -68,6 +68,26 @@ describe("useSeriesInfiniteQuery", () => {
     mockFetchJson.mockReset()
   })
 
+  it("requests added_at sort with desc for newest-first browse mode", async () => {
+    mockFetchJson.mockResolvedValue({
+      items: [],
+      page: 1,
+      limit: 50,
+      total: 0,
+      sync: idleSync,
+    })
+
+    const wrapper = createWrapper()
+    renderHook(() => useSeriesInfiniteQuery("conn-1", "", "added_desc"), {
+      wrapper,
+    })
+
+    await waitFor(() => expect(mockFetchJson).toHaveBeenCalled())
+    const url = String(mockFetchJson.mock.calls[0]?.[0])
+    expect(url).toContain("sort=added_at")
+    expect(url).toContain("order=desc")
+  })
+
   it("changing debounced q resets to page 1 via queryKey change", async () => {
     mockFetchJson.mockImplementation(async (path: string) => {
       if (path.includes("q=bat")) {

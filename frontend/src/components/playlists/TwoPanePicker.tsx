@@ -14,11 +14,16 @@ import { SeriesPoster } from "@/components/browse/SeriesPoster"
 import { PlaylistMemberTile } from "@/components/playlists/PlaylistMemberTile"
 import { type SeriesRow } from "@/components/playlists/RowSettingsSheet"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/hooks/useAuth"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useSeriesInfiniteQuery } from "@/hooks/useSeriesInfiniteQuery"
+import {
+  SERIES_BROWSE_MODE_LABELS,
+  type SeriesBrowseMode,
+} from "@/lib/seriesBrowse"
 import { cn } from "@/lib/utils"
 
 export type { SeriesRow }
@@ -116,6 +121,8 @@ function TileGridSkeleton() {
 function AvailablePane({
   searchInput,
   onSearchInputChange,
+  browseMode,
+  onBrowseModeChange,
   catalogItems,
   selectedIds,
   isLoading,
@@ -125,6 +132,8 @@ function AvailablePane({
 }: {
   searchInput: string
   onSearchInputChange: (value: string) => void
+  browseMode: SeriesBrowseMode
+  onBrowseModeChange: (mode: SeriesBrowseMode) => void
   catalogItems: Series[]
   selectedIds: Set<string>
   isLoading: boolean
@@ -134,6 +143,26 @@ function AvailablePane({
 }) {
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="picker-library-sort">Sort</Label>
+        <select
+          id="picker-library-sort"
+          value={browseMode}
+          onChange={(event) =>
+            onBrowseModeChange(event.target.value as SeriesBrowseMode)
+          }
+          className="h-10 w-full rounded-md border border-input bg-transparent px-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Sort available shows"
+        >
+          {(Object.keys(SERIES_BROWSE_MODE_LABELS) as SeriesBrowseMode[]).map(
+            (key) => (
+              <option key={key} value={key}>
+                {SERIES_BROWSE_MODE_LABELS[key]}
+              </option>
+            ),
+          )}
+        </select>
+      </div>
       <Input
         type="text"
         placeholder="Search series…"
@@ -176,6 +205,7 @@ export function TwoPanePicker({
   const { user } = useAuth()
   const connectionId = user?.connection?.id
   const [searchInput, setSearchInput] = useState("")
+  const [browseMode, setBrowseMode] = useState<SeriesBrowseMode>("title_asc")
   const debouncedQ = useDebouncedValue(searchInput, 300)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -190,7 +220,7 @@ export function TwoPanePicker({
     onRowMutationsPendingChange?.(rowMutationsPending)
   }, [rowMutationsPending, onRowMutationsPendingChange])
 
-  const query = useSeriesInfiniteQuery(connectionId, debouncedQ)
+  const query = useSeriesInfiniteQuery(connectionId, debouncedQ, browseMode)
   const catalogItems = useMemo(
     () => query.data?.pages.flatMap((page) => page.items) ?? [],
     [query.data?.pages],
@@ -355,6 +385,8 @@ export function TwoPanePicker({
       <AvailablePane
         searchInput={searchInput}
         onSearchInputChange={setSearchInput}
+        browseMode={browseMode}
+        onBrowseModeChange={setBrowseMode}
         catalogItems={catalogItems}
         selectedIds={selectedIds}
         isLoading={query.isLoading}

@@ -22,6 +22,7 @@ class Series(BaseModel):
     provider: str
     year: int | None = None
     thumb_url: str | None = None
+    library_added_at: int | None = None
     provider_metadata: dict[str, Any] | None = None
 
 

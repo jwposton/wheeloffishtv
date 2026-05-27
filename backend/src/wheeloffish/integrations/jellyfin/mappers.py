@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from wheeloffish.domain.dto import Episode, Library, Series
@@ -31,6 +31,27 @@ def _percent_watched(item: dict[str, Any]) -> float:
     return 0.0
 
 
+def _library_added_at_from_jellyfin(item: dict[str, Any]) -> int | None:
+    """Unix seconds from Jellyfin `DateCreated` (when the item was created in the library)."""
+    raw = item.get("DateCreated")
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    s = raw.strip()
+    try:
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return int(dt.astimezone(UTC).timestamp())
+    except ValueError:
+        try:
+            dt = datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=UTC)
+            return int(dt.timestamp())
+        except ValueError:
+            return None
+
+
 def map_library(connection_id: str, folder: dict[str, Any]) -> Library:
     native_id = str(folder["Id"])
     return Library(
@@ -57,6 +78,7 @@ def map_series(
         provider=PROVIDER,
         year=item.get("ProductionYear"),
         thumb_url=item.get("ImageTags", {}).get("Primary") if item.get("ImageTags") else None,
+        library_added_at=_library_added_at_from_jellyfin(item),
         provider_metadata={
             "Type": item.get("Type"),
             "summary": None,

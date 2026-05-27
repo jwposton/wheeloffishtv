@@ -61,7 +61,7 @@ API clients should use `PUT /api/v1/connections/{id}/library-scope` (not `/api/v
 Published multi-arch images (`linux/amd64`, `linux/arm64`) are on GitHub Container Registry:
 
 ```text
-ghcr.io/jwposton/wheeloffishtv:0.1.4
+ghcr.io/jwposton/wheeloffishtv:0.1.5
 ghcr.io/jwposton/wheeloffishtv:latest
 ```
 

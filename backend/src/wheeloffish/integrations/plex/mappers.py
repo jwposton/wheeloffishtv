@@ -26,6 +26,17 @@ def _str_or_none(value: Any) -> str | None:
     return value if isinstance(value, str) else None
 
 
+def _library_added_at_from_plex(metadata: dict[str, Any]) -> int | None:
+    """Unix seconds when the show was added to this Plex library (PMS `addedAt`)."""
+    raw = metadata.get("addedAt")
+    if raw in (None, "", 0):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def _genres_from_metadata(metadata: dict[str, Any]) -> list[str]:
     raw_genres = metadata.get("Genre", [])
     if not isinstance(raw_genres, list):
@@ -54,6 +65,7 @@ def map_series(
         provider=PROVIDER,
         year=metadata.get("year"),
         thumb_url=metadata.get("thumb"),
+        library_added_at=_library_added_at_from_plex(metadata),
         provider_metadata={
             "ratingKey": metadata.get("ratingKey"),
             "summary": _str_or_none(metadata.get("summary")),

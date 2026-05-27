@@ -78,6 +78,8 @@ export interface Series {
   provider: string
   year: number | null
   thumb_url: string | null
+  /** Unix seconds when the show was added to the library (from provider). */
+  library_added_at?: number | null
   provider_metadata: SeriesProviderMetadata | null
 }
 

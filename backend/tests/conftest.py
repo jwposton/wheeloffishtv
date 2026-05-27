@@ -184,6 +184,7 @@ def seed_cached_series(
     library_native_id: str = "1",
     title_prefix: str = "Series",
     start_index: int = 0,
+    library_added_at_base: int | None = None,
 ) -> list:
     """Seed cached_series rows for browse/sync tests."""
     from datetime import UTC, datetime
@@ -196,6 +197,9 @@ def seed_cached_series(
     for offset in range(count):
         index = start_index + offset
         native_id = f"guid-{index}"
+        added_at = None
+        if library_added_at_base is not None:
+            added_at = library_added_at_base + offset
         row = CachedSeries(
             id=format_composite_id(connection_id, provider, native_id),
             app_user_id=app_user_id,
@@ -203,6 +207,7 @@ def seed_cached_series(
             library_native_id=library_native_id,
             native_id=native_id,
             title=f"{title_prefix} {index}",
+            library_added_at=added_at,
             synced_at=now,
         )
         db_session.add(row)
@@ -223,6 +228,7 @@ def seed_series_in_scope(
     native_id: str = "guid-123",
     title: str = "Cached Show",
     provider_metadata: dict | None = None,
+    library_added_at: int | None = None,
 ) -> None:
     """Seed in-scope library + cached series for detail/resume/episodes routes."""
     seed_cached_libraries(
@@ -243,6 +249,7 @@ def seed_series_in_scope(
             library_native_id=library_native_id,
             native_id=native_id,
             title=title,
+            library_added_at=library_added_at,
             provider_metadata=provider_metadata,
             synced_at=datetime.now(UTC),
         )

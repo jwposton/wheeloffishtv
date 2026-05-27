@@ -1,7 +1,9 @@
 import asyncio
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
+from sqlalchemy import asc, desc, nullsfirst, nullslast
 from sqlalchemy.orm import Session
 
 from wheeloffish.api.deps import get_app_user_id, get_db, get_settings_dep, get_vault
@@ -48,6 +50,19 @@ from wheeloffish.integrations.plex.client import PlexProvider
 
 router = APIRouter(tags=["catalog"])
 session_router = APIRouter(prefix="/session", tags=["catalog-session"])
+
+
+def _series_browse_order_by(
+    sort: Literal["title", "added_at"],
+    order: Literal["asc", "desc"],
+) -> tuple:
+    if sort == "added_at":
+        if order == "desc":
+            return (nullslast(desc(CachedSeries.library_added_at)), asc(CachedSeries.title))
+        return (nullsfirst(asc(CachedSeries.library_added_at)), asc(CachedSeries.title))
+    if order == "desc":
+        return (desc(CachedSeries.title),)
+    return (asc(CachedSeries.title),)
 
 
 def _get_connection_or_404(db: Session, connection_id: str) -> Connection:
@@ -307,6 +322,8 @@ def get_connection_series(
     page: int = Query(1, ge=1),
     limit: int | None = Query(None, ge=1, le=200),
     q: str | None = Query(None),
+    sort: Literal["title", "added_at"] = Query("title"),
+    order: Literal["asc", "desc"] | None = Query(None),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings_dep),
     app_user_id: str = Depends(get_app_user_id),
@@ -332,8 +349,11 @@ def get_connection_series(
         filtered = query
 
     total = filtered.count()
+    resolved_order: Literal["asc", "desc"] = (
+        order if order is not None else ("desc" if sort == "added_at" else "asc")
+    )
     rows = (
-        filtered.order_by(CachedSeries.title)
+        filtered.order_by(*_series_browse_order_by(sort, resolved_order))
         .offset((page - 1) * resolved_limit)
         .limit(resolved_limit)
         .all()

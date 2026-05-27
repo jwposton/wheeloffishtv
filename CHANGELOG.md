@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-27
+
+### Added
+
+- Sort library and “available shows” lists by **date added** (newest or oldest first), or keep **title (A–Z)**; series API supports `sort=title|added_at` and `order=asc|desc`
+- Plex sync stores library add time from `addedAt`; Jellyfin from `DateCreated`
+
+### Migration
+
+- Alembic `010_cached_series_library_added_at`: adds nullable `library_added_at` (Unix seconds) on `cached_series`. Run `alembic upgrade head`, then trigger a catalog sync to backfill existing rows.
+
 ## [0.1.4] - 2026-05-27
 
 ### Added

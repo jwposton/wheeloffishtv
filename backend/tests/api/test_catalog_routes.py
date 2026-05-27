@@ -201,6 +201,57 @@ async def test_series_search(catalog_client, connection_factory, db_session) -> 
 
 
 @pytest.mark.asyncio
+async def test_series_sort_by_added_at(catalog_client, connection_factory, db_session) -> None:
+    connection = await connection_factory()
+    seed_cached_libraries(
+        db_session,
+        connection.id,
+        [{"native_id": "1", "title": "TV Shows", "in_scope": True}],
+    )
+    seed_cached_series(
+        db_session,
+        connection.id,
+        1,
+        library_native_id="1",
+        title_prefix="Oldie",
+        start_index=0,
+        library_added_at_base=1_000,
+    )
+    seed_cached_series(
+        db_session,
+        connection.id,
+        1,
+        library_native_id="1",
+        title_prefix="Newbie",
+        start_index=1,
+        library_added_at_base=9_000,
+    )
+
+    newest_first = await catalog_client.get(
+        f"/api/v1/connections/{connection.id}/series",
+        params={"sort": "added_at", "order": "desc", "limit": 50},
+    )
+    assert newest_first.status_code == 200
+    titles_desc = [item["title"] for item in newest_first.json()["items"]]
+    assert titles_desc[0].startswith("Newbie")
+
+    oldest_first = await catalog_client.get(
+        f"/api/v1/connections/{connection.id}/series",
+        params={"sort": "added_at", "order": "asc", "limit": 50},
+    )
+    assert oldest_first.status_code == 200
+    titles_asc = [item["title"] for item in oldest_first.json()["items"]]
+    assert titles_asc[0].startswith("Oldie")
+
+    default_added = await catalog_client.get(
+        f"/api/v1/connections/{connection.id}/series",
+        params={"sort": "added_at", "limit": 50},
+    )
+    assert default_added.status_code == 200
+    assert default_added.json()["items"][0]["title"].startswith("Newbie")
+
+
+@pytest.mark.asyncio
 async def test_sync_status(
     catalog_client,
     connection_factory,

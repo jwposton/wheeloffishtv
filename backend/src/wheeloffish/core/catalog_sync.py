@@ -184,6 +184,7 @@ def _upsert_series_page(
                 title_sort=None,
                 year=series.year,
                 thumb_url=series.thumb_url,
+                library_added_at=series.library_added_at,
                 provider_metadata=series.provider_metadata,
                 synced_at=synced_at,
             )
@@ -199,6 +200,7 @@ def _upsert_series_page(
         existing.title = series.title
         existing.year = series.year
         existing.thumb_url = series.thumb_url
+        existing.library_added_at = series.library_added_at
         existing.provider_metadata = series.provider_metadata
         existing.synced_at = synced_at
         by_native_id[series.native_id] = existing
@@ -235,6 +237,7 @@ def cached_series_to_dto(row: CachedSeries, provider: str) -> Series:
         provider=provider,
         year=row.year,
         thumb_url=series_artwork_url(row.connection_id, row.id),
+        library_added_at=row.library_added_at,
         provider_metadata=row.provider_metadata,
     )
 

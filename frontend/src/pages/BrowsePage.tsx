@@ -13,6 +13,7 @@ import { useBrowseLayout } from "@/hooks/useBrowseLayout"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useSeriesInfiniteQuery } from "@/hooks/useSeriesInfiniteQuery"
 import { useSyncSeriesRefresh } from "@/hooks/useSyncSeriesRefresh"
+import type { SeriesBrowseMode } from "@/lib/seriesBrowse"
 
 function BrowseSkeleton({ layout }: { layout: "grid" | "list" }) {
   if (layout === "list") {
@@ -42,9 +43,10 @@ export function BrowsePage() {
   const connectionId = user?.connection?.id
   const queryClient = useQueryClient()
   const [searchInput, setSearchInput] = useState("")
+  const [browseMode, setBrowseMode] = useState<SeriesBrowseMode>("title_asc")
   const debouncedQ = useDebouncedValue(searchInput, 300)
   const { layout, setLayout } = useBrowseLayout()
-  const query = useSeriesInfiniteQuery(connectionId, debouncedQ)
+  const query = useSeriesInfiniteQuery(connectionId, debouncedQ, browseMode)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const items = useMemo(
@@ -81,7 +83,7 @@ export function BrowsePage() {
   }, [connectionId, queryClient])
   const syncFailed = sync?.status === "failed"
 
-  useSyncSeriesRefresh(connectionId, debouncedQ, sync)
+  useSyncSeriesRefresh(connectionId, debouncedQ, sync, browseMode)
 
   const { fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = query
   const syncKickRef = useRef(false)
@@ -154,6 +156,8 @@ export function BrowsePage() {
         onSearchValueChange={setSearchInput}
         layout={layout}
         onLayoutChange={setLayout}
+        browseMode={browseMode}
+        onBrowseModeChange={setBrowseMode}
       />
 
       {showInitialSkeleton ? (

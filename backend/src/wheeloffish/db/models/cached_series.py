@@ -41,6 +41,7 @@ class CachedSeries(Base):
     title_sort: Mapped[str | None] = mapped_column(String(512), nullable=True)
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     thumb_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    library_added_at: Mapped[int | None] = mapped_column(Integer, nullable=True)
     provider_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     synced_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

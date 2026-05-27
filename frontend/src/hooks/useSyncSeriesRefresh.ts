@@ -6,6 +6,7 @@ import {
   seriesQueryKey,
 } from "@/hooks/useSeriesInfiniteQuery"
 import type { SeriesBrowseResponse, SyncStatusEmbed } from "@/api/types"
+import type { SeriesBrowseMode } from "@/lib/seriesBrowse"
 
 const SYNC_POLL_MS = 5000
 
@@ -14,6 +15,7 @@ export function useSyncSeriesRefresh(
   connectionId: string | undefined,
   debouncedQ: string,
   sync: SyncStatusEmbed | undefined,
+  browseMode: SeriesBrowseMode = "title_asc",
 ) {
   const queryClient = useQueryClient()
   const prevSyncStatusRef = useRef<string | undefined>(undefined)
@@ -26,12 +28,12 @@ export function useSyncSeriesRefresh(
     let cancelled = false
 
     const refreshPage1 = async () => {
-      const page1 = await fetchSeriesPage(connectionId, 1, debouncedQ)
+      const page1 = await fetchSeriesPage(connectionId, 1, debouncedQ, browseMode)
       if (cancelled) {
         return
       }
       queryClient.setQueryData<InfiniteData<SeriesBrowseResponse>>(
-        seriesQueryKey(connectionId, debouncedQ),
+        seriesQueryKey(connectionId, debouncedQ, browseMode),
         (current) => {
           if (!current) {
             return { pages: [page1], pageParams: [1] }
@@ -56,7 +58,7 @@ export function useSyncSeriesRefresh(
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [connectionId, debouncedQ, queryClient, sync?.status])
+  }, [connectionId, debouncedQ, browseMode, queryClient, sync?.status])
 
   useEffect(() => {
     if (!connectionId || !sync) {
@@ -71,8 +73,8 @@ export function useSyncSeriesRefresh(
       previousStatus === "running"
     ) {
       void queryClient.invalidateQueries({
-        queryKey: seriesQueryKey(connectionId, debouncedQ),
+        queryKey: seriesQueryKey(connectionId, debouncedQ, browseMode),
       })
     }
-  }, [connectionId, debouncedQ, queryClient, sync?.status])
+  }, [connectionId, debouncedQ, browseMode, queryClient, sync?.status])
 }

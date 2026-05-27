@@ -54,6 +54,17 @@ def test_map_series_handles_malformed_genre_array() -> None:
     assert series.provider_metadata["genres"] == []
 
 
+def test_map_series_library_added_at_from_plex_added_at() -> None:
+    metadata = _plex_metadata(addedAt=1_700_000_000)
+    series = map_series("conn-1", "5", metadata)
+    assert series.library_added_at == 1_700_000_000
+
+
+def test_map_series_library_added_at_none_when_missing() -> None:
+    series = map_series("conn-1", "5", _plex_metadata())
+    assert series.library_added_at is None
+
+
 def test_map_series_preserves_existing_rating_key() -> None:
     metadata = _plex_metadata(
         summary="A spy show",
