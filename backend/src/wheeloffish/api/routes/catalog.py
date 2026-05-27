@@ -423,7 +423,10 @@ async def get_series_artwork(
     if not isinstance(provider, (PlexProvider, JellyfinProvider)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unsupported_provider", "message": "Artwork is not available for this server type"},
+            detail={
+                "code": "unsupported_provider",
+                "message": "Artwork is not available for this server type",
+            },
         )
 
     cached_now = await download_and_cache_artwork(
