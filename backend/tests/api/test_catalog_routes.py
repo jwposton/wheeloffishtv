@@ -16,6 +16,7 @@ from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Episode, Library, PagedSeries, Series
 from wheeloffish.domain.ids import format_composite_id
+from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 from wheeloffish.integrations.plex.client import PlexProvider
 from wheeloffish.main import app
 
@@ -763,6 +764,72 @@ async def test_series_artwork_lazy_fetch_with_user_token(
     assert response.status_code == 200
     assert response.content == b"fresh-poster"
     user_provider.fetch_artwork.assert_awaited_once_with("/library/metadata/1001/thumb/abc")
+
+
+@pytest.mark.asyncio
+async def test_series_artwork_lazy_fetch_jellyfin_user_token(
+    catalog_client,
+    connection_factory,
+    db_session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setenv("WOF_ARTWORK_CACHE_DIR", str(tmp_path))
+    get_settings.cache_clear()
+
+    connection = await connection_factory(
+        provider_type="jellyfin",
+        display_name="Test Jellyfin",
+        base_url="https://jellyfin.example.com",
+        verify_ssl=True,
+        token="jf-token",
+        provider_user_id="22222222-3333-4444-8555-666666666666",
+    )
+    native = "11111111-2222-4333-8444-555555555555"
+    series_id = format_composite_id(connection.id, "jellyfin", native)
+    seed_cached_libraries(
+        db_session,
+        connection.id,
+        [{"native_id": "lib-1", "title": "TV Shows", "in_scope": True}],
+    )
+    from wheeloffish.db.models.cached_series import CachedSeries
+
+    db_session.add(
+        CachedSeries(
+            id=series_id,
+            app_user_id=APP_USER_ID,
+            connection_id=connection.id,
+            library_native_id="lib-1",
+            native_id=native,
+            title="JF Cached Show",
+            thumb_url="/Items/11111111-2222-4333-8444-555555555555/Images/Primary?tag=abc123",
+            synced_at=datetime.now(UTC),
+        )
+    )
+    db_session.commit()
+
+    user_provider = JellyfinProvider(
+        base_url="https://jellyfin.example.com",
+        token="jf-token",
+        user_id="22222222-3333-4444-8555-666666666666",
+        connection_id=connection.id,
+        verify_ssl=True,
+    )
+    user_provider.fetch_artwork = AsyncMock(return_value=(b"jf-poster", "image/jpeg"))
+
+    with patch(
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
+        return_value=user_provider,
+    ):
+        response = await catalog_client.get(
+            f"/api/v1/connections/{connection.id}/series/{series_id}/artwork"
+        )
+
+    assert response.status_code == 200
+    assert response.content == b"jf-poster"
+    user_provider.fetch_artwork.assert_awaited_once_with(
+        "/Items/11111111-2222-4333-8444-555555555555/Images/Primary?tag=abc123"
+    )
 
 
 @pytest.mark.asyncio

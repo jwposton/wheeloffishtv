@@ -4,9 +4,11 @@ import hashlib
 import logging
 import time
 from pathlib import Path
+from typing import Literal
 from urllib.parse import quote, urlparse
 
 from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 from wheeloffish.integrations.plex.client import PlexProvider
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,33 @@ def normalize_plex_artwork_path(thumb_url: str | None) -> str | None:
     return None
 
 
+def normalize_jellyfin_artwork_path(thumb_url: str | None, native_id: str) -> str | None:
+    """Resolve Jellyfin image path for fetch (supports legacy tag-only ``thumb_url``)."""
+    if ".." in native_id:
+        return None
+    if thumb_url and thumb_url.startswith("/Items/") and ".." not in thumb_url:
+        head = thumb_url.split("?", 1)[0]
+        if "/Images/" in head:
+            return thumb_url
+    # Legacy: we stored ImageTags.Primary (tag string) without a path
+    if thumb_url and "/" not in thumb_url and native_id.strip():
+        return f"/Items/{native_id}/Images/Primary?tag={quote(str(thumb_url), safe='')}"
+    return None
+
+
+def resolve_series_artwork_fetch_path(
+    *,
+    provider_type: Literal["plex", "jellyfin"],
+    thumb_url: str | None,
+    native_id: str,
+) -> str | None:
+    if provider_type == "plex":
+        return normalize_plex_artwork_path(thumb_url)
+    if provider_type == "jellyfin":
+        return normalize_jellyfin_artwork_path(thumb_url, native_id)
+    return None
+
+
 def read_cached_artwork(
     cache_path: Path,
     *,
@@ -64,17 +93,23 @@ def write_cached_artwork(cache_path: Path, content: bytes) -> None:
 
 
 async def download_and_cache_artwork(
-    provider: PlexProvider,
+    provider: PlexProvider | JellyfinProvider,
     *,
     cache_dir: str,
     app_user_id: str,
     connection_id: str,
     series_id: str,
     thumb_url: str | None,
+    provider_type: Literal["plex", "jellyfin"],
+    native_id: str,
 ) -> bool:
-    """Fetch poster bytes from Plex and persist locally for this user. Returns True if cached."""
-    thumb_path = normalize_plex_artwork_path(thumb_url)
-    if thumb_path is None:
+    """Fetch poster bytes from Plex or Jellyfin and persist locally. Returns True if cached."""
+    fetch_path = resolve_series_artwork_fetch_path(
+        provider_type=provider_type,
+        thumb_url=thumb_url,
+        native_id=native_id,
+    )
+    if fetch_path is None:
         return False
 
     cache_path = artwork_cache_path(cache_dir, app_user_id, connection_id, series_id)
@@ -82,7 +117,7 @@ async def download_and_cache_artwork(
         return True
 
     try:
-        content, _media_type = await provider.fetch_artwork(thumb_path)
+        content, _media_type = await provider.fetch_artwork(fetch_path)
     except ProviderError as err:
         logger.warning(
             "artwork_download_failed code=%s connection_id=%s series_id=%s",

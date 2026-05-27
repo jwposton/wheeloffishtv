@@ -13,6 +13,7 @@ from wheeloffish.core.connections import build_plex_provider_for_user, build_pro
 from wheeloffish.core.media_artwork import (
     artwork_cache_path,
     download_and_cache_artwork,
+    resolve_series_artwork_fetch_path,
     series_artwork_url,
 )
 from wheeloffish.core.secrets import SecretsVault
@@ -25,6 +26,7 @@ from wheeloffish.db.session import get_session_factory
 from wheeloffish.domain.dto import Library, Series
 from wheeloffish.domain.ids import format_composite_id
 from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized
+from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 from wheeloffish.integrations.plex.client import PlexProvider
 
 logger = structlog.get_logger(__name__)
@@ -563,7 +565,7 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
             series_count=total_synced,
         )
 
-        if isinstance(provider, PlexProvider):
+        if isinstance(provider, PlexProvider | JellyfinProvider):
             asyncio.create_task(
                 prefetch_user_artwork(connection_id, app_user_id),
             )
@@ -572,9 +574,15 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
         vault.clear_plex_user_credentials(connection_id, app_user_id, commit=False)
         state = _get_or_create_sync_state(db, connection_id, app_user_id)
         state.status = "failed"
-        state.error_message = (
-            "Plex session invalid — log out and sign in with Plex again"
-        )
+        conn_row = db.query(Connection).filter(Connection.id == connection_id).one_or_none()
+        if conn_row and conn_row.provider_type == "jellyfin":
+            state.error_message = (
+                "Jellyfin session invalid — log out and sign in with Jellyfin again"
+            )
+        else:
+            state.error_message = (
+                "Plex session invalid — log out and sign in with Plex again"
+            )
         state.updated_at = datetime.now(UTC)
         db.commit()
         logger.exception(
@@ -622,7 +630,7 @@ async def prefetch_user_artwork(connection_id: str, app_user_id: str) -> None:
             return
 
         provider = _build_provider(db, vault, connection, app_user_id, settings)
-        if not isinstance(provider, PlexProvider):
+        if not isinstance(provider, PlexProvider | JellyfinProvider):
             return
 
         rows = (
@@ -636,8 +644,14 @@ async def prefetch_user_artwork(connection_id: str, app_user_id: str) -> None:
         cached_count = 0
         failed_count = 0
         for row in rows:
-            if not row.thumb_url:
-                failed_count += 1
+            if (
+                resolve_series_artwork_fetch_path(
+                    provider_type=connection.provider_type,  # type: ignore[arg-type]
+                    thumb_url=row.thumb_url,
+                    native_id=row.native_id,
+                )
+                is None
+            ):
                 continue
             cache_path = artwork_cache_path(
                 settings.WOF_ARTWORK_CACHE_DIR,
@@ -655,6 +669,8 @@ async def prefetch_user_artwork(connection_id: str, app_user_id: str) -> None:
                 connection_id=connection_id,
                 series_id=row.id,
                 thumb_url=row.thumb_url,
+                provider_type=connection.provider_type,  # type: ignore[arg-type]
+                native_id=row.native_id,
             )
             if ok:
                 cached_count += 1

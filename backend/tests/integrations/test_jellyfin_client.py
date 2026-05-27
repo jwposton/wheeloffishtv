@@ -8,7 +8,7 @@ from httpx import Response
 
 from wheeloffish.domain.dto import Episode, Library, Series
 from wheeloffish.domain.ids import format_composite_id
-from wheeloffish.integrations.errors import ProviderUnauthorized
+from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized
 from wheeloffish.integrations.jellyfin.auth import authenticate, validate_token
 from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 
@@ -159,6 +159,24 @@ async def test_get_on_deck_episode() -> None:
     assert episode is not None
     assert episode.title == "Season Two Premiere"
     assert ":jellyfin:" in episode.id
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_fetch_artwork_success() -> None:
+    path = "/Items/11111111-2222-4333-8444-555555555555/Images/Primary?tag=abc"
+    respx.get(f"{BASE_URL}{path}").mock(
+        return_value=Response(200, content=b"\xff\xd8\xff", headers={"content-type": "image/jpeg"})
+    )
+    content, media_type = await _provider().fetch_artwork(path)
+    assert content == b"\xff\xd8\xff"
+    assert media_type == "image/jpeg"
+
+
+@pytest.mark.asyncio
+async def test_fetch_artwork_rejects_unsafe_path() -> None:
+    with pytest.raises(ProviderError, match="invalid_path"):
+        await _provider().fetch_artwork("/Items/../etc/passwd/Images/Primary")
 
 
 def test_dto_shape_matches_plex() -> None:

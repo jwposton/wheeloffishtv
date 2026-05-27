@@ -1,11 +1,62 @@
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import quote
 
 from wheeloffish.domain.dto import Episode, Library, Series
 from wheeloffish.domain.ids import format_composite_id, parse_composite_id
 
 PROVIDER = "jellyfin"
 TICKS_PER_MS = 10_000
+
+
+def _str_or_none(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _genres_from_jellyfin(item: dict[str, Any]) -> list[str]:
+    raw = item.get("Genres")
+    if not raw:
+        return []
+    if isinstance(raw, list) and all(isinstance(g, str) for g in raw):
+        return [g for g in raw if g]
+    if isinstance(raw, list):
+        out: list[str] = []
+        for g in raw:
+            if isinstance(g, dict):
+                tag = g.get("Name") or g.get("name")
+                if isinstance(tag, str) and tag:
+                    out.append(tag)
+        return out
+    return []
+
+
+def _studio_from_jellyfin(item: dict[str, Any]) -> str | None:
+    studios = item.get("Studios")
+    if not isinstance(studios, list):
+        return None
+    names: list[str] = []
+    for s in studios:
+        if isinstance(s, dict):
+            name = s.get("Name")
+            if isinstance(name, str) and name:
+                names.append(name)
+    return names[0] if names else None
+
+
+def _jellyfin_series_thumb_path(native_id: str, item: dict[str, Any]) -> str | None:
+    """Relative image URL for sync storage (same role as Plex ``thumb`` paths)."""
+    tags = item.get("ImageTags")
+    primary_tag = None
+    if isinstance(tags, dict):
+        primary_tag = tags.get("Primary")
+    if primary_tag is not None and str(primary_tag).strip() == "":
+        primary_tag = None
+    if primary_tag is not None:
+        return (
+            f"/Items/{native_id}/Images/Primary"
+            f"?tag={quote(str(primary_tag), safe='')}"
+        )
+    return None
 
 
 def _duration_ms(item: dict[str, Any]) -> int:
@@ -77,14 +128,14 @@ def map_series(
         connection_id=connection_id,
         provider=PROVIDER,
         year=item.get("ProductionYear"),
-        thumb_url=item.get("ImageTags", {}).get("Primary") if item.get("ImageTags") else None,
+        thumb_url=_jellyfin_series_thumb_path(native_id, item),
         library_added_at=_library_added_at_from_jellyfin(item),
         provider_metadata={
             "Type": item.get("Type"),
-            "summary": None,
-            "genres": [],
-            "contentRating": None,
-            "studio": None,
+            "summary": _str_or_none(item.get("Overview")),
+            "genres": _genres_from_jellyfin(item),
+            "contentRating": _str_or_none(item.get("OfficialRating")),
+            "studio": _studio_from_jellyfin(item),
         },
     )
 

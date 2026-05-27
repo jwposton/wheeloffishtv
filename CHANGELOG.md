@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Jellyfin parity with Plex:** series posters use the same cached `/series/.../artwork` flow as Plex (including post-sync prefetch). Sync stores Jellyfin primary image as `/Items/{id}/Images/Primary?tag=…` and maps **Overview**, **Genres**, **OfficialRating**, and **Studios** into the same `provider_metadata` fields as Plex. Jellyfin API client uses the same 60s request timeout as Plex. Catalog sync `401` errors now show a Jellyfin-specific message when `WOF_PROVIDER` is Jellyfin.
+
 ## [0.1.6] - 2026-05-27
 
 ### Fixed

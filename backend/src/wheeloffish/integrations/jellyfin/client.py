@@ -19,6 +19,19 @@ from wheeloffish.integrations.jellyfin.mappers import (
 )
 
 PROVIDER = "jellyfin"
+JELLYFIN_REQUEST_TIMEOUT_SECONDS = 60.0
+
+
+def _is_safe_jellyfin_image_path(path: str) -> bool:
+    """Reject path traversal; require ``/Items/.../Images/<type>`` (optional ``?tag=``)."""
+    if ".." in path or not path.startswith("/Items/"):
+        return False
+    head = path.split("?", 1)[0]
+    if "/Images/" not in head:
+        return False
+    parts = [p for p in head.split("/") if p]
+    # Items, {id}, Images, {type}
+    return len(parts) >= 4 and parts[0] == "Items" and parts[2] == "Images"
 
 
 class JellyfinProvider:
@@ -42,7 +55,10 @@ class JellyfinProvider:
         return _authorization_header(token=self.token)
 
     def _client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(verify=self.verify_ssl)
+        return httpx.AsyncClient(
+            verify=self.verify_ssl,
+            timeout=httpx.Timeout(JELLYFIN_REQUEST_TIMEOUT_SECONDS),
+        )
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         url = f"{self.base_url}{path}"
@@ -138,3 +154,29 @@ class JellyfinProvider:
         if not items:
             return None
         return map_episode(self.connection_id, items[0])
+
+    async def fetch_artwork(self, path: str) -> tuple[bytes, str]:
+        if not _is_safe_jellyfin_image_path(path):
+            raise ProviderError("invalid_path")
+        url = f"{self.base_url}{path}"
+        try:
+            async with self._client() as client:
+                response = await client.get(
+                    url,
+                    headers={**self._headers(), "Accept": "image/*"},
+                )
+        except httpx.ConnectError as err:
+            raise ProviderUnreachable() from err
+        except httpx.TimeoutException as err:
+            raise ProviderUnreachable() from err
+        except httpx.RequestError as err:
+            if "ssl" in str(err).lower():
+                raise ProviderSSLError() from err
+            raise ProviderUnreachable() from err
+
+        if response.status_code == 401:
+            raise ProviderUnauthorized()
+        if response.status_code >= 400:
+            raise ProviderError("not_found")
+        media_type = response.headers.get("content-type", "image/jpeg")
+        return response.content, media_type

@@ -37,6 +37,7 @@ from wheeloffish.core.media_artwork import (
     artwork_cache_path,
     download_and_cache_artwork,
     read_cached_artwork,
+    resolve_series_artwork_fetch_path,
 )
 from wheeloffish.core.resume import ResumeService
 from wheeloffish.core.secrets import SecretsVault
@@ -46,6 +47,7 @@ from wheeloffish.domain.dto import Episode, Library, ResumeCursor, Series
 from wheeloffish.domain.ids import canonical_composite_id, parse_composite_id
 from wheeloffish.integrations.base import MediaProvider
 from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 from wheeloffish.integrations.plex.client import PlexProvider
 
 router = APIRouter(tags=["catalog"])
@@ -390,12 +392,6 @@ async def get_series_artwork(
     app_user_id: str = Depends(get_app_user_id),
 ) -> Response:
     connection = _get_connection_or_404(db, connection_id)
-    if connection.provider_type != "plex":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unsupported_provider", "message": "Artwork supports Plex only"},
-        )
-
     row = _get_cached_series_in_scope(db, connection_id, series_id, app_user_id)
     cache_path = artwork_cache_path(
         settings.WOF_ARTWORK_CACHE_DIR,
@@ -411,16 +407,23 @@ async def get_series_artwork(
         content, media_type = cached
         return Response(content=content, media_type=media_type)
 
-    if not row.thumb_url:
+    if (
+        resolve_series_artwork_fetch_path(
+            provider_type=connection.provider_type,  # type: ignore[arg-type]
+            thumb_url=row.thumb_url,
+            native_id=row.native_id,
+        )
+        is None
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not available")
 
     provider = build_provider_for_user(
         db, vault, connection, app_user_id, settings=settings
     )
-    if not isinstance(provider, PlexProvider):
+    if not isinstance(provider, (PlexProvider, JellyfinProvider)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "unsupported_provider", "message": "Artwork supports Plex only"},
+            detail={"code": "unsupported_provider", "message": "Artwork is not available for this server type"},
         )
 
     cached_now = await download_and_cache_artwork(
@@ -430,6 +433,8 @@ async def get_series_artwork(
         connection_id=connection_id,
         series_id=series_id,
         thumb_url=row.thumb_url,
+        provider_type=connection.provider_type,  # type: ignore[arg-type]
+        native_id=row.native_id,
     )
     if not cached_now:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artwork not available")
