@@ -19,6 +19,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 6 | 7/7 | Complete + gap closure    | 2026-05-26 |
 | 7 | Provider playlist writeback | Push rebuilt snapshots to native Plex/Jellyfin playlists | EXP-01 | Complete 2026-05-26 |
 | 8 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion | post-v0.1.0 |
+| 9 | Series detail & watch from playlists | Detail + watch affordances from Library and playlist flows; specials after S1…N | WEB-01, INT-* glue | post-v0.2.0 |
 
 *(Phase numbers align with REQ traceability columns — adjust if phasedown needed later.)*
 
@@ -280,17 +281,41 @@ Requirements: WEB-01 (completion), residual polish tying earlier gaps
 
 ---
 
+### Phase 9: Series detail & watch state from playlists
+
+**Goal:** Library, view-playlist, and edit-playlist flows expose the same series detail experience as Library (tile → detail). Edit playlist: **View series** on in-playlist context menu; **Available** pane keeps click-to-add, with series added in the current session surfaced at the top of **In playlist** for clarity. Series detail lists catalog episodes grouped by season with clear **watched / on-deck / unwatched** affordances and context actions to update watch state per episode, season, or entire series via Plex/Jellyfin where APIs support it. **Default season ordering:** specials (season 0 / “Specials”) appear **after** seasons 1…N (not before).
+
+**Mode:** mvp  
+**UI hint:** yes  
+**Depends on:** Phase 8  
+
+**Success criteria** *(draft — refine in PLAN)*  
+
+1. View playlist: series tiles navigate to the same detail route/pattern as Library.  
+2. Edit playlist: in-playlist tile context menu includes **View series**; available-tile click still appends row; session-new memberships visually prioritized in the In playlist pane.  
+3. Detail view: episodes grouped by season with watched / next-on-deck / unwatched indicators; context menus for bulk watch edits at episode, season, and series scope when the active provider allows.  
+4. Season list default sort: numbered seasons ascending, specials (S0) last.  
+
+**Requirements:** WEB-01 (playlist authoring UX), INT-01/02 (provider watch writeback where feasible) — **TBD traceability in plan**  
+**Plans:** 0 plans  
+
+Plans:
+
+- [ ] TBD (run `/gsd-plan-phase 9` to break down)
+
+---
+
 ## Requirement coverage matrix (sanity)
 
-- INT-\* covered Phases **1–2**  
+- INT-\* covered Phases **1–2** (+ Phase **9** watch-writeback glue TBD)  
 - PLT-\* **4** primarily  
 - SCH-\* **5**  
 - PLT-03 UX completion **6**  
-- WEB-\* **3 + 6 + 8** (polish)  
+- WEB-\* **3 + 6 + 8 + 9** (polish + playlist detail/watch)  
 - EXP-\* **7** (provider writeback — v0.1.0 gate)  
 - DEP-\* **1**  
 
-Everything mapped ✓  
+Everything mapped ✓ *(Phase 9 row added 2026-05-27 — matrix to be tightened after planning)*  
 
 ---
 
@@ -300,9 +325,11 @@ Everything mapped ✓
 |-----|------|----------|
 | **v0.1.0** | Phase 7 complete + validation | Authoring, rebuild, Library UX, **native Plex/Jellyfin playlist writeback** |
 | **v0.2.0** | Phase 8 complete | UX polish, accessibility, README/DEMO hardening |
+| **v0.3.0** *(proposed)* | Phase 9 complete | Series detail from playlists + watch-state editing + season ordering |
 
 ---
 
 *Roadmap authored: 2026-05-24*  
 *Amended: 2026-05-25 — Phase 7 = provider writeback (v0.1.0); Phase 8 = polish*  
+*Amended: 2026-05-27 — Phase 9 = series detail & watch from playlists (post v0.2.0)*  
 *Maintenance:* update via `/gsd-transition` + `/gsd-plan-phase`*
