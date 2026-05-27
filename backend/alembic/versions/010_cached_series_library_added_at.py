@@ -4,7 +4,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "010_cached_series_library_added_at"
+# revision id must fit Postgres alembic_version.version_num (varchar(32))
+revision = "010_lib_added_at"
 down_revision = "009_provider_playlist_writeback"
 branch_labels = None
 depends_on = None

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-05-27
+
+### Fixed
+
+- **PostgreSQL / Docker:** migration `010` could not finish because Alembic’s `alembic_version.version_num` column is `varchar(32)` on Postgres, while the 0.1.5 revision id was longer. Renamed the revision to `010_lib_added_at` so `alembic upgrade head` completes and Postgres compose smoke passes. No change to the applied schema (still adds `cached_series.library_added_at`).
+
 ## [0.1.5] - 2026-05-27
 
 ### Added
@@ -16,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Migration
 
-- Alembic `010_cached_series_library_added_at`: adds nullable `library_added_at` (Unix seconds) on `cached_series`. Run `alembic upgrade head`, then trigger a catalog sync to backfill existing rows.
+- Alembic `010_lib_added_at`: adds nullable `library_added_at` (Unix seconds) on `cached_series`. Run `alembic upgrade head`, then trigger a catalog sync to backfill existing rows.
 
 ## [0.1.4] - 2026-05-27
 
