@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-05-27
+
 ### Fixed
 
 - **Jellyfin:** library sort by date added (newest/oldest) now works — catalog sync requests `Fields=DateCreated` on series list (Jellyfin omits it by default, so `library_added_at` was always null). Re-run a catalog sync after upgrade to backfill existing shows.
