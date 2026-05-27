@@ -50,7 +50,7 @@ async def test_version_reports_update_when_github_is_newer(meta_client: AsyncCli
     response = await meta_client.get("/api/v1/meta/version")
     assert response.status_code == 200
     body = response.json()
-    assert body["version"] == "0.1.6"
+    assert body["version"] == "0.1.7"
     assert body["latest_version"] == "9.9.9"
     assert body["update_available"] is True
     assert body["release_url"] == "https://github.com/jwposton/wheeloffishtv/releases/tag/v9.9.9"
@@ -63,8 +63,8 @@ async def test_version_hides_release_url_when_current(meta_client: AsyncClient) 
         return_value=Response(
             200,
             json={
-                "tag_name": "v0.1.6",
-                "html_url": "https://github.com/jwposton/wheeloffishtv/releases/tag/v0.1.6",
+                "tag_name": "v0.1.7",
+                "html_url": "https://github.com/jwposton/wheeloffishtv/releases/tag/v0.1.7",
             },
         ),
     )

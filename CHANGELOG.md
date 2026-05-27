@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-05-27
+
 ### Added
 
 - Playlist rebuild logs **`playlist_slot_empty`** at INFO when a slot assignment yields no episode: **`ordered_exhausted`** (ordered cursor at end of the series queue) or **`disordered_fully_emitted`** (every episode in that series was already placed earlier in the same rebuild). Fields include `playlist_id`, `slot_index`, `series_id`, `row_mode`, and counts for debugging.
