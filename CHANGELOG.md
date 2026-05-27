@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Playlist rebuild logs **`playlist_slot_empty`** at INFO when a slot assignment yields no episode: **`ordered_exhausted`** (ordered cursor at end of the series queue) or **`disordered_fully_emitted`** (every episode in that series was already placed earlier in the same rebuild). Fields include `playlist_id`, `slot_index`, `series_id`, `row_mode`, and counts for debugging.
+
 ### Changed
 
 - **Jellyfin parity with Plex:** series posters use the same cached `/series/.../artwork` flow as Plex (including post-sync prefetch). Sync stores Jellyfin primary image as `/Items/{id}/Images/Primary?tag=…` and maps **Overview**, **Genres**, **OfficialRating**, and **Studios** into the same `provider_metadata` fields as Plex. Jellyfin API client uses the same 60s request timeout as Plex. Catalog sync `401` errors now show a Jellyfin-specific message when `WOF_PROVIDER` is Jellyfin.

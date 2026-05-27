@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 import random
 
+import structlog
+
 from wheeloffish.core.playlist.completion import apply_policy, evaluate_completion
 from wheeloffish.core.playlist.disordered import compute_eligible_pool, pick_disordered_block
 from wheeloffish.core.playlist.ordered import OrderedCursor, make_cursor, next_block
@@ -22,6 +24,8 @@ from wheeloffish.domain.playlist import (
     SeriesRebuildInput,
     SlotAllocation,
 )
+
+logger = structlog.get_logger("wheeloffish.playlist_builder")
 
 __all__ = ["make_build_rng", "allocate_slots", "PlaylistBuilder"]
 
@@ -138,17 +142,41 @@ class PlaylistBuilder:
             if outcome.effective_mode == RowMode.ORDERED:
                 ordered = order_episodes(episodes)
                 cursor = ordered_cursors[series_id]
+                cursor_before = cursor.index
+                ordered_len = len(ordered)
                 block, new_index = next_block(ordered, by_id, cursor.index)
                 ordered_cursors[series_id] = OrderedCursor(series_id, new_index)
+                if not block:
+                    logger.info(
+                        "playlist_slot_empty",
+                        playlist_id=playlist.id,
+                        slot_index=slot_index,
+                        series_id=series_id,
+                        row_mode=RowMode.ORDERED.value,
+                        reason="ordered_exhausted",
+                        ordered_episode_count=ordered_len,
+                        cursor_index=cursor_before,
+                    )
+                    continue
             else:
                 pool = compute_eligible_pool(episodes)
                 emitted = emitted_ids.setdefault(series_id, set())
                 block = pick_disordered_block(pool, by_id, emitted, rng)
                 if block:
                     emitted.update(ep.id for ep in block)
-
-            if not block:
-                continue
+                if not block:
+                    logger.info(
+                        "playlist_slot_empty",
+                        playlist_id=playlist.id,
+                        slot_index=slot_index,
+                        series_id=series_id,
+                        row_mode=RowMode.DISORDERED.value,
+                        reason="disordered_fully_emitted",
+                        eligible_pool_size=len(pool),
+                        emitted_episode_count=len(emitted),
+                        series_episode_count=len(by_id),
+                    )
+                    continue
 
             for ep in block:
                 built.append(
