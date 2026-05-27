@@ -118,6 +118,12 @@ async def test_list_series_paged() -> None:
     assert page.items[0].title == "Fictional Show"
     assert ":jellyfin:" in page.items[0].id
     assert "11111111-2222-4333-8444-555555555555" in page.items[0].id
+    assert page.items[0].library_added_at == 1_705_312_800
+    assert page.items[1].library_added_at == 1_685_608_200
+
+    request = respx.calls.last.request
+    assert request is not None
+    assert "Fields=DateCreated" in str(request.url)
 
 
 @pytest.mark.asyncio

@@ -109,6 +109,8 @@ class JellyfinProvider:
             "Recursive": True,
             "StartIndex": start_index,
             "Limit": limit,
+            # DateCreated is not in the default item payload; required for library_added_at sort.
+            "Fields": "DateCreated",
         }
         if q:
             params["SearchTerm"] = q

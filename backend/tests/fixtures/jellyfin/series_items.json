@@ -5,14 +5,16 @@
       "Id": "11111111-2222-4333-8444-555555555555",
       "ProductionYear": 2020,
       "Type": "Series",
-      "IsFolder": true
+      "IsFolder": true,
+      "DateCreated": "2024-01-15T10:00:00.000Z"
     },
     {
       "Name": "Sample Anime",
       "Id": "22222222-3333-4444-8555-666666666666",
       "ProductionYear": 2018,
       "Type": "Series",
-      "IsFolder": true
+      "IsFolder": true,
+      "DateCreated": "2023-06-01T08:30:00.000Z"
     }
   ],
   "TotalRecordCount": 2,
