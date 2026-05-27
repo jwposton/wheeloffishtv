@@ -154,7 +154,6 @@ def seed_cached_libraries(
     from datetime import UTC, datetime
 
     from wheeloffish.db.models.cached_library import CachedLibrary
-    from wheeloffish.db.models.connection import Connection
 
     now = datetime.now(UTC)
     rows = []
