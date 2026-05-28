@@ -121,6 +121,26 @@ export interface EpisodesListResponse {
   episodes: Episode[]
 }
 
+export type WatchMutationScope = "episode" | "season" | "series"
+export type WatchMutationAction = "watched" | "unwatched"
+export type WatchMutationStatus = "succeeded" | "partial" | "failed"
+export type WatchMutationErrorCode =
+  | "auth"
+  | "forbidden"
+  | "not_found"
+  | "provider_error"
+  | null
+
+export interface WatchStateMutationResponse {
+  status: WatchMutationStatus
+  scope: WatchMutationScope
+  updated_count: number
+  failed_count: number
+  failed_ids: string[]
+  error_code: WatchMutationErrorCode
+  message: string
+}
+
 export type RebuildStatus =
   | "succeeded"
   | "partial"

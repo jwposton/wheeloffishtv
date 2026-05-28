@@ -250,7 +250,7 @@ describe("SeriesDetailPage watch-state", () => {
     } as ReturnType<typeof useSeriesEpisodes>)
 
     renderPage()
-    fireEvent.click(screen.getByRole("button", { name: "Mark season watched" }))
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark season watched" })[0])
     fireEvent.click(screen.getByRole("button", { name: "Mark series watched" }))
 
     await waitFor(() => {
@@ -280,7 +280,7 @@ describe("SeriesDetailPage watch-state", () => {
     } as ReturnType<typeof useSeriesEpisodes>)
 
     renderPage()
-    fireEvent.click(screen.getByRole("button", { name: "Mark episode watched" }))
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark episode watched" })[0])
 
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalledWith(

@@ -1,6 +1,7 @@
 import { ArrowLeftIcon } from "lucide-react"
 import { useEffect, useMemo, useRef } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { ResumePreview } from "@/components/browse/ResumePreview"
 import { AddToPlaylistMenu } from "@/components/playlists/AddToPlaylistMenu"
@@ -44,6 +45,16 @@ function seasonSortValue(seasonIndex: number): number {
 
 function seasonLabel(seasonIndex: number): string {
   return seasonIndex === 0 ? "Specials" : `Season ${seasonIndex}`
+}
+
+function mutationErrorMessage(errorCode: string | null | undefined): string {
+  if (errorCode === "auth") {
+    return "Could not update watch status. Please reconnect your provider and try again."
+  }
+  if (errorCode === "provider_error") {
+    return "Could not update watch status. Provider rejected this update."
+  }
+  return "Could not update watch status. Please try again."
 }
 
 export function SeriesDetailPage() {
@@ -115,6 +126,57 @@ export function SeriesDetailPage() {
         episodes: [...episodes].sort((a, b) => a.episode_index - b.episode_index),
       }))
   }, [episodesQuery.data?.episodes])
+
+  async function handleEpisodeMutation(episodeId: string, watched: boolean) {
+    try {
+      const result = await episodesQuery.updateEpisodeWatchState({ episodeId, watched })
+      if (result.status === "failed") {
+        toast.error(mutationErrorMessage(result.error_code))
+        return
+      }
+      if (result.status === "partial") {
+        toast.error("Some episode updates failed. Refresh and try again.")
+        return
+      }
+      toast.success("Watch status updated")
+    } catch {
+      toast.error("Could not update watch status. Please try again.")
+    }
+  }
+
+  async function handleSeasonMutation(seasonIndex: number, watched: boolean) {
+    try {
+      const result = await episodesQuery.updateSeasonWatchState({ seasonIndex, watched })
+      if (result.status === "failed") {
+        toast.error(mutationErrorMessage(result.error_code))
+        return
+      }
+      if (result.status === "partial") {
+        toast.error("Season update partially failed.")
+        return
+      }
+      toast.success("Season updated")
+    } catch {
+      toast.error("Could not update watch status. Please try again.")
+    }
+  }
+
+  async function handleSeriesMutation(watched: boolean) {
+    try {
+      const result = await episodesQuery.updateSeriesWatchState({ watched })
+      if (result.status === "failed") {
+        toast.error(mutationErrorMessage(result.error_code))
+        return
+      }
+      if (result.status === "partial") {
+        toast.error("Series update partially failed.")
+        return
+      }
+      toast.success("Series updated")
+    } catch {
+      toast.error("Could not update watch status. Please try again.")
+    }
+  }
 
   useEffect(() => {
     headingRef.current?.focus()
@@ -211,9 +273,47 @@ export function SeriesDetailPage() {
       />
       {episodesQuery.data?.episodes?.length ? (
         <section className="flex flex-col gap-4" aria-label="Episodes by season">
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={episodesQuery.isUpdating}
+              onClick={() => void handleSeriesMutation(true)}
+            >
+              Mark series watched
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={episodesQuery.isUpdating}
+              onClick={() => void handleSeriesMutation(false)}
+            >
+              Mark series unwatched
+            </Button>
+          </div>
           {groupedEpisodes.map(({ seasonIndex, episodes }) => (
             <div key={seasonIndex} className="rounded-lg border p-4">
-              <h3 className="mb-3 font-semibold">{seasonLabel(seasonIndex)}</h3>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="font-semibold">{seasonLabel(seasonIndex)}</h3>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={episodesQuery.isUpdating}
+                    onClick={() => void handleSeasonMutation(seasonIndex, true)}
+                  >
+                    Mark season watched
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={episodesQuery.isUpdating}
+                    onClick={() => void handleSeasonMutation(seasonIndex, false)}
+                  >
+                    Mark season unwatched
+                  </Button>
+                </div>
+              </div>
               <ul className="flex flex-col gap-2">
                 {episodes.map((episode) => (
                   <li
@@ -233,6 +333,21 @@ export function SeriesDetailPage() {
                         episode.id === resumeQuery.data?.episode_id,
                       )}
                     </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={episodesQuery.isUpdating}
+                      onClick={() =>
+                        void handleEpisodeMutation(
+                          episode.id,
+                          !episode.provider_marked_played && episode.percent_watched < 95,
+                        )
+                      }
+                    >
+                      {episode.provider_marked_played || episode.percent_watched >= 95
+                        ? "Mark episode unwatched"
+                        : "Mark episode watched"}
+                    </Button>
                   </li>
                 ))}
               </ul>
