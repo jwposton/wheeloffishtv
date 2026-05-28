@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -21,6 +21,13 @@ vi.mock("@/hooks/useSeriesEpisodes", () => ({
   useSeriesEpisodes: vi.fn(),
 }))
 
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}))
+
 vi.mock("@/components/playlists/AddToPlaylistMenu", () => ({
   AddToPlaylistMenu: ({ trigger }: { trigger: React.ReactElement }) => (
     <div data-testid="add-to-playlist-menu">{trigger}</div>
@@ -34,6 +41,7 @@ vi.mock("@/components/series/SeriesPlaylistsSection", () => ({
 import { useAuth } from "@/hooks/useAuth"
 import { useSeriesDetail } from "@/hooks/useSeriesDetail"
 import { useSeriesEpisodes } from "@/hooks/useSeriesEpisodes"
+import { toast } from "sonner"
 import { useSeriesResume } from "@/hooks/useSeriesResume"
 
 import { SeriesDetailPage } from "./SeriesDetailPage"
@@ -42,6 +50,7 @@ const mockUseAuth = vi.mocked(useAuth)
 const mockUseSeriesDetail = vi.mocked(useSeriesDetail)
 const mockUseSeriesResume = vi.mocked(useSeriesResume)
 const mockUseSeriesEpisodes = vi.mocked(useSeriesEpisodes)
+const mockToast = vi.mocked(toast)
 
 const MOCK_SERIES: Series = {
   id: "conn-1:plex:series-spy",
@@ -133,6 +142,8 @@ function renderPage(search = "/series?id=conn-1%3Aplex%3Aseries-spy") {
 
 describe("SeriesDetailPage watch-state", () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+
     mockUseAuth.mockReturnValue({
       user: { connection: { id: "conn-1" } },
       isLoading: false,
@@ -158,6 +169,9 @@ describe("SeriesDetailPage watch-state", () => {
       isError: false,
       isFetching: false,
       isFetched: true,
+      updateEpisodeWatchState: vi.fn(),
+      updateSeasonWatchState: vi.fn(),
+      updateSeriesWatchState: vi.fn(),
     } as ReturnType<typeof useSeriesEpisodes>)
   })
 
@@ -193,5 +207,85 @@ describe("SeriesDetailPage watch-state", () => {
     expect(screen.getByRole("link", { name: "Back to Playlist" })).toBeInTheDocument()
 
     expect(screen.getAllByText("Spy Show").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("calls episode watch mutation and reconciles affordance state", async () => {
+    const updateEpisodeWatchState = vi.fn().mockResolvedValue({ status: "succeeded" })
+    mockUseSeriesEpisodes.mockReturnValue({
+      data: { episodes: EPISODES },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isFetched: true,
+      updateEpisodeWatchState,
+      updateSeasonWatchState: vi.fn(),
+      updateSeriesWatchState: vi.fn(),
+      isUpdating: false,
+    } as ReturnType<typeof useSeriesEpisodes>)
+
+    renderPage()
+    fireEvent.click(screen.getByRole("button", { name: "Mark episode unwatched" }))
+
+    await waitFor(() => {
+      expect(updateEpisodeWatchState).toHaveBeenCalledWith({
+        episodeId: "conn-1:plex:episode-101",
+        watched: false,
+      })
+    })
+  })
+
+  it("calls season and series bulk watch mutations", async () => {
+    const updateSeasonWatchState = vi.fn().mockResolvedValue({ status: "partial" })
+    const updateSeriesWatchState = vi.fn().mockResolvedValue({ status: "succeeded" })
+    mockUseSeriesEpisodes.mockReturnValue({
+      data: { episodes: EPISODES },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isFetched: true,
+      updateEpisodeWatchState: vi.fn(),
+      updateSeasonWatchState,
+      updateSeriesWatchState,
+      isUpdating: false,
+    } as ReturnType<typeof useSeriesEpisodes>)
+
+    renderPage()
+    fireEvent.click(screen.getByRole("button", { name: "Mark season watched" }))
+    fireEvent.click(screen.getByRole("button", { name: "Mark series watched" }))
+
+    await waitFor(() => {
+      expect(updateSeasonWatchState).toHaveBeenCalledWith({
+        seasonIndex: 1,
+        watched: true,
+      })
+      expect(updateSeriesWatchState).toHaveBeenCalledWith({ watched: true })
+    })
+  })
+
+  it("shows actionable toast on auth/provider failures", async () => {
+    const updateEpisodeWatchState = vi.fn().mockResolvedValue({
+      status: "failed",
+      error_code: "auth",
+    })
+    mockUseSeriesEpisodes.mockReturnValue({
+      data: { episodes: EPISODES },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isFetched: true,
+      updateEpisodeWatchState,
+      updateSeasonWatchState: vi.fn(),
+      updateSeriesWatchState: vi.fn(),
+      isUpdating: false,
+    } as ReturnType<typeof useSeriesEpisodes>)
+
+    renderPage()
+    fireEvent.click(screen.getByRole("button", { name: "Mark episode watched" }))
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith(
+        "Could not update watch status. Please reconnect your provider and try again.",
+      )
+    })
   })
 })
