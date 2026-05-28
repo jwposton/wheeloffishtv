@@ -433,7 +433,7 @@ export function TwoPanePicker({
   }
 
   function handleViewSeries(seriesId: string) {
-    const returnTo = playlistId ? `/playlists/${playlistId}/edit` : "/playlists/create"
+    const returnTo = playlistId ? `/playlists/${playlistId}` : "/playlists/new"
     navigate(
       `${seriesDetailRoute(seriesId)}&origin=playlist-edit&from=${encodeURIComponent(returnTo)}`,
     )

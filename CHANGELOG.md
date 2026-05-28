@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-28
+
+Stable release: catalog watch-state mutations, series detail controls, and playlist edit parity shipped since `v0.1.8`.
+
+### Added
+
+- **Watch-state API:** `POST /api/v1/catalog/watch-state` for episode, season, and series targets (watched / unwatched) with normalized response envelopes, bulk partial-failure reporting, and auth guards on connection ownership
+- **Provider adapters:** Plex and Jellyfin implementations behind a shared typed mutation contract
+- **Series detail:** grouped season watch/unwatch affordances with post-mutation reconciliation
+- **Global progress:** watch-state mutation banner persists across route changes until the request finishes
+- **Playlist edit:** **View series** from in-playlist row menus; origin-aware back navigation to playlist edit
+- **Playlist edit:** session-added shows pinned to the top of the in-playlist pane with a transient **New** badge (no scroll jump on add)
+- **Playlist settings:** **Save Settings** / **Cancel** apply only to settings (name, episode count, slot allocation, completion policy, refresh); add/remove shows still save immediately
+- **Playlist settings:** contextual field help; refresh hint uses install `WOF_REBUILD_CRON` and `WOF_INSTALL_TIMEZONE` via `install_schedule` on `GET /api/v1/auth/me`; slot allocation **?** popup explains Wild / Balanced / Round-robin
+
+### Fixed
+
+- **Up Next / resume:** Season 0 specials are ordered after normal seasons when choosing the next unwatched episode (was treated like a regular season)
+- **Playlist edit:** scroll position no longer jumps to top when adding a show during the same session
+
 ## [0.1.8] - 2026-05-27
 
 ### Fixed

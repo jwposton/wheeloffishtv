@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import type { Episode } from "@/api/types"
 import { ResumePreview } from "@/components/browse/ResumePreview"
 import { AddToPlaylistMenu } from "@/components/playlists/AddToPlaylistMenu"
 import { SeriesMetadataHero } from "@/components/series/SeriesMetadataHero"
@@ -85,8 +86,9 @@ export function SeriesDetailPage() {
   )
 
   const authReady = !authLoading && Boolean(connectionId)
-  const backHref = from && from.startsWith("/") ? from : "/browse"
-  const backLabel = origin === "playlist-edit" ? "Back to Playlist" : "Back to Library"
+  const isPlaylistOrigin = origin === "playlist-edit" || origin === "playlist-view"
+  const backHref = isPlaylistOrigin && from && from.startsWith("/") ? from : "/browse"
+  const backLabel = isPlaylistOrigin ? "Back to Playlist" : "Back to Library"
 
   const seriesQuery = useSeriesDetail(connectionId, seriesId, { enabled: authReady })
   const series = seriesQuery.data
@@ -110,7 +112,7 @@ export function SeriesDetailPage() {
   }, [episodesQuery.data?.episodes, resumeQuery.data?.episode_id])
 
   const groupedEpisodes = useMemo(() => {
-    const grouped = new Map<number, typeof episodesQuery.data.episodes>()
+    const grouped = new Map<number, Episode[]>()
     for (const episode of episodesQuery.data?.episodes ?? []) {
       const bucket = grouped.get(episode.season_index)
       if (bucket) {

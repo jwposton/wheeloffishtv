@@ -93,6 +93,18 @@ def test_specials_ordered_after_season_finale() -> None:
     assert ids.index("s00e1") < ids.index("s2e1")
 
 
+def test_season_zero_without_special_flag_orders_after_main_seasons() -> None:
+    episodes = [
+        _episode("s00e14", 0, 14),
+        _episode("s1e1", 1, 1),
+        _episode("s1e2", 1, 2),
+    ]
+    cursor = compute_resume(episodes, on_deck=None, series_id="series-1")
+
+    assert cursor.episode_id == "s1e1"
+    assert cursor.source == "earliest_unfinished"
+
+
 def test_earliest_unfinished_when_on_deck_behind() -> None:
     episodes = [
         _episode("s1e1", 1, 1, percent=100, played=True),

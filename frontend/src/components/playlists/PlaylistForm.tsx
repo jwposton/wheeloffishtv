@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { CircleHelpIcon } from "lucide-react"
 
 import { useRemoveConfirmSession } from "@/hooks/useRemoveConfirmSession"
 import { useAuth } from "@/hooks/useAuth"
@@ -6,13 +7,20 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 import {
   TwoPanePicker,
   type SeriesRow,
 } from "@/components/playlists/TwoPanePicker"
 import {
+  SLOT_ALLOCATION_HELP,
   SLOT_ALLOCATION_LABELS,
   formatRefreshScheduleHelp,
   useCreatePlaylist,
@@ -78,13 +86,61 @@ function FieldHelp({ children }: { children: string }) {
   return <p className="text-xs text-muted-foreground">{children}</p>
 }
 
+function FieldLabelWithHelp({
+  htmlFor,
+  label,
+  children,
+}: {
+  htmlFor?: string
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {htmlFor ? <Label htmlFor={htmlFor}>{label}</Label> : <span className="text-sm font-medium">{label}</span>}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          type="button"
+          className={cn(
+            "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground",
+            "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          )}
+          aria-label={`${label} help`}
+        >
+          <CircleHelpIcon className="size-3.5" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="max-w-xs p-3 text-xs leading-relaxed"
+          align="start"
+          sideOffset={6}
+        >
+          {children}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
+
+type PlaylistFormSections = "all" | "settings" | "series"
+
 interface PlaylistFormProps {
   mode: "create" | "edit"
   playlist?: PlaylistDetailResponse
   initialRows?: SeriesRow[]
+  /** When embedded on the playlist page, settings open in a sheet (`settings` / `series`). */
+  sections?: PlaylistFormSections
+  onSettingsSaved?: () => void
+  onSettingsCancel?: () => void
 }
 
-export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps) {
+export function PlaylistForm({
+  mode,
+  playlist,
+  initialRows,
+  sections = "all",
+  onSettingsSaved,
+  onSettingsCancel,
+}: PlaylistFormProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const createMutation = useCreatePlaylist()
@@ -199,9 +255,15 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
       baselineRef.current = nextSettings
       setSettings(nextSettings)
       toast.success("Playlist settings saved")
+      onSettingsSaved?.()
     } catch {
       toast.error("Failed to save playlist settings")
     }
+  }
+
+  function handleCancelSettingsClick() {
+    handleCancelSettings()
+    onSettingsCancel?.()
   }
 
   async function handleCreateSubmit(e: React.FormEvent) {
@@ -249,44 +311,60 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
 
   const settingsPending = updateMutation.isPending
   const createPending = createMutation.isPending
+  const showSettings = sections === "all" || sections === "settings"
+  const showSeries = sections === "all" || sections === "series"
+  const settingsInSheet = sections === "settings"
+
+  const saveCancelBar =
+    mode === "edit" && showSettings ? (
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          settingsInSheet ? "sticky bottom-0 mt-6 border-t bg-popover pt-4" : "",
+        )}
+      >
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => void handleSaveSettings()}
+          disabled={settingsPending || rowMutationsPending}
+        >
+          {settingsPending ? "Saving…" : "Save Settings"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleCancelSettingsClick}
+          disabled={settingsPending}
+        >
+          Cancel
+        </Button>
+      </div>
+    ) : null
 
   return (
     <form
       onSubmit={mode === "create" ? (e) => void handleCreateSubmit(e) : (e) => e.preventDefault()}
-      className="flex flex-col gap-6 pb-20"
+      className={cn("flex flex-col gap-6", sections === "all" && mode === "create" ? "pb-20" : "")}
     >
-      <section className="flex flex-col gap-4 rounded-xl border bg-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      {showSettings ? (
+      <section
+        className={cn(
+          "flex flex-col gap-4",
+          !settingsInSheet && "rounded-xl border bg-card p-4",
+        )}
+      >
+        {!settingsInSheet ? (
           <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
             Playlist settings
           </h3>
-          {mode === "edit" ? (
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void handleSaveSettings()}
-                disabled={settingsPending || rowMutationsPending}
-              >
-                {settingsPending ? "Saving…" : "Save Settings"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleCancelSettings}
-                disabled={settingsPending}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : null}
-        </div>
+        ) : null}
 
         <div className="grid gap-4">
           <div className="flex flex-col gap-1">
             <Label htmlFor="playlist-name">Name</Label>
-            <FieldHelp>Display name for this playlist in Wheel of Fish and on your media server.</FieldHelp>
+            <FieldHelp>Display name for this playlist.</FieldHelp>
             <Input
               id="playlist-name"
               value={settings.name}
@@ -326,8 +404,16 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
             </div>
 
             <div className="flex flex-col gap-1">
-              <Label htmlFor="slot-allocation">Slot allocation</Label>
-              <FieldHelp>How episodes are distributed across shows when rebuilding.</FieldHelp>
+              <FieldLabelWithHelp htmlFor="slot-allocation" label="Slot allocation">
+                <ul className="flex flex-col gap-2">
+                  {SLOT_ALLOCATION_OPTIONS.map((key) => (
+                    <li key={key}>
+                      <span className="font-medium">{SLOT_ALLOCATION_LABELS[key]}:</span>{" "}
+                      {SLOT_ALLOCATION_HELP[key]}
+                    </li>
+                  ))}
+                </ul>
+              </FieldLabelWithHelp>
               <select
                 id="slot-allocation"
                 value={settings.slotAllocation}
@@ -424,8 +510,11 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
             </div>
           )}
         </div>
+        {settingsInSheet ? saveCancelBar : null}
       </section>
+      ) : null}
 
+      {showSeries ? (
       <section className="flex flex-col gap-4 rounded-xl border bg-card p-4">
         <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Series</h3>
         <FieldHelp>
@@ -455,6 +544,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
         )}
         {errors.rows && <p className="text-xs text-destructive">{errors.rows}</p>}
       </section>
+      ) : null}
 
       {mode === "create" ? (
         <div className="sticky bottom-0 z-10 -mx-4 mt-4 flex items-center gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -465,17 +555,7 @@ export function PlaylistForm({ mode, playlist, initialRows }: PlaylistFormProps)
             Cancel
           </Button>
         </div>
-      ) : (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(playlist ? `/playlists/${playlist.id}` : "/playlists")}
-          >
-            Back to playlist
-          </Button>
-        </div>
-      )}
+      ) : null}
     </form>
   )
 }

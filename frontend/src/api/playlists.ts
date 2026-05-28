@@ -25,6 +25,12 @@ export const SLOT_ALLOCATION_LABELS: Record<SlotAllocation, string> = {
   round_robin: "Round-robin",
 }
 
+export const SLOT_ALLOCATION_HELP: Record<SlotAllocation, string> = {
+  wild: "Each slot independently picks a random active show.",
+  balanced: "Splits slots evenly across shows, then shuffles the order.",
+  round_robin: "Rotates through shows in turn, starting from a random show.",
+}
+
 export interface SnapshotEpisode {
   episode_id: string
   title: string
@@ -337,7 +343,7 @@ export function formatCadence(item: {
   return dayName ? `Weekly \u00b7 ${dayName}` : "Weekly"
 }
 
-/** Operator-facing refresh help: playlist cadence + install nightly check time. */
+/** Operator-facing refresh hint: cadence, optional DOW, install check time. */
 export function formatRefreshScheduleHelp(
   playlist: {
     refresh_cadence: RefreshCadence
@@ -345,6 +351,14 @@ export function formatRefreshScheduleHelp(
   },
   install: { rebuild_cron: string; install_timezone: string },
 ): string {
-  const cadenceLabel = formatCadence(playlist)
-  return `Rebuilds on a ${cadenceLabel.toLowerCase()} cadence. Eligible playlists are checked during the nightly rebuild at ${install.rebuild_cron} (${install.install_timezone}).`
+  const { rebuild_cron: time, install_timezone: timezone } = install
+  if (playlist.refresh_cadence === "daily") {
+    return `Refreshes playlist daily at ${time} ${timezone}`
+  }
+  const dayName =
+    playlist.refresh_day_of_week != null
+      ? WEEKDAY_NAMES[playlist.refresh_day_of_week]
+      : null
+  const dowSegment = dayName ? `${dayName} at ` : ""
+  return `Refreshes playlist weekly at ${dowSegment}${time} ${timezone}`
 }

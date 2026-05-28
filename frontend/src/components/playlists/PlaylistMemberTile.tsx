@@ -119,7 +119,7 @@ export function PlaylistMemberTile({
                     onModeChange={onModeChange}
                     onPolicyChange={onPolicyChange}
                     onRemoveRequest={requestRemove}
-                  onViewSeries={onViewSeries}
+                    onViewSeries={onViewSeries}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>

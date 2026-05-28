@@ -6,6 +6,7 @@ vi.mock("@/api/client", () => ({
 
 import { fetchJson } from "@/api/client"
 import {
+  formatRefreshScheduleHelp,
   patchPlaylistRow,
   removePlaylistRow,
 } from "@/api/playlists"
@@ -17,6 +18,28 @@ const GUID = "643cbf9ec1962a0897b7f6dd"
 const PLEX_SERIES_ID = `${CONNECTION}:plex:plex%3A%2F%2Fshow%2F${GUID}`
 const PLAYLIST_ID = "pl-test-123"
 const PLAIN_SERIES_ID = "conn-aaaa::plex::show-alpha"
+
+describe("formatRefreshScheduleHelp", () => {
+  const install = { rebuild_cron: "04:00", install_timezone: "America/Chicago" }
+
+  it("formats daily refresh with install time and timezone", () => {
+    expect(
+      formatRefreshScheduleHelp(
+        { refresh_cadence: "daily", refresh_day_of_week: null },
+        install,
+      ),
+    ).toBe("Refreshes playlist daily at 04:00 America/Chicago")
+  })
+
+  it("formats weekly refresh with day of week before install time", () => {
+    expect(
+      formatRefreshScheduleHelp(
+        { refresh_cadence: "weekly", refresh_day_of_week: 0 },
+        install,
+      ),
+    ).toBe("Refreshes playlist weekly at Monday at 04:00 America/Chicago")
+  })
+})
 
 describe("playlist row mutations", () => {
   beforeEach(() => {

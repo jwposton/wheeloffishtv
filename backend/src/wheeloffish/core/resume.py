@@ -35,7 +35,7 @@ def order_episodes(episodes: list[Episode]) -> list[Episode]:
     specials_by_season: dict[int, list[Episode]] = {}
 
     for ep in episodes:
-        if ep.is_special:
+        if ep.is_special or ep.season_index == 0:
             target_season = ep.special_for_season if ep.special_for_season is not None else 0
             specials_by_season.setdefault(target_season, []).append(ep)
         else:

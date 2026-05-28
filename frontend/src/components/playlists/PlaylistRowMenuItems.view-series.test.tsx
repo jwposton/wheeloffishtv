@@ -14,7 +14,38 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const navigateMock = vi.fn()
-const appendMutateAsyncMock = vi.fn().mockResolvedValue(undefined)
+
+const INITIAL_ROWS: SeriesRow[] = [
+  {
+    series_id: "series-existing",
+    series_title: "Existing Show",
+    thumb_url: null,
+    mode: "ordered",
+    completion_policy: "remove",
+  },
+]
+
+const appendMutateAsyncMock = vi.fn().mockImplementation(async () => ({
+  rows: [
+    ...INITIAL_ROWS.map((row) => ({
+      series_id: row.series_id,
+      mode: row.mode,
+      completion_policy: row.completion_policy,
+      completion_event: "series_complete" as const,
+      series_title: row.series_title,
+      thumb_url: row.thumb_url,
+    })),
+    {
+      series_id: "series-new",
+      mode: "ordered" as const,
+      completion_policy: "remove" as const,
+      completion_event: "series_complete" as const,
+      series_title: "Brand New Show",
+      thumb_url: null,
+    },
+  ],
+}))
+
 const queryItems = [
   {
     id: "series-new",
@@ -67,16 +98,6 @@ const MENU_ROW: SeriesRow = {
   completion_policy: "remove",
 }
 
-const INITIAL_ROWS: SeriesRow[] = [
-  {
-    series_id: "series-existing",
-    series_title: "Existing Show",
-    thumb_url: null,
-    mode: "ordered",
-    completion_policy: "remove",
-  },
-]
-
 function makeQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })
 }
@@ -121,6 +142,7 @@ describe("Playlist row view-series parity", () => {
         dispatchEvent: vi.fn(),
       })),
     )
+    vi.stubGlobal("scrollTo", vi.fn())
   })
 
   it("renders view series action and forwards series id", async () => {
@@ -153,6 +175,7 @@ describe("Playlist row view-series parity", () => {
       }),
     )
     expect(await screen.findByText("New")).toBeInTheDocument()
+    await waitFor(() => expect(window.scrollTo).toHaveBeenCalled())
 
     const posterLabels = screen.getAllByLabelText(/Show/)
     expect(posterLabels[0]?.getAttribute("aria-label")).toContain("Brand New Show")
@@ -171,7 +194,7 @@ describe("Playlist row view-series parity", () => {
     fireEvent.click(await screen.findByText("View series"))
 
     expect(navigateMock).toHaveBeenCalledWith(
-      "/series?id=series-existing&origin=playlist-edit&from=%2Fplaylists%2Fplaylist-123%2Fedit",
+      "/series?id=series-existing&origin=playlist-edit&from=%2Fplaylists%2Fplaylist-123",
     )
   })
 })

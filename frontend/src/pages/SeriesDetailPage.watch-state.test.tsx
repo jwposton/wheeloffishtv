@@ -172,7 +172,7 @@ describe("SeriesDetailPage watch-state", () => {
       updateEpisodeWatchState: vi.fn(),
       updateSeasonWatchState: vi.fn(),
       updateSeriesWatchState: vi.fn(),
-    } as ReturnType<typeof useSeriesEpisodes>)
+    } as unknown as ReturnType<typeof useSeriesEpisodes>)
   })
 
   it("groups episodes by season and renders specials after numbered seasons", () => {
@@ -198,11 +198,11 @@ describe("SeriesDetailPage watch-state", () => {
     const playlistViewRender = renderPage(
       "/series?id=conn-1%3Aplex%3Aseries-spy&origin=playlist-view&from=%2Fplaylists%2Fabc",
     )
-    expect(screen.getByRole("link", { name: "Back to Library" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Back to Playlist" })).toBeInTheDocument()
     playlistViewRender.unmount()
 
     renderPage(
-      "/series?id=conn-1%3Aplex%3Aseries-spy&origin=playlist-edit&from=%2Fplaylists%2Fabc%2Fedit",
+      "/series?id=conn-1%3Aplex%3Aseries-spy&origin=playlist-edit&from=%2Fplaylists%2Fabc",
     )
     expect(screen.getByRole("link", { name: "Back to Playlist" })).toBeInTheDocument()
 
@@ -221,7 +221,7 @@ describe("SeriesDetailPage watch-state", () => {
       updateSeasonWatchState: vi.fn(),
       updateSeriesWatchState: vi.fn(),
       isUpdating: false,
-    } as ReturnType<typeof useSeriesEpisodes>)
+    } as unknown as ReturnType<typeof useSeriesEpisodes>)
 
     renderPage()
     fireEvent.click(screen.getByRole("button", { name: "Mark episode unwatched" }))
@@ -247,7 +247,7 @@ describe("SeriesDetailPage watch-state", () => {
       updateSeasonWatchState,
       updateSeriesWatchState,
       isUpdating: false,
-    } as ReturnType<typeof useSeriesEpisodes>)
+    } as unknown as ReturnType<typeof useSeriesEpisodes>)
 
     renderPage()
     fireEvent.click(screen.getAllByRole("button", { name: "Mark season watched" })[0])
@@ -277,7 +277,7 @@ describe("SeriesDetailPage watch-state", () => {
       updateSeasonWatchState: vi.fn(),
       updateSeriesWatchState: vi.fn(),
       isUpdating: false,
-    } as ReturnType<typeof useSeriesEpisodes>)
+    } as unknown as ReturnType<typeof useSeriesEpisodes>)
 
     renderPage()
     fireEvent.click(screen.getAllByRole("button", { name: "Mark episode watched" })[0])

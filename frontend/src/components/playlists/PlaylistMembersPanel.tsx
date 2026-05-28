@@ -1,5 +1,6 @@
 import { useMemo } from "react"
 import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
 
 import type { PlaylistSeriesRowResponse } from "@/api/playlists"
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/api/playlists"
 import { PlaylistMemberTile } from "@/components/playlists/PlaylistMemberTile"
 import type { SeriesRow } from "@/components/playlists/RowSettingsSheet"
+import { seriesDetailRoute } from "@/lib/seriesId"
 
 function toSeriesRow(row: PlaylistSeriesRowResponse): SeriesRow {
   return {
@@ -34,6 +36,7 @@ export function PlaylistMembersPanel({
   skipRemoveConfirm = false,
   onEnableSkipRemoveConfirm,
 }: PlaylistMembersPanelProps) {
+  const navigate = useNavigate()
   const removeMutation = useRemovePlaylistRow()
   const patchMutation = usePatchPlaylistRow()
 
@@ -77,6 +80,12 @@ export function PlaylistMembersPanel({
     void handlePatch({ ...row, completion_policy: policy })
   }
 
+  function handleViewSeries(seriesId: string) {
+    navigate(
+      `${seriesDetailRoute(seriesId)}&origin=playlist-view&from=${encodeURIComponent(`/playlists/${playlistId}`)}`,
+    )
+  }
+
   if (displayRows.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -94,6 +103,7 @@ export function PlaylistMembersPanel({
           onModeChange={(mode) => handleModeChange(row, mode)}
           onPolicyChange={(policy) => handlePolicyChange(row, policy)}
           onRemove={() => void handleRemove(row.series_id, row.series_title)}
+          onViewSeries={handleViewSeries}
           skipRemoveConfirm={skipRemoveConfirm}
           onEnableSkipRemoveConfirm={onEnableSkipRemoveConfirm}
         />

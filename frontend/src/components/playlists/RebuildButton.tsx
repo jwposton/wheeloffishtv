@@ -1,6 +1,9 @@
-import { WheelIcon } from "@/components/icons/WheelIcon"
+import { RebuildWheelIcon } from "@/components/playlists/RebuildWheelIcon"
+import {
+  playlistActionButtonClass,
+  playlistActionLabelClass,
+} from "@/components/playlists/playlistActionButton"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 interface RebuildButtonProps {
   onClick: () => void
@@ -23,15 +26,10 @@ export function RebuildButton({
       disabled={spinning}
       aria-busy={spinning}
       aria-label={label}
-      className={cn(
-        "h-auto min-w-[4.75rem] flex-col gap-1.5 px-3 py-2.5",
-        className,
-      )}
+      className={playlistActionButtonClass(className)}
     >
-      <WheelIcon spinning={spinning} className="size-10" />
-      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.12em]">
-        {label}
-      </span>
+      <RebuildWheelIcon spinning={spinning} />
+      <span className={playlistActionLabelClass}>{label}</span>
     </Button>
   )
 }

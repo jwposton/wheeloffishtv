@@ -3,14 +3,20 @@ status: complete
 phase: 09-series-detail-watch-state-from-playlists-library-view-edit-p
 source: [09-01-SUMMARY.md, 09-02-SUMMARY.md, 09-03-SUMMARY.md]
 started: 2026-05-28T03:11:00Z
-updated: 2026-05-28T04:09:00Z
+updated: 2026-05-28T04:30:00Z
 ---
 
-## Current Test
-
-[testing complete]
-
 ## Tests
+
+### 0. Save Settings scope (gap closure)
+expected: Add/remove shows save immediately; Save Settings and Cancel apply only to playlist settings (name, counts, allocation, policies, refresh).
+result: pass
+
+### 0b. Playlist settings help text and configured refresh time (gap closure)
+expected: |
+  Refresh hint reads like "Refreshes playlist daily|weekly at [DOW if weekly] at {time} {timezone}".
+  Slot allocation has a ? icon that opens a popup explaining Wild, Balanced, and Round-robin.
+result: pass
 
 ### 1. View series action from playlist edit row
 expected: In playlist edit, opening a row menu in the In playlist pane shows a View series action that navigates to the shared series detail page for that show.
@@ -39,30 +45,19 @@ reason: "skip"
 
 ## Summary
 
-total: 6
-passed: 5
-issues: 1
+total: 8
+passed: 7
+issues: 0
 pending: 0
 skipped: 1
 blocked: 0
 
 ## Gaps
 
-- truth: "Show add/remove actions remain immediate in view/edit flows, while playlist settings have explicit Save Settings / Cancel controls."
-  status: failed
-  reason: "User reported: changed requirement — keep add/remove immediate as before; move Save/Cancel to playlist settings only with explicit labels."
-  severity: major
-  test: 0
-  artifacts: []
-  missing:
-    - "Revert staged-membership behavior so show add/remove persists immediately in view/edit flows"
-    - "Scope Save/Cancel to playlist settings section only"
-    - "Rename controls to explicit 'Save Settings' and 'Cancel' within playlist settings UI"
-
 ## Gap Closure Execution Notes (2026-05-27)
 
-- Implemented fix for test 0 in `backend/src/wheeloffish/core/resume.py` and added regression in `backend/tests/unit/test_resume_service.py`.
+- Implemented fix for S0 specials ordering in `backend/src/wheeloffish/core/resume.py` and added regression in `backend/tests/unit/test_resume_service.py`.
 - Implemented playlist detail "View series" parity and origin-aware back behavior for tests 1-2.
 - Implemented no-scroll-jump guard for session-priority add flow (test 3).
 - Implemented global watch-state mutation progress banner that persists across route changes (tests 4-5).
-- Automated suites covering these paths pass locally; rerun UAT checklist to convert status from failed to passed.
+- Playlist settings Save/Cancel scope, immediate membership mutations, `install_schedule` on auth me, simplified refresh hint, and slot-allocation ? help (tests 0, 0b).

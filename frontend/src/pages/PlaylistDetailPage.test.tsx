@@ -6,6 +6,20 @@ import { describe, expect, it, vi, beforeEach } from "vitest"
 import { PlaylistDetailPage } from "./PlaylistDetailPage"
 import type { PlaylistDetailResponse } from "@/api/playlists"
 
+const navigateMock = vi.fn()
+
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>()
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  }
+})
+
+vi.mock("@/components/playlists/PlaylistForm", () => ({
+  PlaylistForm: () => <div data-testid="playlist-form" />,
+}))
+
 vi.mock("@/api/playlists", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/playlists")>()
   return {
@@ -95,6 +109,7 @@ function renderDetailPage(playlistId = "pl-001") {
 
 describe("PlaylistDetailPage", () => {
   beforeEach(() => {
+    navigateMock.mockReset()
     mockUsePlaylist.mockReturnValue({
       data: MOCK_PLAYLIST,
       isLoading: false,
@@ -149,10 +164,9 @@ describe("PlaylistDetailPage", () => {
     expect(screen.getByText("Episode Two")).toBeInTheDocument()
   })
 
-  it("renders playlist member shows in the left column", () => {
+  it("renders the unified playlist editor", () => {
     renderDetailPage()
-    expect(screen.getByText("Shows (1)")).toBeInTheDocument()
-    expect(screen.getAllByText("Great Show").length).toBeGreaterThan(0)
+    expect(screen.getByTestId("playlist-form")).toBeInTheDocument()
   })
 
   it("shows writeback status and open link", () => {
@@ -225,7 +239,15 @@ describe("PlaylistDetailPage", () => {
 
   it("renders Delete button to trigger confirmation", () => {
     renderDetailPage()
-    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Delete playlist" })).toBeInTheDocument()
+  })
+
+  it("renders Settings and rebuild actions in the header row", () => {
+    renderDetailPage()
+    expect(screen.getByRole("button", { name: "Playlist settings" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Rebuild" })).toBeInTheDocument()
+    expect(screen.getByText("Last rebuild")).toBeInTheDocument()
+    expect(screen.getByText("Plex Sync Status")).toBeInTheDocument()
   })
 
   it("shows loading skeletons when playlist is loading", () => {

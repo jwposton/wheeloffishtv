@@ -11,9 +11,15 @@ vi.mock("@/hooks/useAuth", () => ({
   authQueryKey: ["auth", "me"],
 }))
 
+vi.mock("@/hooks/useSeriesEpisodes", () => ({
+  useWatchMutationProgress: vi.fn(),
+}))
+
 import { useAuth } from "@/hooks/useAuth"
+import { useWatchMutationProgress } from "@/hooks/useSeriesEpisodes"
 
 const mockUseAuth = vi.mocked(useAuth)
+const mockUseWatchMutationProgress = vi.mocked(useWatchMutationProgress)
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +36,14 @@ describe("App", () => {
       isError: true,
       error: new Error("unauthenticated"),
       refetch: vi.fn(),
+    })
+    mockUseWatchMutationProgress.mockReturnValue({
+      visible: false,
+      status: "running",
+      scope: null,
+      action: null,
+      targetLabel: null,
+      message: null,
     })
 
     vi.stubGlobal(
@@ -82,5 +96,29 @@ describe("App", () => {
         screen.getByRole("button", { name: "Sign in with Plex" }),
       ).toBeInTheDocument()
     })
+  })
+
+  it("renders global watch progress banner when mutation is running", async () => {
+    mockUseWatchMutationProgress.mockReturnValue({
+      visible: true,
+      status: "running",
+      scope: "series",
+      action: "watched",
+      targetLabel: "series",
+      message: null,
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/login"]}>
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(
+      screen.getByText("Running mark watched for series..."),
+    ).toBeInTheDocument()
   })
 })

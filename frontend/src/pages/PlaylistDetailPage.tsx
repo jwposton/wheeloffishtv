@@ -1,81 +1,19 @@
 import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { AlertDialog } from "@base-ui/react/alert-dialog"
+import { ArrowLeftIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { PlaylistDeleteTrigger } from "@/components/playlists/PlaylistDeleteDialog"
+import { PlaylistForm } from "@/components/playlists/PlaylistForm"
+import { PlaylistSettingsButton } from "@/components/playlists/PlaylistSettingsButton"
+import { PlaylistSettingsSheet } from "@/components/playlists/PlaylistSettingsSheet"
 import { RebuildButton } from "@/components/playlists/RebuildButton"
 import { RebuildBanner } from "@/components/playlists/RebuildBanner"
 import { OutputList } from "@/components/playlists/OutputList"
-import { PlaylistMembersPanel } from "@/components/playlists/PlaylistMembersPanel"
 import { usePlaylist, useDeletePlaylist, useRebuildPlaylist } from "@/api/playlists"
-import { useRemoveConfirmSession } from "@/hooks/useRemoveConfirmSession"
 import { isRebuildInProgress } from "@/lib/rebuild"
-import { cn } from "@/lib/utils"
-
-function DeleteConfirmDialog({
-  playlistName,
-  onConfirm,
-  isPending,
-}: {
-  playlistName: string
-  onConfirm: () => void
-  isPending: boolean
-}) {
-  return (
-    <AlertDialog.Root>
-      <AlertDialog.Trigger
-        render={
-          <Button variant="destructive" size="sm" disabled={isPending}>
-            Delete
-          </Button>
-        }
-      />
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop
-          className={cn(
-            "fixed inset-0 z-50 bg-black/40 transition-opacity duration-150",
-            "data-ending-style:opacity-0 data-starting-style:opacity-0",
-          )}
-        />
-        <AlertDialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <AlertDialog.Popup
-            className={cn(
-              "w-full max-w-sm rounded-xl border bg-popover p-6 shadow-lg",
-              "transition-all duration-150",
-              "data-ending-style:opacity-0 data-ending-style:scale-95",
-              "data-starting-style:opacity-0 data-starting-style:scale-95",
-            )}
-          >
-            <AlertDialog.Title className="text-base font-semibold">
-              Delete playlist
-            </AlertDialog.Title>
-            <AlertDialog.Description className="mt-2 text-sm text-muted-foreground">
-              This removes the playlist and its rebuild history. This cannot be undone.
-            </AlertDialog.Description>
-            <p className="mt-1 text-sm font-medium truncate">{playlistName}</p>
-            <div className="mt-4 flex justify-end gap-2">
-              <AlertDialog.Close
-                render={<Button variant="outline" size="sm" />}
-              >
-                Cancel
-              </AlertDialog.Close>
-              <AlertDialog.Close
-                render={
-                  <Button variant="destructive" size="sm" disabled={isPending} />
-                }
-                onClick={onConfirm}
-              >
-                {isPending ? "Deleting…" : "Delete playlist"}
-              </AlertDialog.Close>
-            </div>
-          </AlertDialog.Popup>
-        </AlertDialog.Viewport>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
-  )
-}
 
 export function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -84,13 +22,14 @@ export function PlaylistDetailPage() {
   const deleteMutation = useDeletePlaylist()
   const rebuildMutation = useRebuildPlaylist()
   const [isDeleting, setIsDeleting] = useState(false)
-  const {
-    skipRemoveConfirm,
-    enableSkipRemoveConfirm,
-  } = useRemoveConfirmSession()
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   async function handleDelete() {
     if (!id) return
+    const confirmed = window.confirm(
+      `Delete playlist \"${playlist?.name ?? "this playlist"}\"? This cannot be undone.`,
+    )
+    if (!confirmed) return
     setIsDeleting(true)
     try {
       await deleteMutation.mutateAsync(id)
@@ -125,12 +64,14 @@ export function PlaylistDetailPage() {
   if (isLoading) {
     return (
       <div className="mx-auto flex max-w-6xl flex-col gap-4">
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-20 w-full rounded-xl" />
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(240px,1fr)]">
-          <Skeleton className="h-64 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-8 w-32" />
+        <div className="flex justify-between gap-4">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-16 w-40" />
         </div>
+        <Skeleton className="h-28 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-48 w-full rounded-xl" />
       </div>
     )
   }
@@ -145,26 +86,28 @@ export function PlaylistDetailPage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1 min-w-0">
-          <h2 className="truncate text-2xl">{playlist.name}</h2>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      <Button
+        size="sm"
+        variant="ghost"
+        className="-ml-2 w-fit gap-1.5 text-muted-foreground"
+        render={<Link to="/playlists" />}
+      >
+        <ArrowLeftIcon className="size-4" aria-hidden />
+        Playlists
+      </Button>
+
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="min-w-0 flex-1 truncate text-2xl font-semibold">{playlist.name}</h1>
+        <div className="flex shrink-0 items-start gap-2">
           <RebuildButton
             onClick={() => void handleRebuild()}
             spinning={rebuildMutation.isPending || isRebuildRunning}
           />
-          <Button
-            size="sm"
-            variant="outline"
-            render={<Link to={`/playlists/${playlist.id}/edit`} />}
-          >
-            Edit
-          </Button>
-          <DeleteConfirmDialog
-            playlistName={playlist.name}
-            onConfirm={() => void handleDelete()}
-            isPending={isDeleting}
+          <PlaylistSettingsButton onClick={() => setSettingsOpen(true)} />
+          <PlaylistDeleteTrigger
+            disabled={isDeleting}
+            className="cursor-pointer"
+            onClick={() => void handleDelete()}
           />
         </div>
       </div>
@@ -176,30 +119,25 @@ export function PlaylistDetailPage() {
         providerPlaylistOpenUrl={playlist.provider_playlist_open_url}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(240px,1fr)]">
-        <section className="flex flex-col gap-3">
-          <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-            Shows ({playlist.rows.length})
-          </h3>
-          <div className="wof-panel p-4">
-            <PlaylistMembersPanel
-              playlistId={playlist.id}
-              rows={playlist.rows}
-              skipRemoveConfirm={skipRemoveConfirm}
-              onEnableSkipRemoveConfirm={enableSkipRemoveConfirm}
-            />
-          </div>
-        </section>
+      <PlaylistForm mode="edit" playlist={playlist} sections="series" />
 
-        <section className="flex flex-col gap-3">
-          <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-            Output — {playlist.episode_count} episodes
-          </h3>
-          <div className="wof-panel p-4">
-            <OutputList episodes={playlist.current_snapshot} />
-          </div>
-        </section>
-      </div>
+      <PlaylistSettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        playlist={playlist}
+      />
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+          Current output — {playlist.episode_count} episodes
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Episodes from the last successful rebuild. Rebuild again to refresh this list.
+        </p>
+        <div className="wof-panel p-4">
+          <OutputList episodes={playlist.current_snapshot} />
+        </div>
+      </section>
     </div>
   )
 }

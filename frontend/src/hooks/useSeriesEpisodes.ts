@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useSyncExternalStore } from "react"
 
 import { ApiError, fetchJson } from "@/api/client"
 import type {
@@ -34,6 +35,85 @@ interface WatchMutationPayload {
   target_ids?: string[]
   scope: "episode" | "season" | "series"
   action: "watched" | "unwatched"
+}
+
+export interface WatchMutationProgressState {
+  visible: boolean
+  status: "running" | "succeeded" | "partial" | "failed"
+  scope: "episode" | "season" | "series" | null
+  action: "watched" | "unwatched" | null
+  targetLabel: string | null
+  message: string | null
+}
+
+const defaultProgressState: WatchMutationProgressState = {
+  visible: false,
+  status: "running",
+  scope: null,
+  action: null,
+  targetLabel: null,
+  message: null,
+}
+
+let watchMutationProgressState: WatchMutationProgressState = defaultProgressState
+const watchMutationProgressListeners = new Set<() => void>()
+
+function emitWatchMutationProgress() {
+  for (const listener of watchMutationProgressListeners) {
+    listener()
+  }
+}
+
+function setWatchMutationProgressState(next: WatchMutationProgressState) {
+  watchMutationProgressState = next
+  emitWatchMutationProgress()
+}
+
+export function setWatchMutationProgressRunning(
+  scope: "episode" | "season" | "series",
+  action: "watched" | "unwatched",
+  targetLabel: string,
+) {
+  setWatchMutationProgressState({
+    visible: true,
+    status: "running",
+    scope,
+    action,
+    targetLabel,
+    message: null,
+  })
+}
+
+export function setWatchMutationProgressResult(
+  result: WatchStateMutationResponse,
+  fallbackLabel: string,
+) {
+  setWatchMutationProgressState({
+    visible: true,
+    status: result.status,
+    scope: result.scope,
+    action: null,
+    targetLabel: fallbackLabel,
+    message: result.message,
+  })
+  window.setTimeout(() => {
+    setWatchMutationProgressState(defaultProgressState)
+  }, 3000)
+}
+
+export function clearWatchMutationProgress() {
+  setWatchMutationProgressState(defaultProgressState)
+}
+
+export function useWatchMutationProgress() {
+  return useSyncExternalStore(
+    (listener) => {
+      watchMutationProgressListeners.add(listener)
+      return () => watchMutationProgressListeners.delete(listener)
+    },
+    () => watchMutationProgressState,
+    () => watchMutationProgressState,
+  )
 }
 
 function postWatchMutation(
@@ -90,6 +170,11 @@ export function useSeriesEpisodes(
       episodeId: string
       watched: boolean
     }) => {
+      setWatchMutationProgressRunning(
+        "episode",
+        watched ? "watched" : "unwatched",
+        "episode",
+      )
       const prior = queryClient.getQueryData<EpisodesListResponse>(
         seriesEpisodesQueryKey(connectionId ?? "", seriesId ?? ""),
       )
@@ -118,6 +203,7 @@ export function useSeriesEpisodes(
           scope: "episode",
           action: watched ? "watched" : "unwatched",
         })
+        setWatchMutationProgressResult(result, "episode")
         await reconcileAfterMutation()
         return result
       } catch (error) {
@@ -126,6 +212,7 @@ export function useSeriesEpisodes(
           prior,
         )
         await reconcileAfterMutation()
+        clearWatchMutationProgress()
         throw error
       }
     },
@@ -139,32 +226,52 @@ export function useSeriesEpisodes(
       seasonIndex: number
       watched: boolean
     }) => {
+      setWatchMutationProgressRunning(
+        "season",
+        watched ? "watched" : "unwatched",
+        `season ${seasonIndex}`,
+      )
       const seasonEpisodeIds =
         episodesQuery.data?.episodes
           .filter((episode) => episode.season_index === seasonIndex)
           .map((episode) => episode.id) ?? []
-      return postWatchMutation(connectionId!, {
+      const result = await postWatchMutation(connectionId!, {
         target_ids: seasonEpisodeIds,
         scope: "season",
         action: watched ? "watched" : "unwatched",
       })
+      setWatchMutationProgressResult(result, `season ${seasonIndex}`)
+      return result
     },
     onSettled: async () => {
       await reconcileAfterMutation()
+    },
+    onError: () => {
+      clearWatchMutationProgress()
     },
   })
 
   const seriesMutation = useMutation({
     mutationFn: async ({ watched }: { watched: boolean }) => {
+      setWatchMutationProgressRunning(
+        "series",
+        watched ? "watched" : "unwatched",
+        "series",
+      )
       const allEpisodeIds = episodesQuery.data?.episodes.map((episode) => episode.id) ?? []
-      return postWatchMutation(connectionId!, {
+      const result = await postWatchMutation(connectionId!, {
         target_ids: allEpisodeIds,
         scope: "series",
         action: watched ? "watched" : "unwatched",
       })
+      setWatchMutationProgressResult(result, "series")
+      return result
     },
     onSettled: async () => {
       await reconcileAfterMutation()
+    },
+    onError: () => {
+      clearWatchMutationProgress()
     },
   })
 
