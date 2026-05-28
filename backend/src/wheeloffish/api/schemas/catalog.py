@@ -1,6 +1,9 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from wheeloffish.domain.dto import Library, Series
+from wheeloffish.integrations.base import WatchAction, WatchScope
 
 
 class SyncStatusEmbed(BaseModel):
@@ -32,3 +35,19 @@ class LibraryScopeResponse(BaseModel):
 
 class SessionCatalogRefreshResponse(BaseModel):
     sync: dict[str, SyncStatusEmbed]
+
+
+class WatchStateMutationRequest(BaseModel):
+    target_id: str
+    scope: WatchScope
+    action: WatchAction
+
+
+class WatchStateMutationResponse(BaseModel):
+    status: Literal["succeeded", "partial", "failed"]
+    scope: WatchScope
+    updated_count: int
+    failed_count: int
+    failed_ids: list[str] = Field(default_factory=list)
+    error_code: Literal["auth", "forbidden", "not_found", "provider_error"] | None = None
+    message: str

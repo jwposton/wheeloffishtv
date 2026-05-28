@@ -14,6 +14,8 @@ from wheeloffish.api.schemas.catalog import (
     SessionCatalogRefreshResponse,
     SyncStatusEmbed,
     SyncStatusResponse,
+    WatchStateMutationRequest,
+    WatchStateMutationResponse,
 )
 from wheeloffish.api.schemas.resume import (
     EpisodeResponse,
@@ -45,8 +47,8 @@ from wheeloffish.db.models.cached_series import CachedSeries
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.domain.dto import Episode, Library, ResumeCursor, Series
 from wheeloffish.domain.ids import canonical_composite_id, parse_composite_id
-from wheeloffish.integrations.base import MediaProvider
-from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.base import MediaProvider, WatchMutationRequest
+from wheeloffish.integrations.errors import ProviderError, ProviderNotFound, ProviderUnauthorized
 from wheeloffish.integrations.jellyfin.client import JellyfinProvider
 from wheeloffish.integrations.plex.client import PlexProvider
 
@@ -78,6 +80,24 @@ def _provider_error_to_http(err: ProviderError) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         detail={"code": err.code, "message": str(err) or err.code},
+    )
+
+
+def _watch_state_error_response(
+    *,
+    scope: str,
+    target_id: str,
+    error_code: Literal["auth", "forbidden", "not_found", "provider_error"],
+    message: str,
+) -> WatchStateMutationResponse:
+    return WatchStateMutationResponse(
+        status="failed",
+        scope=scope,
+        updated_count=0,
+        failed_count=1,
+        failed_ids=[target_id],
+        error_code=error_code,
+        message=message,
     )
 
 
@@ -552,3 +572,89 @@ async def get_series_resume(
         raise _provider_error_to_http(err) from err
     cursor = _resume_cursor(series_id, episodes, on_deck)
     return ResumePreviewResponse.from_cursor(cursor)
+
+
+@router.post(
+    "/connections/{connection_id}/watch-state",
+    response_model=WatchStateMutationResponse,
+)
+async def post_connection_watch_state(
+    connection_id: str,
+    body: WatchStateMutationRequest,
+    db: Session = Depends(get_db),
+    vault: SecretsVault = Depends(get_vault),
+    settings: Settings = Depends(get_settings_dep),
+    app_user_id: str = Depends(get_app_user_id),
+) -> WatchStateMutationResponse:
+    connection = _get_connection_or_404(db, connection_id)
+    try:
+        target_connection_id, _, _ = parse_composite_id(body.target_id)
+    except ValueError:
+        return _watch_state_error_response(
+            scope=body.scope,
+            target_id=body.target_id,
+            error_code="not_found",
+            message="Mutation target id is invalid",
+        )
+    if target_connection_id != connection_id:
+        return _watch_state_error_response(
+            scope=body.scope,
+            target_id=body.target_id,
+            error_code="forbidden",
+            message="Mutation target is outside this connection scope",
+        )
+
+    try:
+        provider = build_provider_for_user(
+            db, vault, connection, app_user_id, settings=settings
+        )
+    except HTTPException as err:
+        if isinstance(err.detail, dict) and err.detail.get("code") == "unauthorized":
+            return _watch_state_error_response(
+                scope=body.scope,
+                target_id=body.target_id,
+                error_code="auth",
+                message="Provider session is not authorized",
+            )
+        raise
+
+    request = body.model_dump()
+    try:
+        await provider.mutate_watch_state(
+            request=WatchMutationRequest.from_values(
+                target_id=request["target_id"],
+                scope=request["scope"],
+                action=request["action"],
+            )
+        )
+    except ProviderUnauthorized:
+        return _watch_state_error_response(
+            scope=body.scope,
+            target_id=body.target_id,
+            error_code="auth",
+            message="Provider session is not authorized",
+        )
+    except ProviderNotFound:
+        return _watch_state_error_response(
+            scope=body.scope,
+            target_id=body.target_id,
+            error_code="not_found",
+            message="Mutation target was not found by provider",
+        )
+    except ProviderError:
+        return _watch_state_error_response(
+            scope=body.scope,
+            target_id=body.target_id,
+            error_code="provider_error",
+            message="Provider rejected watch mutation request",
+        )
+
+    return WatchStateMutationResponse(
+        status="succeeded",
+        scope=body.scope,
+        updated_count=1,
+        failed_count=0,
+        failed_ids=[],
+        error_code=None,
+        message="Watch state updated",
+    )
