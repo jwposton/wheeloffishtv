@@ -3,14 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: feature-complete MVP (provider writeback)
 status: uat_complete
-last_updated: 2026-05-27T12:00:00.000Z
+last_updated: "2026-05-28T02:27:55.535Z"
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 40
-  completed_plans: 40
-  percent: 88
-stopped_at: Phase 07 UAT pass — ready to tag v0.1.0
+  completed_phases: 8
+  total_plans: 47
+  completed_plans: 43
+  percent: 89
 ---
 
 # State — Wheel of Fish TV
@@ -19,15 +18,15 @@ stopped_at: Phase 07 UAT pass — ready to tag v0.1.0
 
 ## Current phase
 
-Phase **7 — Provider playlist writeback** — **complete** (3/3 plans).
+Phase **8 — UX polish & release readiness** — **complete** (reconciled from shipped releases).
 
 **Release gate:** UAT passed 2026-05-26 — tag **v0.1.0**.
 
 ## Immediate next actions
 
-1. Commit backlog items (BL-01, BL-02) + doc updates
-2. Tag **v0.1.4** (or next patch) with CHANGELOG
-3. Begin Phase 8 UX polish
+1. Begin Phase 9 planning (`/gsd-plan-phase 9`)
+2. Execute Phase 9 implementation
+3. Verify Phase 9 flows (playlist detail/watch-state parity)
 
 ## Accumulated Context
 

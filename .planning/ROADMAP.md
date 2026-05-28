@@ -296,12 +296,21 @@ Requirements: WEB-01 (completion), residual polish tying earlier gaps
 3. Detail view: episodes grouped by season with watched / next-on-deck / unwatched indicators; context menus for bulk watch edits at episode, season, and series scope when the active provider allows.  
 4. Season list default sort: numbered seasons ascending, specials (S0) last.  
 
-**Requirements:** WEB-01 (playlist authoring UX), INT-01/02 (provider watch writeback where feasible) — **TBD traceability in plan**  
-**Plans:** 0 plans  
-
+**Requirements:** WEB-01 (playlist authoring UX), INT-01/02 (provider watch writeback where feasible)  
+**Plans:** 4 plans
 Plans:
+**Wave 1**
 
-- [ ] TBD (run `/gsd-plan-phase 9` to break down)
+- [ ] 09-01-PLAN.md — Add provider watch-state mutation contract and Plex/Jellyfin adapter implementations
+- [ ] 09-03-PLAN.md — Add playlist edit parity actions (View series) and session-new row prioritization
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 09-02-PLAN.md — Expose owner-scoped catalog watch mutation endpoints with outcome/error envelopes
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 09-04-PLAN.md — Complete series detail grouped watch UI and provider-backed action reconciliation
 
 ---
 

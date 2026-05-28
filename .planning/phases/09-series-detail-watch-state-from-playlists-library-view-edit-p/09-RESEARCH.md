@@ -220,17 +220,22 @@ export function seriesEpisodesQueryKey(connectionId: string, seriesId: string) {
 | A1 | Plex season-level `scrobble/unscrobble` works as bulk mark for all child episodes. [ASSUMED] | Summary / Pitfalls | Season bulk action could silently no-op or partially apply; needs T-09-01 UAT. |
 | A2 | Existing episode payloads are sufficient to derive "on-deck" visual marker without API schema additions. [ASSUMED] | Architecture Patterns | Might need extra backend field if ambiguous in edge cases. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **How should backend represent bulk watch mutation results?**
-   - What we know: Partial and auth failures must be surfaced clearly. [CITED: .planning/phases/09-series-detail-watch-state-from-playlists-library-view-edit-p/9-CONTEXT.md]
-   - What's unclear: Exact response schema (`updated_count`, `failed_ids`, etc.) for consistent frontend UX.
-   - Recommendation: Define explicit response envelope in plan wave 1 before frontend wiring.
+1. **How should backend represent bulk watch mutation results?** — **RESOLVED**
+   - Decision: Use a deterministic response envelope across episode/season/series scopes:
+     - `status`: `succeeded | partial | failed`
+     - `scope`: `episode | season | series`
+     - `updated_count`: integer
+     - `failed_count`: integer
+     - `failed_ids`: list of provider/native ids that failed (may be empty)
+     - `error_code`: nullable machine-readable code (`auth`, `forbidden`, `not_found`, `provider_error`)
+     - `message`: human-readable summary string
+   - Rationale: Supports consistent frontend toasts/badges and partial-failure UX.
 
-2. **Where should "session-added rows first" state live?**
-   - What we know: Requirement is specific to edit-session clarity in In pane.
-   - What's unclear: whether client-local state is enough or needs backend ordering metadata.
-   - Recommendation: Implement client-local session set first; persist-free unless UAT shows confusion.
+2. **Where should "session-added rows first" state live?** — **RESOLVED**
+   - Decision: Keep session-priority ordering client-local in edit flow state (Set of newly added `series_id`s), apply transient sort in In-pane render only.
+   - Rationale: This is a per-session clarity aid, not canonical persisted ordering. Persist-free approach avoids schema/API churn and matches requirement intent.
 
 ## Environment Availability
 
