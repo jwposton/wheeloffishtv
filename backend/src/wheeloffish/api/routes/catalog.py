@@ -101,6 +101,16 @@ def _watch_state_error_response(
     )
 
 
+def _watch_state_provider_error(
+    err: ProviderError,
+) -> tuple[Literal["auth", "forbidden", "not_found", "provider_error"], str]:
+    if isinstance(err, ProviderUnauthorized):
+        return "auth", "Provider session is not authorized"
+    if isinstance(err, ProviderNotFound):
+        return "not_found", "Mutation target was not found by provider"
+    return "provider_error", "Provider rejected watch mutation request"
+
+
 def _validate_series_connection(series_id: str, connection_id: str) -> None:
     try:
         parsed_connection_id, _, _ = parse_composite_id(series_id)
@@ -587,21 +597,15 @@ async def post_connection_watch_state(
     app_user_id: str = Depends(get_app_user_id),
 ) -> WatchStateMutationResponse:
     connection = _get_connection_or_404(db, connection_id)
-    try:
-        target_connection_id, _, _ = parse_composite_id(body.target_id)
-    except ValueError:
+    target_ids = list(body.target_ids)
+    if body.target_id is not None:
+        target_ids.append(body.target_id)
+    if not target_ids:
         return _watch_state_error_response(
             scope=body.scope,
-            target_id=body.target_id,
+            target_id="",
             error_code="not_found",
             message="Mutation target id is invalid",
-        )
-    if target_connection_id != connection_id:
-        return _watch_state_error_response(
-            scope=body.scope,
-            target_id=body.target_id,
-            error_code="forbidden",
-            message="Mutation target is outside this connection scope",
         )
 
     try:
@@ -612,49 +616,73 @@ async def post_connection_watch_state(
         if isinstance(err.detail, dict) and err.detail.get("code") == "unauthorized":
             return _watch_state_error_response(
                 scope=body.scope,
-                target_id=body.target_id,
+                target_id=target_ids[0],
                 error_code="auth",
                 message="Provider session is not authorized",
             )
         raise
 
-    request = body.model_dump()
-    try:
-        await provider.mutate_watch_state(
-            request=WatchMutationRequest.from_values(
-                target_id=request["target_id"],
-                scope=request["scope"],
-                action=request["action"],
+    updated_count = 0
+    failed_ids: list[str] = []
+    first_error_code: Literal["auth", "forbidden", "not_found", "provider_error"] | None = None
+    first_error_message: str | None = None
+    for target_id in target_ids:
+        try:
+            target_connection_id, _, _ = parse_composite_id(target_id)
+        except ValueError:
+            failed_ids.append(target_id)
+            if first_error_code is None:
+                first_error_code = "not_found"
+                first_error_message = "Mutation target id is invalid"
+            continue
+        if target_connection_id != connection_id:
+            failed_ids.append(target_id)
+            if first_error_code is None:
+                first_error_code = "forbidden"
+                first_error_message = "Mutation target is outside this connection scope"
+            continue
+        try:
+            await provider.mutate_watch_state(
+                request=WatchMutationRequest.from_values(
+                    target_id=target_id,
+                    scope=body.scope.value,
+                    action=body.action.value,
+                )
             )
-        )
-    except ProviderUnauthorized:
-        return _watch_state_error_response(
+            updated_count += 1
+        except ProviderError as err:
+            failed_ids.append(target_id)
+            if first_error_code is None:
+                first_error_code, first_error_message = _watch_state_provider_error(err)
+
+    failed_count = len(failed_ids)
+    if failed_count == 0:
+        return WatchStateMutationResponse(
+            status="succeeded",
             scope=body.scope,
-            target_id=body.target_id,
-            error_code="auth",
-            message="Provider session is not authorized",
+            updated_count=updated_count,
+            failed_count=0,
+            failed_ids=[],
+            error_code=None,
+            message="Watch state updated",
         )
-    except ProviderNotFound:
-        return _watch_state_error_response(
+    if updated_count > 0:
+        return WatchStateMutationResponse(
+            status="partial",
             scope=body.scope,
-            target_id=body.target_id,
-            error_code="not_found",
-            message="Mutation target was not found by provider",
-        )
-    except ProviderError:
-        return _watch_state_error_response(
-            scope=body.scope,
-            target_id=body.target_id,
-            error_code="provider_error",
-            message="Provider rejected watch mutation request",
+            updated_count=updated_count,
+            failed_count=failed_count,
+            failed_ids=failed_ids,
+            error_code=first_error_code,
+            message="Watch state updated with partial failures",
         )
 
     return WatchStateMutationResponse(
-        status="succeeded",
+        status="failed",
         scope=body.scope,
-        updated_count=1,
-        failed_count=0,
-        failed_ids=[],
-        error_code=None,
-        message="Watch state updated",
+        updated_count=0,
+        failed_count=failed_count,
+        failed_ids=failed_ids,
+        error_code=first_error_code,
+        message=first_error_message or "Provider rejected watch mutation request",
     )

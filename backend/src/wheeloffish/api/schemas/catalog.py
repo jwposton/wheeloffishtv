@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from wheeloffish.domain.dto import Library, Series
 from wheeloffish.integrations.base import WatchAction, WatchScope
@@ -38,9 +38,16 @@ class SessionCatalogRefreshResponse(BaseModel):
 
 
 class WatchStateMutationRequest(BaseModel):
-    target_id: str
+    target_id: str | None = None
+    target_ids: list[str] = Field(default_factory=list)
     scope: WatchScope
     action: WatchAction
+
+    @model_validator(mode="after")
+    def validate_targets(self) -> "WatchStateMutationRequest":
+        if self.target_id is None and not self.target_ids:
+            raise ValueError("target_id or target_ids is required")
+        return self
 
 
 class WatchStateMutationResponse(BaseModel):

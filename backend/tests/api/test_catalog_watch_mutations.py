@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from wheeloffish.api.deps import get_app_user_id, get_current_user, get_db
 from wheeloffish.core.config import get_settings
 from wheeloffish.db.models.app_user import AppUser
+from wheeloffish.integrations.errors import ProviderNotFound
 from wheeloffish.main import app
 
 
@@ -150,4 +151,87 @@ async def test_watch_mutation_rejects_cross_connection_targets_as_forbidden(
         "failed_ids": [target_id],
         "error_code": "forbidden",
         "message": "Mutation target is outside this connection scope",
+    }
+
+
+@pytest.mark.asyncio
+async def test_watch_mutation_returns_deterministic_success_payload_for_bulk_targets(
+    catalog_client,
+    connection_factory,
+) -> None:
+    connection = await connection_factory()
+    target_ids = [
+        f"{connection.id}:plex:rating-key-1",
+        f"{connection.id}:plex:rating-key-2",
+    ]
+    provider = MagicMock()
+    provider.mutate_watch_state = AsyncMock(return_value=None)
+
+    with patch(
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
+        return_value=provider,
+    ):
+        response = await catalog_client.post(
+            f"/api/v1/connections/{connection.id}/watch-state",
+            json={
+                "target_ids": target_ids,
+                "scope": "episode",
+                "action": "watched",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "succeeded",
+        "scope": "episode",
+        "updated_count": 2,
+        "failed_count": 0,
+        "failed_ids": [],
+        "error_code": None,
+        "message": "Watch state updated",
+    }
+    assert provider.mutate_watch_state.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_watch_mutation_returns_partial_payload_for_bulk_failure(
+    catalog_client,
+    connection_factory,
+) -> None:
+    connection = await connection_factory()
+    target_ids = [
+        f"{connection.id}:plex:rating-key-1",
+        f"{connection.id}:plex:missing-rating-key",
+    ]
+    provider = MagicMock()
+
+    async def mutate_side_effect(request):
+        if request.target_id.endswith("missing-rating-key"):
+            raise ProviderNotFound()
+        return None
+
+    provider.mutate_watch_state = AsyncMock(side_effect=mutate_side_effect)
+
+    with patch(
+        "wheeloffish.api.routes.catalog.build_provider_for_user",
+        return_value=provider,
+    ):
+        response = await catalog_client.post(
+            f"/api/v1/connections/{connection.id}/watch-state",
+            json={
+                "target_ids": target_ids,
+                "scope": "episode",
+                "action": "watched",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "partial",
+        "scope": "episode",
+        "updated_count": 1,
+        "failed_count": 1,
+        "failed_ids": [target_ids[1]],
+        "error_code": "not_found",
+        "message": "Watch state updated with partial failures",
     }
