@@ -2,12 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
 
-import { isAlreadyInPlaylistError } from "@/api/client"
 import type { Series } from "@/api/types"
 import {
-  useAppendPlaylistRow,
-  usePatchPlaylistRow,
-  useRemovePlaylistRow,
   type CompletionPolicy,
   type RowMode,
 } from "@/api/playlists"
@@ -220,16 +216,18 @@ export function TwoPanePicker({
   const debouncedQ = useDebouncedValue(searchInput, 300)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const appendMutation = useAppendPlaylistRow()
-  const removeMutation = useRemovePlaylistRow()
-  const patchMutation = usePatchPlaylistRow()
-
-  const rowMutationsPending =
-    appendMutation.isPending || removeMutation.isPending || patchMutation.isPending
+  function preserveViewportAndFocus() {
+    const scrollY = window.scrollY
+    const active = document.activeElement as HTMLElement | null
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY })
+      active?.focus({ preventScroll: true })
+    })
+  }
 
   useEffect(() => {
-    onRowMutationsPendingChange?.(rowMutationsPending)
-  }, [rowMutationsPending, onRowMutationsPendingChange])
+    onRowMutationsPendingChange?.(false)
+  }, [onRowMutationsPendingChange])
 
   const query = useSeriesInfiniteQuery(connectionId, debouncedQ, browseMode)
   const catalogItems = useMemo(
@@ -297,7 +295,7 @@ export function TwoPanePicker({
     return () => observer.disconnect()
   }, [query.fetchNextPage, query.hasNextPage, query.isFetchingNextPage])
 
-  async function handleAdd(series: Series) {
+  function handleAdd(series: Series) {
     if (selectedIds.has(series.id)) {
       return
     }
@@ -310,82 +308,27 @@ export function TwoPanePicker({
       completion_policy: "remove",
     }
 
-    if (playlistId) {
-      const previousRows = rows
-      onRowsChange([...rows, newRow])
-      try {
-        await appendMutation.mutateAsync({
-          playlistId,
-          payload: { series_id: series.id },
-        })
-        setSessionNewSeriesIds((previous) => new Set(previous).add(series.id))
-        setSessionNewSeriesOrder((previous) =>
-          previous.includes(series.id) ? previous : [...previous, series.id],
-        )
-        toast.success(`Added ${series.title}`)
-      } catch (error) {
-        if (isAlreadyInPlaylistError(error)) {
-          return
-        }
-        onRowsChange(previousRows)
-        toast.error("Failed to add show")
-      }
-      return
-    }
-
     onRowsChange([...rows, newRow])
     setSessionNewSeriesIds((previous) => new Set(previous).add(series.id))
     setSessionNewSeriesOrder((previous) =>
       previous.includes(series.id) ? previous : [...previous, series.id],
     )
+    preserveViewportAndFocus()
     toast.success(`Added ${series.title}`)
   }
 
-  async function handleRemove(seriesId: string) {
+  function handleRemove(seriesId: string) {
     setSessionNewSeriesIds((previous) => {
       const next = new Set(previous)
       next.delete(seriesId)
       return next
     })
     setSessionNewSeriesOrder((previous) => previous.filter((id) => id !== seriesId))
-    if (playlistId) {
-      const previousRows = rows
-      onRowsChange(rows.filter((row) => row.series_id !== seriesId))
-      try {
-        await removeMutation.mutateAsync({ playlistId, seriesId })
-        toast.success("Removed from playlist")
-      } catch {
-        onRowsChange(previousRows)
-        toast.error("Failed to remove show")
-      }
-      return
-    }
-
     onRowsChange(rows.filter((row) => row.series_id !== seriesId))
+    toast.success("Removed from playlist")
   }
 
-  async function handleSave(updatedRow: SeriesRow) {
-    if (playlistId) {
-      const previousRows = rows
-      onRowsChange(
-        rows.map((row) => (row.series_id === updatedRow.series_id ? updatedRow : row)),
-      )
-      try {
-        await patchMutation.mutateAsync({
-          playlistId,
-          seriesId: updatedRow.series_id,
-          payload: {
-            mode: updatedRow.mode,
-            completion_policy: updatedRow.completion_policy,
-          },
-        })
-      } catch {
-        onRowsChange(previousRows)
-        toast.error("Failed to save row settings")
-      }
-      return
-    }
-
+  function handleSave(updatedRow: SeriesRow) {
     onRowsChange(
       rows.map((row) => (row.series_id === updatedRow.series_id ? updatedRow : row)),
     )

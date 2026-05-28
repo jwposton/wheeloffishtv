@@ -1,7 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it, vi, beforeEach } from "vitest"
+
+const mockUseSeriesInfiniteQuery = vi.fn()
+const appendMutateAsync = vi.fn()
+const removeMutateAsync = vi.fn()
+const patchMutateAsync = vi.fn()
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -12,22 +17,16 @@ vi.mock("@/hooks/useAuth", () => ({
 }))
 
 vi.mock("@/hooks/useSeriesInfiniteQuery", () => ({
-  useSeriesInfiniteQuery: () => ({
-    data: { pages: [{ items: [], total: 0, page: 1, limit: 50 }] },
-    isLoading: false,
-    isFetchingNextPage: false,
-    hasNextPage: false,
-    fetchNextPage: vi.fn(),
-  }),
+  useSeriesInfiniteQuery: (...args: unknown[]) => mockUseSeriesInfiniteQuery(...args),
 }))
 
 vi.mock("@/api/playlists", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/playlists")>()
   return {
     ...actual,
-    useAppendPlaylistRow: () => ({ mutateAsync: vi.fn(), isPending: false }),
-    useRemovePlaylistRow: () => ({ mutateAsync: vi.fn(), isPending: false }),
-    usePatchPlaylistRow: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useAppendPlaylistRow: () => ({ mutateAsync: appendMutateAsync, isPending: false }),
+    useRemovePlaylistRow: () => ({ mutateAsync: removeMutateAsync, isPending: false }),
+    usePatchPlaylistRow: () => ({ mutateAsync: patchMutateAsync, isPending: false }),
   }
 })
 
@@ -56,12 +55,33 @@ function renderPicker(rows: SeriesRow[] = []) {
   )
 }
 
+function renderPickerWithPlaylist(rows: SeriesRow[], onRowsChange: (rows: SeriesRow[]) => void) {
+  const queryClient = makeQueryClient()
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <TwoPanePicker rows={rows} onRowsChange={onRowsChange} playlistId="playlist-123" />
+      </QueryClientProvider>
+    </MemoryRouter>,
+  )
+}
+
 function renderPickerWithRows() {
   return renderPicker([SAMPLE_ROW])
 }
 
 describe("TwoPanePicker", () => {
   beforeEach(() => {
+    appendMutateAsync.mockReset()
+    removeMutateAsync.mockReset()
+    patchMutateAsync.mockReset()
+    mockUseSeriesInfiniteQuery.mockReturnValue({
+      data: { pages: [{ items: [], total: 0, page: 1, limit: 50 }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+    })
     vi.stubGlobal(
       "matchMedia",
       vi.fn().mockImplementation(() => ({
@@ -101,5 +121,42 @@ describe("TwoPanePicker", () => {
     renderPickerWithRows()
 
     expect(screen.getAllByRole("button", { name: "Series actions" }).length).toBeGreaterThan(0)
+  })
+
+  it("stages add/remove changes locally without row mutation API calls", () => {
+    const availableSeries = {
+      id: "series-2",
+      title: "Added Show",
+      provider: "plex",
+      provider_id: "plex://series/2",
+      thumb_url: null,
+      leaf_count: 12,
+      viewed_leaf_count: 0,
+      added_at: null,
+      year: null,
+    }
+    mockUseSeriesInfiniteQuery.mockReturnValue({
+      data: { pages: [{ items: [availableSeries], total: 1, page: 1, limit: 50 }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+    })
+
+    const onRowsChange = vi.fn()
+    renderPickerWithPlaylist([SAMPLE_ROW], onRowsChange)
+
+    fireEvent.click(screen.getByRole("tab", { name: "Add shows" }))
+    fireEvent.click(screen.getAllByRole("button", { name: /Added Show/ })[0]!)
+    expect(onRowsChange).toHaveBeenCalledWith([
+      SAMPLE_ROW,
+      expect.objectContaining({ series_id: "series-2" }),
+    ])
+    expect(appendMutateAsync).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole("button", { name: "Series actions" }))
+    fireEvent.click(screen.getByText("Remove from playlist"))
+    expect(removeMutateAsync).not.toHaveBeenCalled()
+    expect(patchMutateAsync).not.toHaveBeenCalled()
   })
 })
