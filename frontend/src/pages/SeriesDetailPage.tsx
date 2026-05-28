@@ -23,6 +23,8 @@ export function SeriesDetailPage() {
   const [searchParams] = useSearchParams()
   const { seriesId: pathSeriesId } = useParams<{ seriesId?: string }>()
   const seriesId = resolveSeriesId(searchParams, pathSeriesId)
+  const origin = searchParams.get("origin")
+  const from = searchParams.get("from")
   const headingRef = useRef<HTMLHeadingElement>(null)
   const { user, isLoading: authLoading } = useAuth()
 
@@ -44,6 +46,9 @@ export function SeriesDetailPage() {
   )
 
   const authReady = !authLoading && Boolean(connectionId)
+  const backHref = from && from.startsWith("/") ? from : "/browse"
+  const backLabel = origin === "playlist-edit" ? "Back to Playlist" : "Back to Library"
+
   const seriesQuery = useSeriesDetail(connectionId, seriesId, { enabled: authReady })
   const series = seriesQuery.data
 
@@ -74,11 +79,11 @@ export function SeriesDetailPage() {
       <div className="mx-auto max-w-3xl">
         <p className="text-muted-foreground text-sm">Series not found.</p>
         <Link
-          to="/browse"
+          to={backHref}
           className="text-primary mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
         >
           <ArrowLeftIcon className="size-4" />
-          Back to Library
+          {backLabel}
         </Link>
       </div>
     )
@@ -88,11 +93,11 @@ export function SeriesDetailPage() {
     return (
       <div className="mx-auto max-w-3xl">
         <Link
-          to="/browse"
+          to={backHref}
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
         >
           <ArrowLeftIcon className="size-4" />
-          Back to Library
+          {backLabel}
         </Link>
         <p className="text-muted-foreground text-sm">
           This link is from a previous server session. Open the show again from
@@ -114,11 +119,11 @@ export function SeriesDetailPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div>
         <Link
-          to="/browse"
+          to={backHref}
           className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
         >
           <ArrowLeftIcon className="size-4" />
-          Back to Library
+          {backLabel}
         </Link>
       </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
 
 import { isAlreadyInPlaylistError } from "@/api/client"
 import type { Series } from "@/api/types"
@@ -25,6 +26,7 @@ import {
   type SeriesBrowseMode,
 } from "@/lib/seriesBrowse"
 import { cn } from "@/lib/utils"
+import { seriesDetailRoute } from "@/lib/seriesId"
 
 export type { SeriesRow }
 
@@ -39,16 +41,20 @@ interface TwoPanePickerProps {
 
 function InPlaylistPane({
   rows,
+  newSeriesIds,
   onModeChange,
   onPolicyChange,
   onRemove,
+  onViewSeries,
   skipRemoveConfirm,
   onEnableSkipRemoveConfirm,
 }: {
   rows: SeriesRow[]
+  newSeriesIds: Set<string>
   onModeChange: (row: SeriesRow, mode: RowMode) => void
   onPolicyChange: (row: SeriesRow, policy: CompletionPolicy) => void
   onRemove: (seriesId: string) => void
+  onViewSeries: (seriesId: string) => void
   skipRemoveConfirm: boolean
   onEnableSkipRemoveConfirm: () => void
 }) {
@@ -69,6 +75,8 @@ function InPlaylistPane({
           onModeChange={(mode) => onModeChange(row, mode)}
           onPolicyChange={(policy) => onPolicyChange(row, policy)}
           onRemove={() => onRemove(row.series_id)}
+          onViewSeries={onViewSeries}
+          isNew={newSeriesIds.has(row.series_id)}
           skipRemoveConfirm={skipRemoveConfirm}
           onEnableSkipRemoveConfirm={onEnableSkipRemoveConfirm}
         />
@@ -202,10 +210,12 @@ export function TwoPanePicker({
   skipRemoveConfirm = false,
   onEnableSkipRemoveConfirm = () => {},
 }: TwoPanePickerProps) {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const connectionId = user?.connection?.id
   const [searchInput, setSearchInput] = useState("")
   const [browseMode, setBrowseMode] = useState<SeriesBrowseMode>("title_asc")
+  const [sessionNewSeriesIds, setSessionNewSeriesIds] = useState<Set<string>>(new Set())
   const debouncedQ = useDebouncedValue(searchInput, 300)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -237,8 +247,8 @@ export function TwoPanePicker({
   }, [catalogItems])
 
   const displayRows = useMemo(
-    () =>
-      rows.map((row) => {
+    () => {
+      const mappedRows = rows.map((row) => {
         const catalog = catalogById.get(row.series_id)
         if (!catalog) {
           return row
@@ -248,8 +258,17 @@ export function TwoPanePicker({
           series_title: catalog.title,
           thumb_url: row.thumb_url ?? catalog.thumb_url,
         }
-      }),
-    [rows, catalogById],
+      })
+      return mappedRows.sort((a, b) => {
+        const aIsNew = sessionNewSeriesIds.has(a.series_id)
+        const bIsNew = sessionNewSeriesIds.has(b.series_id)
+        if (aIsNew === bIsNew) {
+          return a.series_title.localeCompare(b.series_title)
+        }
+        return aIsNew ? -1 : 1
+      })
+    },
+    [rows, catalogById, sessionNewSeriesIds],
   )
 
   useEffect(() => {
@@ -292,6 +311,7 @@ export function TwoPanePicker({
           playlistId,
           payload: { series_id: series.id },
         })
+        setSessionNewSeriesIds((previous) => new Set(previous).add(series.id))
         toast.success(`Added ${series.title}`)
       } catch (error) {
         if (isAlreadyInPlaylistError(error)) {
@@ -304,10 +324,16 @@ export function TwoPanePicker({
     }
 
     onRowsChange([...rows, newRow])
+    setSessionNewSeriesIds((previous) => new Set(previous).add(series.id))
     toast.success(`Added ${series.title}`)
   }
 
   async function handleRemove(seriesId: string) {
+    setSessionNewSeriesIds((previous) => {
+      const next = new Set(previous)
+      next.delete(seriesId)
+      return next
+    })
     if (playlistId) {
       const previousRows = rows
       onRowsChange(rows.filter((row) => row.series_id !== seriesId))
@@ -365,14 +391,23 @@ export function TwoPanePicker({
     void handleSave({ ...row, completion_policy: policy })
   }
 
+  function handleViewSeries(seriesId: string) {
+    const returnTo = playlistId ? `/playlists/${playlistId}/edit` : "/playlists/create"
+    navigate(
+      `${seriesDetailRoute(seriesId)}&origin=playlist-edit&from=${encodeURIComponent(returnTo)}`,
+    )
+  }
+
   const inPane = (
     <div className="flex flex-col gap-3">
       <h4 className="text-sm font-medium">In playlist ({displayRows.length})</h4>
       <InPlaylistPane
         rows={displayRows}
+        newSeriesIds={sessionNewSeriesIds}
         onModeChange={handleModeChange}
         onPolicyChange={handlePolicyChange}
         onRemove={(seriesId) => void handleRemove(seriesId)}
+        onViewSeries={handleViewSeries}
         skipRemoveConfirm={skipRemoveConfirm}
         onEnableSkipRemoveConfirm={onEnableSkipRemoveConfirm}
       />

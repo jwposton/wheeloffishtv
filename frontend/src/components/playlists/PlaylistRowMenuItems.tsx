@@ -20,6 +20,7 @@ interface PlaylistRowMenuItemsProps {
   onModeChange: (mode: RowMode) => void
   onPolicyChange: (policy: CompletionPolicy) => void
   onRemoveRequest: () => void
+  onViewSeries?: (seriesId: string) => void
   variant: "dropdown" | "context"
 }
 
@@ -28,6 +29,7 @@ export function PlaylistRowMenuItems({
   onModeChange,
   onPolicyChange,
   onRemoveRequest,
+  onViewSeries,
   variant,
 }: PlaylistRowMenuItemsProps) {
   const modeItems = (
@@ -83,6 +85,16 @@ export function PlaylistRowMenuItems({
           <DropdownMenuSubTrigger>Completion policy</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>{policyItems}</DropdownMenuSubContent>
         </DropdownMenuSub>
+        {onViewSeries ? (
+          <DropdownMenuItem
+            onClick={(event) => {
+              event.stopPropagation()
+              onViewSeries(row.series_id)
+            }}
+          >
+            View series
+          </DropdownMenuItem>
+        ) : null}
         <Separator />
         <DropdownMenuItem
           variant="destructive"
@@ -107,6 +119,16 @@ export function PlaylistRowMenuItems({
         <ContextMenuSubTrigger>Completion policy</ContextMenuSubTrigger>
         <ContextMenuSubContent>{policyItems}</ContextMenuSubContent>
       </ContextMenuSub>
+      {onViewSeries ? (
+        <ContextMenuItem
+          onClick={(event) => {
+            event.stopPropagation()
+            onViewSeries(row.series_id)
+          }}
+        >
+          View series
+        </ContextMenuItem>
+      ) : null}
       <Separator />
       <ContextMenuItem
         variant="destructive"

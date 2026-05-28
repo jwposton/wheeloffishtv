@@ -25,6 +25,8 @@ interface PlaylistMemberTileProps {
   onModeChange: (mode: RowMode) => void
   onPolicyChange: (policy: CompletionPolicy) => void
   onRemove: () => void
+  onViewSeries?: (seriesId: string) => void
+  isNew?: boolean
   skipRemoveConfirm?: boolean
   onEnableSkipRemoveConfirm?: () => void
 }
@@ -34,6 +36,8 @@ export function PlaylistMemberTile({
   onModeChange,
   onPolicyChange,
   onRemove,
+  onViewSeries,
+  isNew = false,
   skipRemoveConfirm = false,
   onEnableSkipRemoveConfirm,
 }: PlaylistMemberTileProps) {
@@ -79,6 +83,14 @@ export function PlaylistMemberTile({
                   Random
                 </Badge>
               ) : null}
+              {isNew ? (
+                <Badge
+                  variant="default"
+                  className="absolute top-1.5 right-10 px-1.5 py-0 text-[0.65rem]"
+                >
+                  New
+                </Badge>
+              ) : null}
             </div>
             <div
               className="absolute top-1.5 right-1.5"
@@ -107,6 +119,7 @@ export function PlaylistMemberTile({
                     onModeChange={onModeChange}
                     onPolicyChange={onPolicyChange}
                     onRemoveRequest={requestRemove}
+                  onViewSeries={onViewSeries}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -120,6 +133,7 @@ export function PlaylistMemberTile({
             onModeChange={onModeChange}
             onPolicyChange={onPolicyChange}
             onRemoveRequest={requestRemove}
+            onViewSeries={onViewSeries}
           />
         </ContextMenuContent>
       </ContextMenu>
