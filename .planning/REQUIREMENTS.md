@@ -7,8 +7,8 @@
 
 ### Integration (Plex / Jellyfin)
 
-- [ ] **INT-01**: Operator can register one configured **Plex** OR **Jellyfin** server (base URL + auth material) scoped to their account  
-- [ ] **INT-02**: System can enumerate **libraries** and **TV series** the user may attach to playlists (with paging/search to stay usable at scale)  
+- [x] **INT-01**: Operator can register one configured **Plex** OR **Jellyfin** server (base URL + auth material) scoped to their account  
+- [x] **INT-02**: System can enumerate **libraries** and **TV series** the user may attach to playlists (with paging/search to stay usable at scale)  
 - [ ] **INT-03**: System maintains enough **episode + watch-position metadata** cache to compute “earliest unfinished / partial / next” reliably per series for **ordered** rows  
 - [x] **EXP-01**: After each successful or partial rebuild, system **writes the emitted episode list** to a **native Plex or Jellyfin playlist** linked to the WheelOfFish playlist so users play output in their media client  
 
@@ -61,8 +61,8 @@ Deferred (not in roadmap v1):
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INT-01 | Phase 1 | Pending |
-| INT-02 | Phase 2 | Pending |
+| INT-01 | Phase 1 | Complete |
+| INT-02 | Phase 2 | Complete |
 | INT-03 | Phase 2 | Pending |
 | PLT-01 | Phase 4 | Complete |
 | PLT-02 | Phase 4 | Complete |
