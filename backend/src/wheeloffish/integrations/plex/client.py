@@ -2,7 +2,9 @@ from typing import Any
 
 import httpx
 
+from wheeloffish.domain.ids import parse_composite_id
 from wheeloffish.domain.dto import Episode, Library, PagedSeries
+from wheeloffish.integrations.base import WatchAction, WatchMutationRequest
 from wheeloffish.integrations.errors import (
     ProviderError,
     ProviderNotFound,
@@ -262,3 +264,27 @@ class PlexProvider:
             raise ProviderError("not_found")
         media_type = response.headers.get("content-type", "image/jpeg")
         return response.content, media_type
+
+    async def mutate_watch_state(self, request: WatchMutationRequest) -> None:
+        connection_id, provider, native_id = parse_composite_id(request.target_id)
+        if connection_id != self.connection_id or provider != PROVIDER:
+            raise ProviderError("wrong_type")
+
+        rating_key = native_id
+        if not rating_key.isdigit():
+            async with self._client() as client:
+                rating_key = await resolve_guid_to_rating_key(
+                    client,
+                    self.base_url,
+                    self.token,
+                    self.client_identifier,
+                    self.product_name,
+                    native_id,
+                )
+
+        endpoint = "/:/scrobble" if request.action is WatchAction.WATCHED else "/:/unscrobble"
+        await self._request(
+            "GET",
+            endpoint,
+            params={"identifier": "com.plexapp.plugins.library", "key": rating_key},
+        )

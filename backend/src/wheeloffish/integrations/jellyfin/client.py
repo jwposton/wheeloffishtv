@@ -2,7 +2,9 @@ from typing import Any
 
 import httpx
 
+from wheeloffish.domain.ids import parse_composite_id
 from wheeloffish.domain.dto import Episode, Library, PagedSeries
+from wheeloffish.integrations.base import WatchAction, WatchMutationRequest
 from wheeloffish.integrations.errors import (
     ProviderError,
     ProviderNotFound,
@@ -182,3 +184,11 @@ class JellyfinProvider:
             raise ProviderError("not_found")
         media_type = response.headers.get("content-type", "image/jpeg")
         return response.content, media_type
+
+    async def mutate_watch_state(self, request: WatchMutationRequest) -> None:
+        connection_id, provider, native_id = parse_composite_id(request.target_id)
+        if connection_id != self.connection_id or provider != PROVIDER:
+            raise ProviderError("wrong_type")
+
+        method = "POST" if request.action is WatchAction.WATCHED else "DELETE"
+        await self._request(method, f"/UserPlayedItems/{native_id}")
