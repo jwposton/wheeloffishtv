@@ -26,6 +26,7 @@ const baseUser: AuthMeResponse = {
   connection: null,
   has_media_link: true,
   libraries_scoped: true,
+  install_schedule: { install_timezone: "UTC", rebuild_cron: "04:00" },
 }
 
 function renderAppShell(initialPath = "/browse") {

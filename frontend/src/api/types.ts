@@ -5,6 +5,11 @@ export interface ConnectionSummary {
   base_url: string
 }
 
+export interface InstallScheduleSummary {
+  install_timezone: string
+  rebuild_cron: string
+}
+
 export interface AuthMeResponse {
   app_user_id: string
   provider_user_id: string
@@ -12,6 +17,7 @@ export interface AuthMeResponse {
   connection: ConnectionSummary | null
   has_media_link: boolean
   libraries_scoped: boolean
+  install_schedule: InstallScheduleSummary
 }
 
 export interface ProvidersMetaResponse {

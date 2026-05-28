@@ -91,6 +91,8 @@ def test_auth_me_omits_admin_fields(authenticated_client) -> None:
     assert "is_admin" not in body
     assert "setup_mode" not in body
     assert "install_libraries_configured" not in body
+    assert body["install_schedule"]["rebuild_cron"] == "04:00"
+    assert body["install_schedule"]["install_timezone"] == "UTC"
 
 
 def test_library_scope_put_allowed_for_any_linked_user(

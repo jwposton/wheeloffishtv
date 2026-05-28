@@ -6,6 +6,9 @@ import type { Series } from "@/api/types"
 import {
   type CompletionPolicy,
   type RowMode,
+  useAppendPlaylistRow,
+  usePatchPlaylistRow,
+  useRemovePlaylistRow,
 } from "@/api/playlists"
 import { SeriesPoster } from "@/components/browse/SeriesPoster"
 import { PlaylistMemberTile } from "@/components/playlists/PlaylistMemberTile"
@@ -33,6 +36,24 @@ interface TwoPanePickerProps {
   onRowMutationsPendingChange?: (pending: boolean) => void
   skipRemoveConfirm?: boolean
   onEnableSkipRemoveConfirm?: () => void
+}
+
+function playlistRowsToSeriesRows(
+  rows: Array<{
+    series_id: string
+    series_title: string | null
+    thumb_url: string | null
+    mode: RowMode
+    completion_policy: CompletionPolicy
+  }>,
+): SeriesRow[] {
+  return rows.map((row) => ({
+    series_id: row.series_id,
+    series_title: row.series_title ?? row.series_id,
+    thumb_url: row.thumb_url,
+    mode: row.mode,
+    completion_policy: row.completion_policy,
+  }))
 }
 
 function InPlaylistPane({
@@ -209,12 +230,20 @@ export function TwoPanePicker({
   const navigate = useNavigate()
   const { user } = useAuth()
   const connectionId = user?.connection?.id
+  const appendMutation = useAppendPlaylistRow()
+  const removeMutation = useRemovePlaylistRow()
+  const patchMutation = usePatchPlaylistRow()
+  const persistImmediately = Boolean(playlistId)
+
   const [searchInput, setSearchInput] = useState("")
   const [browseMode, setBrowseMode] = useState<SeriesBrowseMode>("title_asc")
   const [sessionNewSeriesIds, setSessionNewSeriesIds] = useState<Set<string>>(new Set())
   const [sessionNewSeriesOrder, setSessionNewSeriesOrder] = useState<string[]>([])
   const debouncedQ = useDebouncedValue(searchInput, 300)
   const sentinelRef = useRef<HTMLDivElement>(null)
+
+  const rowMutationPending =
+    appendMutation.isPending || removeMutation.isPending || patchMutation.isPending
 
   function preserveViewportAndFocus() {
     const scrollY = window.scrollY
@@ -226,8 +255,8 @@ export function TwoPanePicker({
   }
 
   useEffect(() => {
-    onRowMutationsPendingChange?.(false)
-  }, [onRowMutationsPendingChange])
+    onRowMutationsPendingChange?.(rowMutationPending)
+  }, [onRowMutationsPendingChange, rowMutationPending])
 
   const query = useSeriesInfiniteQuery(connectionId, debouncedQ, browseMode)
   const catalogItems = useMemo(
@@ -295,8 +324,27 @@ export function TwoPanePicker({
     return () => observer.disconnect()
   }, [query.fetchNextPage, query.hasNextPage, query.isFetchingNextPage])
 
-  function handleAdd(series: Series) {
+  async function handleAdd(series: Series) {
     if (selectedIds.has(series.id)) {
+      return
+    }
+
+    if (persistImmediately && playlistId) {
+      try {
+        const result = await appendMutation.mutateAsync({
+          playlistId,
+          payload: { series_id: series.id },
+        })
+        onRowsChange(playlistRowsToSeriesRows(result.rows))
+        setSessionNewSeriesIds((previous) => new Set(previous).add(series.id))
+        setSessionNewSeriesOrder((previous) =>
+          previous.includes(series.id) ? previous : [...previous, series.id],
+        )
+        preserveViewportAndFocus()
+        toast.success(`Added ${series.title}`)
+      } catch {
+        toast.error("Failed to add show")
+      }
       return
     }
 
@@ -317,7 +365,26 @@ export function TwoPanePicker({
     toast.success(`Added ${series.title}`)
   }
 
-  function handleRemove(seriesId: string) {
+  async function handleRemove(seriesId: string) {
+    const removedTitle = rows.find((row) => row.series_id === seriesId)?.series_title
+
+    if (persistImmediately && playlistId) {
+      try {
+        await removeMutation.mutateAsync({ playlistId, seriesId })
+        onRowsChange(rows.filter((row) => row.series_id !== seriesId))
+        setSessionNewSeriesIds((previous) => {
+          const next = new Set(previous)
+          next.delete(seriesId)
+          return next
+        })
+        setSessionNewSeriesOrder((previous) => previous.filter((id) => id !== seriesId))
+        toast.success(removedTitle ? `Removed ${removedTitle}` : "Removed from playlist")
+      } catch {
+        toast.error("Failed to remove show")
+      }
+      return
+    }
+
     setSessionNewSeriesIds((previous) => {
       const next = new Set(previous)
       next.delete(seriesId)
@@ -328,7 +395,24 @@ export function TwoPanePicker({
     toast.success("Removed from playlist")
   }
 
-  function handleSave(updatedRow: SeriesRow) {
+  async function handlePatch(updatedRow: SeriesRow) {
+    if (persistImmediately && playlistId) {
+      try {
+        const result = await patchMutation.mutateAsync({
+          playlistId,
+          seriesId: updatedRow.series_id,
+          payload: {
+            mode: updatedRow.mode,
+            completion_policy: updatedRow.completion_policy,
+          },
+        })
+        onRowsChange(playlistRowsToSeriesRows(result.rows))
+      } catch {
+        toast.error("Failed to save row settings")
+      }
+      return
+    }
+
     onRowsChange(
       rows.map((row) => (row.series_id === updatedRow.series_id ? updatedRow : row)),
     )
@@ -338,14 +422,14 @@ export function TwoPanePicker({
     if (mode === row.mode) {
       return
     }
-    void handleSave({ ...row, mode })
+    void handlePatch({ ...row, mode })
   }
 
   function handlePolicyChange(row: SeriesRow, policy: CompletionPolicy) {
     if (policy === row.completion_policy) {
       return
     }
-    void handleSave({ ...row, completion_policy: policy })
+    void handlePatch({ ...row, completion_policy: policy })
   }
 
   function handleViewSeries(seriesId: string) {

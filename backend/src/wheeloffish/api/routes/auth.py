@@ -8,6 +8,7 @@ from wheeloffish.api.schemas.auth import (
     AuthMeResponse,
     BootstrapSessionResponse,
     ConnectionSummary,
+    InstallScheduleSummary,
     LogoutResponse,
 )
 from wheeloffish.core.auth import (
@@ -50,6 +51,10 @@ def auth_me(
         connection=connection_summary,
         has_media_link=linked,
         libraries_scoped=scoped,
+        install_schedule=InstallScheduleSummary(
+            install_timezone=settings.WOF_INSTALL_TIMEZONE,
+            rebuild_cron=settings.WOF_REBUILD_CRON,
+        ),
     )
 
 

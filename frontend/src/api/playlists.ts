@@ -211,10 +211,11 @@ export function usePlaylistsContainingSeries(seriesId: string | undefined) {
 
 const POLLING_STATUSES: RebuildStatus[] = ["running", "queued"]
 
-export function usePlaylist(id: string) {
+export function usePlaylist(id: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["playlists", id],
     queryFn: () => fetchPlaylist(id),
+    enabled: options?.enabled ?? Boolean(id),
     staleTime: 5_000,
     refetchInterval: (query) => {
       const status = query.state.data?.last_rebuild?.status as RebuildStatus | undefined
@@ -334,4 +335,16 @@ export function formatCadence(item: {
       ? WEEKDAY_NAMES[item.refresh_day_of_week]
       : null
   return dayName ? `Weekly \u00b7 ${dayName}` : "Weekly"
+}
+
+/** Operator-facing refresh help: playlist cadence + install nightly check time. */
+export function formatRefreshScheduleHelp(
+  playlist: {
+    refresh_cadence: RefreshCadence
+    refresh_day_of_week: number | null
+  },
+  install: { rebuild_cron: string; install_timezone: string },
+): string {
+  const cadenceLabel = formatCadence(playlist)
+  return `Rebuilds on a ${cadenceLabel.toLowerCase()} cadence. Eligible playlists are checked during the nightly rebuild at ${install.rebuild_cron} (${install.install_timezone}).`
 }

@@ -123,7 +123,63 @@ describe("TwoPanePicker", () => {
     expect(screen.getAllByRole("button", { name: "Series actions" }).length).toBeGreaterThan(0)
   })
 
-  it("stages add/remove changes locally without row mutation API calls", () => {
+  it("persists add/remove immediately when playlistId is set", async () => {
+    const availableSeries = {
+      id: "series-2",
+      title: "Added Show",
+      provider: "plex",
+      provider_id: "plex://series/2",
+      thumb_url: null,
+      leaf_count: 12,
+      viewed_leaf_count: 0,
+      added_at: null,
+      year: null,
+    }
+    mockUseSeriesInfiniteQuery.mockReturnValue({
+      data: { pages: [{ items: [availableSeries], total: 1, page: 1, limit: 50 }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: vi.fn(),
+    })
+
+    appendMutateAsync.mockResolvedValue({
+      rows: [
+        {
+          series_id: "series-in-1",
+          mode: "ordered",
+          completion_policy: "remove",
+          completion_event: "series_complete",
+          series_title: "In Playlist Show",
+          thumb_url: null,
+        },
+        {
+          series_id: "series-2",
+          mode: "ordered",
+          completion_policy: "remove",
+          completion_event: "series_complete",
+          series_title: "Added Show",
+          thumb_url: null,
+        },
+      ],
+    })
+
+    const onRowsChange = vi.fn()
+    renderPickerWithPlaylist([SAMPLE_ROW], onRowsChange)
+
+    fireEvent.click(screen.getByRole("tab", { name: "Add shows" }))
+    fireEvent.click(screen.getAllByRole("button", { name: /Added Show/ })[0]!)
+
+    await vi.waitFor(() => {
+      expect(appendMutateAsync).toHaveBeenCalledWith({
+        playlistId: "playlist-123",
+        payload: { series_id: "series-2" },
+      })
+    })
+    expect(onRowsChange).toHaveBeenCalled()
+  })
+
+  it("stages add/remove locally when creating a playlist without playlistId", () => {
     const availableSeries = {
       id: "series-2",
       title: "Added Show",
@@ -144,9 +200,15 @@ describe("TwoPanePicker", () => {
     })
 
     const onRowsChange = vi.fn()
-    renderPickerWithPlaylist([SAMPLE_ROW], onRowsChange)
+    const queryClient = makeQueryClient()
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <TwoPanePicker rows={[SAMPLE_ROW]} onRowsChange={onRowsChange} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    )
 
-    fireEvent.click(screen.getByRole("tab", { name: "Add shows" }))
     fireEvent.click(screen.getAllByRole("button", { name: /Added Show/ })[0]!)
     expect(onRowsChange).toHaveBeenCalledWith([
       SAMPLE_ROW,
@@ -154,8 +216,8 @@ describe("TwoPanePicker", () => {
     ])
     expect(appendMutateAsync).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole("button", { name: "Series actions" }))
-    fireEvent.click(screen.getByText("Remove from playlist"))
+    fireEvent.click(screen.getAllByRole("button", { name: "Series actions" })[0]!)
+    fireEvent.click(screen.getAllByText("Remove from playlist")[0]!)
     expect(removeMutateAsync).not.toHaveBeenCalled()
     expect(patchMutateAsync).not.toHaveBeenCalled()
   })

@@ -8,6 +8,13 @@ class ConnectionSummary(BaseModel):
     base_url: str
 
 
+class InstallScheduleSummary(BaseModel):
+    """Install-wide nightly rebuild window (D-01) for operator-facing UI copy."""
+
+    install_timezone: str
+    rebuild_cron: str
+
+
 class AuthMeResponse(BaseModel):
     app_user_id: str
     provider_user_id: str
@@ -15,6 +22,7 @@ class AuthMeResponse(BaseModel):
     connection: ConnectionSummary | None
     has_media_link: bool
     libraries_scoped: bool
+    install_schedule: InstallScheduleSummary
 
 
 class BootstrapSessionResponse(BaseModel):

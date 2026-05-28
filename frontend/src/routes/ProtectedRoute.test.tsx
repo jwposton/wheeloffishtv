@@ -20,6 +20,7 @@ const authenticatedUser: AuthMeResponse = {
   connection: null,
   has_media_link: true,
   libraries_scoped: false,
+  install_schedule: { install_timezone: "UTC", rebuild_cron: "04:00" },
 }
 
 function renderProtected(initialPath = "/") {
