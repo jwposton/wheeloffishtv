@@ -3,7 +3,7 @@ status: complete
 phase: 09-series-detail-watch-state-from-playlists-library-view-edit-p
 source: [09-01-SUMMARY.md, 09-02-SUMMARY.md, 09-03-SUMMARY.md]
 started: 2026-05-28T03:11:00Z
-updated: 2026-05-28T03:54:00Z
+updated: 2026-05-28T04:09:00Z
 ---
 
 ## Current Test
@@ -48,16 +48,16 @@ blocked: 0
 
 ## Gaps
 
-- truth: "Playlist edit changes to show membership and row-level actions apply only when the user clicks Save, and Cancel reverts unsaved changes."
+- truth: "Show add/remove actions remain immediate in view/edit flows, while playlist settings have explicit Save Settings / Cancel controls."
   status: failed
-  reason: "User reported: playlist show changes apply immediately; prefers all edits tied to Save/Cancel."
+  reason: "User reported: changed requirement — keep add/remove immediate as before; move Save/Cancel to playlist settings only with explicit labels."
   severity: major
   test: 0
   artifacts: []
   missing:
-    - "Define and enforce clear Save/Cancel transaction semantics for playlist show membership edits"
-    - "Prevent immediate persistence of show add/remove changes until Save is confirmed"
-    - "Ensure Cancel restores prior playlist membership and row settings state"
+    - "Revert staged-membership behavior so show add/remove persists immediately in view/edit flows"
+    - "Scope Save/Cancel to playlist settings section only"
+    - "Rename controls to explicit 'Save Settings' and 'Cancel' within playlist settings UI"
 
 ## Gap Closure Execution Notes (2026-05-27)
 
