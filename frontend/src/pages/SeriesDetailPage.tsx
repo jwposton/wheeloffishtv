@@ -6,6 +6,7 @@ import { ResumePreview } from "@/components/browse/ResumePreview"
 import { AddToPlaylistMenu } from "@/components/playlists/AddToPlaylistMenu"
 import { SeriesMetadataHero } from "@/components/series/SeriesMetadataHero"
 import { SeriesPlaylistsSection } from "@/components/series/SeriesPlaylistsSection"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/hooks/useAuth"
@@ -17,6 +18,33 @@ import {
   resolveSeriesId,
   seriesDetailRoute,
 } from "@/lib/seriesId"
+
+type EpisodeWatchLabel = "Watched" | "On deck" | "Unwatched"
+
+function watchLabelForEpisode(
+  percentWatched: number,
+  providerMarkedPlayed: boolean,
+  isOnDeck: boolean,
+): EpisodeWatchLabel {
+  if (providerMarkedPlayed || percentWatched >= 95) {
+    return "Watched"
+  }
+  if (isOnDeck || percentWatched >= 5) {
+    return "On deck"
+  }
+  return "Unwatched"
+}
+
+function seasonSortValue(seasonIndex: number): number {
+  if (seasonIndex === 0) {
+    return Number.MAX_SAFE_INTEGER
+  }
+  return seasonIndex
+}
+
+function seasonLabel(seasonIndex: number): string {
+  return seasonIndex === 0 ? "Specials" : `Season ${seasonIndex}`
+}
 
 export function SeriesDetailPage() {
   const navigate = useNavigate()
@@ -69,6 +97,24 @@ export function SeriesDetailPage() {
     }
     return episodesQuery.data?.episodes.find((episode) => episode.id === episodeId)
   }, [episodesQuery.data?.episodes, resumeQuery.data?.episode_id])
+
+  const groupedEpisodes = useMemo(() => {
+    const grouped = new Map<number, typeof episodesQuery.data.episodes>()
+    for (const episode of episodesQuery.data?.episodes ?? []) {
+      const bucket = grouped.get(episode.season_index)
+      if (bucket) {
+        bucket.push(episode)
+      } else {
+        grouped.set(episode.season_index, [episode])
+      }
+    }
+    return Array.from(grouped.entries())
+      .sort((a, b) => seasonSortValue(a[0]) - seasonSortValue(b[0]))
+      .map(([seasonIndex, episodes]) => ({
+        seasonIndex,
+        episodes: [...episodes].sort((a, b) => a.episode_index - b.episode_index),
+      }))
+  }, [episodesQuery.data?.episodes])
 
   useEffect(() => {
     headingRef.current?.focus()
@@ -163,6 +209,37 @@ export function SeriesDetailPage() {
         isLoading={resumeQuery.isLoading}
         isError={resumeQuery.isError && !resumeQuery.data}
       />
+      {episodesQuery.data?.episodes?.length ? (
+        <section className="flex flex-col gap-4" aria-label="Episodes by season">
+          {groupedEpisodes.map(({ seasonIndex, episodes }) => (
+            <div key={seasonIndex} className="rounded-lg border p-4">
+              <h3 className="mb-3 font-semibold">{seasonLabel(seasonIndex)}</h3>
+              <ul className="flex flex-col gap-2">
+                {episodes.map((episode) => (
+                  <li
+                    key={episode.id}
+                    className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                  >
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm font-medium">{episode.title}</span>
+                      <span className="text-muted-foreground text-xs">
+                        E{episode.episode_index}
+                      </span>
+                    </div>
+                    <Badge variant="secondary">
+                      {watchLabelForEpisode(
+                        episode.percent_watched,
+                        episode.provider_marked_played,
+                        episode.id === resumeQuery.data?.episode_id,
+                      )}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      ) : null}
     </div>
   )
 }
