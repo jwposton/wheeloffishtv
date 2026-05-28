@@ -216,6 +216,7 @@ export function TwoPanePicker({
   const [searchInput, setSearchInput] = useState("")
   const [browseMode, setBrowseMode] = useState<SeriesBrowseMode>("title_asc")
   const [sessionNewSeriesIds, setSessionNewSeriesIds] = useState<Set<string>>(new Set())
+  const [sessionNewSeriesOrder, setSessionNewSeriesOrder] = useState<string[]>([])
   const debouncedQ = useDebouncedValue(searchInput, 300)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -263,12 +264,18 @@ export function TwoPanePicker({
         const aIsNew = sessionNewSeriesIds.has(a.series_id)
         const bIsNew = sessionNewSeriesIds.has(b.series_id)
         if (aIsNew === bIsNew) {
+          if (aIsNew) {
+            return (
+              sessionNewSeriesOrder.indexOf(a.series_id) -
+              sessionNewSeriesOrder.indexOf(b.series_id)
+            )
+          }
           return a.series_title.localeCompare(b.series_title)
         }
         return aIsNew ? -1 : 1
       })
     },
-    [rows, catalogById, sessionNewSeriesIds],
+    [rows, catalogById, sessionNewSeriesIds, sessionNewSeriesOrder],
   )
 
   useEffect(() => {
@@ -312,6 +319,9 @@ export function TwoPanePicker({
           payload: { series_id: series.id },
         })
         setSessionNewSeriesIds((previous) => new Set(previous).add(series.id))
+        setSessionNewSeriesOrder((previous) =>
+          previous.includes(series.id) ? previous : [...previous, series.id],
+        )
         toast.success(`Added ${series.title}`)
       } catch (error) {
         if (isAlreadyInPlaylistError(error)) {
@@ -325,6 +335,9 @@ export function TwoPanePicker({
 
     onRowsChange([...rows, newRow])
     setSessionNewSeriesIds((previous) => new Set(previous).add(series.id))
+    setSessionNewSeriesOrder((previous) =>
+      previous.includes(series.id) ? previous : [...previous, series.id],
+    )
     toast.success(`Added ${series.title}`)
   }
 
@@ -334,6 +347,7 @@ export function TwoPanePicker({
       next.delete(seriesId)
       return next
     })
+    setSessionNewSeriesOrder((previous) => previous.filter((id) => id !== seriesId))
     if (playlistId) {
       const previousRows = rows
       onRowsChange(rows.filter((row) => row.series_id !== seriesId))
