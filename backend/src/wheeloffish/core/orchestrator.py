@@ -319,6 +319,7 @@ async def run_nightly_batch(db: Session, settings) -> None:
             continue
 
         await run_chunked_sync(connection_id, app_user_id)
+        db.expire_all()
 
         for p in playlists:
             try:

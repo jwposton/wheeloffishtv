@@ -692,3 +692,61 @@ async def test_nightly_skips_non_due_weekly(db_session):
         db_session.query(RebuildRun).filter(RebuildRun.playlist_id == pl.id).all()
     )
     assert runs == [], f"Weekly playlist not due today should not have a rebuild run, got: {runs}"
+
+
+@pytest.mark.asyncio
+async def test_nightly_expire_all_prevents_stale_absence_overwrite(db_session):
+    """expire_all after sync prevents rebuild from clobbering sync-written absence counts."""
+    from wheeloffish.core.catalog_prune import record_rebuild_row_absence
+    from wheeloffish.db.session import get_session_factory
+
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    _seed_user_media_link(db_session)
+    sid = _series_id("show-stale-session")
+    pl = _seed_playlist(db_session, series_ids=[sid], cadence="daily")
+    row = _row_for_series(db_session, pl.id, sid)
+    row.absence_count = 0
+    db_session.commit()
+
+    async def _sync_side_effect(connection_id, app_user_id):
+        other = get_session_factory()()
+        try:
+            other_row = (
+                other.query(PlaylistSeriesRowOrm)
+                .filter(
+                    PlaylistSeriesRowOrm.playlist_id == pl.id,
+                    PlaylistSeriesRowOrm.series_id == sid,
+                )
+                .one()
+            )
+            other_row.absence_count = 2
+            other.commit()
+        finally:
+            other.close()
+
+    async def _rebuild_side_effect(db, playlist_id, *, trigger):
+        playlist_orm = (
+            db.query(PlaylistOrm).filter(PlaylistOrm.id == playlist_id).one()
+        )
+        record_rebuild_row_absence(db, playlist_orm.rows[0])
+        db.commit()
+
+    mock_settings = MagicMock()
+    mock_settings.install_tz.return_value = zoneinfo.ZoneInfo("UTC")
+
+    with (
+        patch(f"{_ORCH}.SecretsVault", return_value=MagicMock()),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(
+            f"{_ORCH}.check_provider_reachable",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(f"{_ORCH}.run_chunked_sync", side_effect=_sync_side_effect),
+        patch(f"{_ORCH}.rebuild_playlist", side_effect=_rebuild_side_effect),
+    ):
+        await run_nightly_batch(db_session, mock_settings)
+
+    db_session.expire_all()
+    assert _row_for_series(db_session, pl.id, sid).absence_count == 3
