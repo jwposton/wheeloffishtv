@@ -9,9 +9,9 @@ Backlog BL-03–BL-06. Each maps to one roadmap phase (10–13).
 
 ### Catalog prune (BL-03)
 
-- [ ] **PRUNE-01**: Operator sees playlist rows for series that are confidently absent from the provider marked stale (not silently deleted on first failed sync)
-- [ ] **PRUNE-02**: System auto-removes stale playlist rows only after a documented safety policy (e.g. successful full sync, repeated absence across N syncs, no auth/connectivity errors in the decision window)
-- [ ] **PRUNE-03**: Operator can audit prune decisions (reason + timestamp) via API and operator-facing surfaces
+- [x] **PRUNE-01**: Operator sees playlist rows for series that are confidently absent from the provider marked stale (not silently deleted on first failed sync)
+- [x] **PRUNE-02**: System auto-removes stale playlist rows only after a documented safety policy (e.g. successful full sync, repeated absence across N syncs, no auth/connectivity errors in the decision window)
+- [x] **PRUNE-03**: Operator can audit prune decisions (reason + timestamp) via API and operator-facing surfaces
 - [ ] **PRUNE-04**: Rebuild warnings for stale or unfetchable rows remain actionable and non-destructive until prune confidence is met
 
 ### Sync diagnostics (BL-04)
@@ -60,9 +60,9 @@ Deferred beyond v0.2.0.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PRUNE-01 | Phase 10 | Pending |
-| PRUNE-02 | Phase 10 | Pending |
-| PRUNE-03 | Phase 10 | Pending |
+| PRUNE-01 | Phase 10 | Complete |
+| PRUNE-02 | Phase 10 | Complete |
+| PRUNE-03 | Phase 10 | Complete |
 | PRUNE-04 | Phase 10 | Pending |
 | DIAG-01 | Phase 11 | Pending |
 | DIAG-02 | Phase 11 | Pending |

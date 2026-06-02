@@ -39,7 +39,7 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 
 | # | Phase | Goal | Requirements |
 |---|-------|------|--------------|
-| 10 | Safe catalog prune | Stale rows are detected safely and removed only when confidence policy is met | PRUNE-01–04 |
+| 10 | 2/6 | In Progress|  |
 | 11 | Sync & rebuild diagnostics | Operators inspect partial/failed runs without shell or DB access | DIAG-01–05 |
 | 12 | Server-agnostic providers | Plex and Jellyfin work with or without a pinned media server URL in env | CONN-01–06 |
 | 13 | Playlist view toggle | Edit flow switches Available vs Output on desktop; three tabs on mobile | EDIT-01–05 |
@@ -58,15 +58,15 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 **Requirements:** PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04  
 **Backlog:** BL-03
 
-**Plans:** 6 plans (4 waves)
+**Plans:** 2/6 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — DB schema: prune-state columns + playlist_prune_events table (wave 1)
+- [x] 10-01-PLAN.md — DB schema: prune-state columns + playlist_prune_events table (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 10-02-PLAN.md — catalog_prune service: evidence/reset/recovery/auto-prune/audit + unit tests (wave 2)
+- [x] 10-02-PLAN.md — catalog_prune service: evidence/reset/recovery/auto-prune/audit + unit tests (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
