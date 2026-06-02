@@ -1,5 +1,5 @@
 import { ArrowLeftIcon } from "lucide-react"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -48,9 +48,25 @@ function seasonLabel(seasonIndex: number): string {
   return seasonIndex === 0 ? "Specials" : `Season ${seasonIndex}`
 }
 
-function mutationErrorMessage(errorCode: string | null | undefined): string {
+const UNSUPPORTED_BULK_SCOPE_MESSAGE =
+  "This provider does not support this bulk update scope."
+
+type BulkWatchScope = "season" | "series"
+
+type UnsupportedBulkScope =
+  | { scope: "series" }
+  | { scope: "season"; seasonIndex: number }
+  | null
+
+function mutationErrorMessage(
+  errorCode: string | null | undefined,
+  scope?: "episode" | BulkWatchScope,
+): string {
   if (errorCode === "auth") {
     return "Could not update watch status. Please reconnect your provider and try again."
+  }
+  if (errorCode === "provider_error" && (scope === "season" || scope === "series")) {
+    return UNSUPPORTED_BULK_SCOPE_MESSAGE
   }
   if (errorCode === "provider_error") {
     return "Could not update watch status. Provider rejected this update."
@@ -66,6 +82,8 @@ export function SeriesDetailPage() {
   const origin = searchParams.get("origin")
   const from = searchParams.get("from")
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const [unsupportedBulkScope, setUnsupportedBulkScope] =
+    useState<UnsupportedBulkScope>(null)
   const { user, isLoading: authLoading } = useAuth()
 
   // Canonicalize legacy /series/:path bookmarks to /series?id=...
@@ -125,10 +143,11 @@ export function SeriesDetailPage() {
   }, [episodesQuery.data?.episodes])
 
   async function handleEpisodeMutation(episodeId: string, watched: boolean) {
+    setUnsupportedBulkScope(null)
     try {
       const result = await episodesQuery.updateEpisodeWatchState({ episodeId, watched })
       if (result.status === "failed") {
-        toast.error(mutationErrorMessage(result.error_code))
+        toast.error(mutationErrorMessage(result.error_code, "episode"))
         return
       }
       if (result.status === "partial") {
@@ -142,16 +161,21 @@ export function SeriesDetailPage() {
   }
 
   async function handleSeasonMutation(seasonIndex: number, watched: boolean) {
+    setUnsupportedBulkScope(null)
     try {
       const result = await episodesQuery.updateSeasonWatchState({ seasonIndex, watched })
       if (result.status === "failed") {
-        toast.error(mutationErrorMessage(result.error_code))
+        if (result.error_code === "provider_error") {
+          setUnsupportedBulkScope({ scope: "season", seasonIndex })
+        }
+        toast.error(mutationErrorMessage(result.error_code, "season"))
         return
       }
       if (result.status === "partial") {
         toast.error("Season update partially failed.")
         return
       }
+      setUnsupportedBulkScope(null)
       toast.success("Season updated")
     } catch {
       toast.error("Could not update watch status. Please try again.")
@@ -159,16 +183,21 @@ export function SeriesDetailPage() {
   }
 
   async function handleSeriesMutation(watched: boolean) {
+    setUnsupportedBulkScope(null)
     try {
       const result = await episodesQuery.updateSeriesWatchState({ watched })
       if (result.status === "failed") {
-        toast.error(mutationErrorMessage(result.error_code))
+        if (result.error_code === "provider_error") {
+          setUnsupportedBulkScope({ scope: "series" })
+        }
+        toast.error(mutationErrorMessage(result.error_code, "series"))
         return
       }
       if (result.status === "partial") {
         toast.error("Series update partially failed.")
         return
       }
+      setUnsupportedBulkScope(null)
       toast.success("Series updated")
     } catch {
       toast.error("Could not update watch status. Please try again.")
@@ -270,45 +299,90 @@ export function SeriesDetailPage() {
       />
       {episodesQuery.data?.episodes?.length ? (
         <section className="flex flex-col gap-4" aria-label="Episodes by season">
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={episodesQuery.isUpdating}
-              onClick={() => void handleSeriesMutation(true)}
-            >
-              Mark series watched
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={episodesQuery.isUpdating}
-              onClick={() => void handleSeriesMutation(false)}
-            >
-              Mark series unwatched
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={episodesQuery.isUpdating}
+                aria-describedby={
+                  unsupportedBulkScope?.scope === "series"
+                    ? "bulk-scope-unsupported-note-series"
+                    : undefined
+                }
+                onClick={() => void handleSeriesMutation(true)}
+              >
+                Mark series watched
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={episodesQuery.isUpdating}
+                aria-describedby={
+                  unsupportedBulkScope?.scope === "series"
+                    ? "bulk-scope-unsupported-note-series"
+                    : undefined
+                }
+                onClick={() => void handleSeriesMutation(false)}
+              >
+                Mark series unwatched
+              </Button>
+            </div>
+            {unsupportedBulkScope?.scope === "series" ? (
+              <p
+                id="bulk-scope-unsupported-note-series"
+                className="text-muted-foreground text-xs"
+                role="status"
+              >
+                {UNSUPPORTED_BULK_SCOPE_MESSAGE}
+              </p>
+            ) : null}
           </div>
           {groupedEpisodes.map(({ seasonIndex, episodes }) => (
             <div key={seasonIndex} className="rounded-lg border p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="font-semibold">{seasonLabel(seasonIndex)}</h3>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={episodesQuery.isUpdating}
-                    onClick={() => void handleSeasonMutation(seasonIndex, true)}
-                  >
-                    Mark season watched
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={episodesQuery.isUpdating}
-                    onClick={() => void handleSeasonMutation(seasonIndex, false)}
-                  >
-                    Mark season unwatched
-                  </Button>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={episodesQuery.isUpdating}
+                      aria-describedby={
+                        unsupportedBulkScope?.scope === "season" &&
+                        unsupportedBulkScope.seasonIndex === seasonIndex
+                          ? `bulk-scope-unsupported-note-season-${seasonIndex}`
+                          : undefined
+                      }
+                      onClick={() => void handleSeasonMutation(seasonIndex, true)}
+                    >
+                      Mark season watched
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={episodesQuery.isUpdating}
+                      aria-describedby={
+                        unsupportedBulkScope?.scope === "season" &&
+                        unsupportedBulkScope.seasonIndex === seasonIndex
+                          ? `bulk-scope-unsupported-note-season-${seasonIndex}`
+                          : undefined
+                      }
+                      onClick={() => void handleSeasonMutation(seasonIndex, false)}
+                    >
+                      Mark season unwatched
+                    </Button>
+                  </div>
+                  {unsupportedBulkScope?.scope === "season" &&
+                  unsupportedBulkScope.seasonIndex === seasonIndex ? (
+                    <p
+                      id={`bulk-scope-unsupported-note-season-${seasonIndex}`}
+                      className="text-muted-foreground max-w-xs text-right text-xs"
+                      role="status"
+                    >
+                      {UNSUPPORTED_BULK_SCOPE_MESSAGE}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <ul className="flex flex-col gap-2">

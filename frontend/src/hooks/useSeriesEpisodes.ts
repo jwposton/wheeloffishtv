@@ -57,6 +57,16 @@ const defaultProgressState: WatchMutationProgressState = {
 
 let watchMutationProgressState: WatchMutationProgressState = defaultProgressState
 const watchMutationProgressListeners = new Set<() => void>()
+let watchMutationProgressEpoch = 0
+let watchMutationProgressDismissTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelWatchMutationProgressDismiss() {
+  watchMutationProgressEpoch += 1
+  if (watchMutationProgressDismissTimer !== null) {
+    clearTimeout(watchMutationProgressDismissTimer)
+    watchMutationProgressDismissTimer = null
+  }
+}
 
 function emitWatchMutationProgress() {
   for (const listener of watchMutationProgressListeners) {
@@ -74,6 +84,7 @@ export function setWatchMutationProgressRunning(
   action: "watched" | "unwatched",
   targetLabel: string,
 ) {
+  cancelWatchMutationProgressDismiss()
   setWatchMutationProgressState({
     visible: true,
     status: "running",
@@ -88,6 +99,7 @@ export function setWatchMutationProgressResult(
   result: WatchStateMutationResponse,
   fallbackLabel: string,
 ) {
+  const epoch = watchMutationProgressEpoch
   setWatchMutationProgressState({
     visible: true,
     status: result.status,
@@ -96,12 +108,16 @@ export function setWatchMutationProgressResult(
     targetLabel: fallbackLabel,
     message: result.message,
   })
-  window.setTimeout(() => {
-    setWatchMutationProgressState(defaultProgressState)
+  watchMutationProgressDismissTimer = window.setTimeout(() => {
+    watchMutationProgressDismissTimer = null
+    if (epoch === watchMutationProgressEpoch) {
+      setWatchMutationProgressState(defaultProgressState)
+    }
   }, 3000)
 }
 
 export function clearWatchMutationProgress() {
+  cancelWatchMutationProgressDismiss()
   setWatchMutationProgressState(defaultProgressState)
 }
 

@@ -262,6 +262,36 @@ describe("SeriesDetailPage watch-state", () => {
     })
   })
 
+  it("shows unsupported bulk scope copy when season mutation returns provider_error", async () => {
+    const updateSeasonWatchState = vi.fn().mockResolvedValue({
+      status: "failed",
+      error_code: "provider_error",
+    })
+    mockUseSeriesEpisodes.mockReturnValue({
+      data: { episodes: EPISODES },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isFetched: true,
+      updateEpisodeWatchState: vi.fn(),
+      updateSeasonWatchState,
+      updateSeriesWatchState: vi.fn(),
+      isUpdating: false,
+    } as unknown as ReturnType<typeof useSeriesEpisodes>)
+
+    renderPage()
+    fireEvent.click(screen.getAllByRole("button", { name: "Mark season watched" })[0])
+
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalledWith(
+        "This provider does not support this bulk update scope.",
+      )
+      expect(
+        screen.getAllByText("This provider does not support this bulk update scope."),
+      ).toHaveLength(1)
+    })
+  })
+
   it("shows actionable toast on auth/provider failures", async () => {
     const updateEpisodeWatchState = vi.fn().mockResolvedValue({
       status: "failed",
