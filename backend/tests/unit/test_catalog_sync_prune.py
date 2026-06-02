@@ -17,7 +17,7 @@ from wheeloffish.db.models.playlist_prune_event import PlaylistPruneEvent
 from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.domain.dto import PagedSeries, Series
 from wheeloffish.domain.ids import format_composite_id
-from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.errors import ProviderError, ProviderUnauthorized
 
 
 def _series_id(connection_id: str, native_id: str) -> str:
@@ -285,3 +285,114 @@ async def test_failed_sync_resets_counters(
 
     db_session.expire_all()
     assert _row(db_session, pl.id, series_id).absence_count == 0
+
+
+@pytest.mark.asyncio
+async def test_mid_sync_unauthorized_fails_without_purge_or_prune(
+    connection_factory, db_session
+) -> None:
+    """ProviderUnauthorized mid-sync marks failed, resets counters, skips purge/prune."""
+    from wheeloffish.db.models.catalog_sync_state import CatalogSyncState
+
+    _seed_app_user(db_session)
+    connection = await connection_factory()
+    present_id = _series_id(connection.id, "show-present")
+    absent_id = _series_id(connection.id, "show-absent")
+    pl = _seed_playlist(db_session, series_ids=[present_id, absent_id])
+
+    _seed_cached_series_row(
+        db_session,
+        connection_id=connection.id,
+        series_id=present_id,
+        native_id="show-present",
+    )
+    _seed_cached_series_row(
+        db_session,
+        connection_id=connection.id,
+        series_id=absent_id,
+        native_id="show-absent",
+    )
+
+    absent_row = _row(db_session, pl.id, absent_id)
+    absent_row.absence_count = 2
+    db_session.commit()
+
+    libs = seed_cached_libraries(
+        db_session,
+        connection.id,
+        [
+            {"native_id": "1", "title": "TV Shows", "in_scope": True},
+            {"native_id": "2", "title": "Movies", "in_scope": True},
+        ],
+    )
+    provider = MagicMock()
+
+    async def list_series(
+        library_native_id: str, *, page: int, limit: int, q: str | None
+    ) -> PagedSeries:
+        if library_native_id == "2":
+            raise ProviderUnauthorized()
+        return PagedSeries(
+            items=[
+                Series(
+                    id=_series_id(connection.id, "show-present"),
+                    title="Synced show-present",
+                    native_id="show-present",
+                    library_native_id=library_native_id,
+                    connection_id=connection.id,
+                    provider="plex",
+                )
+            ],
+            page=page,
+            limit=limit,
+            total=1,
+        )
+
+    provider.list_series = AsyncMock(side_effect=list_series)
+
+    def noop_create_task(coro):
+        coro.close()
+
+    with (
+        patch(
+            "wheeloffish.core.catalog_sync.ensure_libraries_cached",
+            new=AsyncMock(return_value=libs),
+        ),
+        patch(
+            "wheeloffish.core.catalog_sync.get_in_scope_libraries",
+            return_value=libs,
+        ),
+        patch(
+            "wheeloffish.core.catalog_sync._build_provider",
+            return_value=provider,
+        ),
+        patch("wheeloffish.core.catalog_sync.asyncio.create_task", noop_create_task),
+    ):
+        await run_chunked_sync(connection.id, APP_USER_ID)
+
+    db_session.expire_all()
+    state = (
+        db_session.query(CatalogSyncState)
+        .filter(
+            CatalogSyncState.connection_id == connection.id,
+            CatalogSyncState.app_user_id == APP_USER_ID,
+        )
+        .one()
+    )
+    assert state.status == "failed"
+    assert _row(db_session, pl.id, absent_id).absence_count == 0
+    assert (
+        db_session.query(CachedSeries)
+        .filter(CachedSeries.id == absent_id)
+        .count()
+        == 1
+    )
+    assert (
+        db_session.query(PlaylistPruneEvent)
+        .filter(
+            PlaylistPruneEvent.playlist_id == pl.id,
+            PlaylistPruneEvent.series_id == absent_id,
+        )
+        .count()
+        == 0
+    )

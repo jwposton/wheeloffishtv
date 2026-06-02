@@ -501,6 +501,7 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
         chunk_size = settings.WOF_CATALOG_SYNC_CHUNK_SIZE
         total_synced = 0
         total_estimated = 0
+        library_auth_failed = False
 
         for library in libraries:
             page = 1
@@ -520,6 +521,7 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
                         library_native_id=library.native_id,
                         reason="unauthorized",
                     )
+                    library_auth_failed = True
                     break
                 synced_at = datetime.now(UTC)
                 _upsert_series_page(db, page_result.items, app_user_id, synced_at)
@@ -549,6 +551,33 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
                     break
 
                 page += 1
+
+            if library_auth_failed:
+                break
+
+        if library_auth_failed:
+            vault.clear_plex_user_credentials(connection_id, app_user_id, commit=False)
+            state = _get_or_create_sync_state(db, connection_id, app_user_id)
+            state.status = "failed"
+            conn_row = db.query(Connection).filter(Connection.id == connection_id).one_or_none()
+            if conn_row and conn_row.provider_type == "jellyfin":
+                state.error_message = (
+                    "Jellyfin session invalid — log out and sign in with Jellyfin again"
+                )
+            else:
+                state.error_message = (
+                    "Plex session invalid — log out and sign in with Plex again"
+                )
+            state.updated_at = datetime.now(UTC)
+            reset_absence_counters_for_connection(db, connection_id, app_user_id)
+            db.commit()
+            logger.error(
+                "catalog_sync_failed",
+                connection_id=connection_id,
+                app_user_id=app_user_id,
+                reason="unauthorized_mid_sync",
+            )
+            return
 
         state = _get_or_create_sync_state(db, connection_id, app_user_id)
         state.status = "complete"
