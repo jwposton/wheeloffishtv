@@ -1,7 +1,7 @@
 ---
 phase: 09-series-detail-watch-state-from-playlists-library-view-edit-p
 plan: 08
-status: in_progress
+status: complete
 ---
 
 # Phase 09 Plan 08: Save/Cancel Membership Gap Closure Summary

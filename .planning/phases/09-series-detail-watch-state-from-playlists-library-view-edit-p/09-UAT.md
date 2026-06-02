@@ -40,16 +40,21 @@ result: pass
 
 ### 6. Watch-state mutation ownership and auth guardrails
 expected: Mutation requests are rejected for unauthorized or cross-connection access with normalized auth/forbidden/not_found style error signaling instead of silent success.
-result: skipped
-reason: "skip"
+result: pass
+notes: |
+  Automated API regression (`backend/tests/api/test_catalog_watch_mutations.py`):
+  - `test_watch_mutation_requires_app_authentication` → HTTP 401 `unauthenticated` without session.
+  - `test_watch_mutation_maps_unauthorized_provider_session` → envelope `error_code: auth`, no updates.
+  - `test_watch_mutation_rejects_cross_connection_targets_as_forbidden` → envelope `error_code: forbidden`.
+  Operator may still spot-check with curl against a live stack; steps documented in 09-07-SUMMARY.md.
 
 ## Summary
 
 total: 8
-passed: 7
+passed: 8
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps
