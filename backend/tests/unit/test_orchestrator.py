@@ -18,6 +18,7 @@ from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import format_composite_id
 from wheeloffish.domain.playlist import SeriesRebuildInput
+from wheeloffish.integrations.errors import ProviderError, ProviderNotFound
 
 # ---------------------------------------------------------------------------
 # Fixture helpers
@@ -128,9 +129,72 @@ def _mock_provider() -> MagicMock:
     return provider
 
 
+def _seed_cached_series(db, series_id: str) -> None:
+    from wheeloffish.db.models.cached_series import CachedSeries
+    from wheeloffish.domain.ids import parse_composite_id
+
+    connection_id, _provider, native = parse_composite_id(series_id)
+    db.add(
+        CachedSeries(
+            id=series_id,
+            app_user_id=TEST_APP_USER_ID,
+            connection_id=connection_id,
+            library_native_id="1",
+            native_id=native,
+            title="Cached Show",
+            synced_at=datetime.now(UTC),
+        )
+    )
+    db.flush()
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_not_found_fetch_result(db_session):
+    """ProviderNotFound from list_episodes → FetchResult reason not_found (D-02)."""
+    from wheeloffish.core.playlist.rebuild_inputs import fetch_rebuild_inputs_for_row
+
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid = _series_id("show-not-found")
+    _seed_cached_series(db_session, sid)
+    db_session.commit()
+
+    provider = MagicMock()
+    provider.list_episodes = AsyncMock(side_effect=ProviderNotFound("Plex API error: 404"))
+    provider.get_on_deck_episode = AsyncMock(return_value=None)
+
+    result = await fetch_rebuild_inputs_for_row(
+        db_session, TEST_APP_USER_ID, TEST_CONNECTION_ID, sid, provider
+    )
+    assert result.reason == "not_found"
+    assert result.input is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_failure_fetch_result(db_session):
+    """Generic ProviderError → FetchResult reason fetch_failure."""
+    from wheeloffish.core.playlist.rebuild_inputs import fetch_rebuild_inputs_for_row
+
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid = _series_id("show-fetch-fail")
+    _seed_cached_series(db_session, sid)
+    db_session.commit()
+
+    provider = MagicMock()
+    provider.list_episodes = AsyncMock(side_effect=ProviderError("provider down"))
+    provider.get_on_deck_episode = AsyncMock(return_value=None)
+
+    result = await fetch_rebuild_inputs_for_row(
+        db_session, TEST_APP_USER_ID, TEST_CONNECTION_ID, sid, provider
+    )
+    assert result.reason == "fetch_failure"
+    assert result.input is None
 
 
 @pytest.mark.asyncio
