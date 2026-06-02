@@ -515,3 +515,84 @@ def test_playlist_detail_row_includes_thumb_url(
     row = detail.json()["rows"][0]
     assert row["thumb_url"] is not None
     assert "/artwork" in row["thumb_url"]
+
+
+def test_manual_removed_audit(base_client: TestClient, db_session) -> None:
+    """DELETE row writes manual_removed prune audit (PRUNE-03)."""
+    from wheeloffish.db.models.playlist_prune_event import PlaylistPruneEvent
+
+    user = _make_user(db_session)
+    _set_user(user)
+    _seed_row_test_series(db_session, user)
+
+    resp = base_client.post(
+        "/api/v1/playlists",
+        json=_create_body(
+            rows=[
+                {"series_id": SERIES_ID_A},
+                {"series_id": SERIES_ID_B},
+            ],
+        ),
+    )
+    assert resp.status_code == 201, resp.text
+    playlist_id = resp.json()["id"]
+
+    delete = base_client.delete(
+        f"/api/v1/playlists/{playlist_id}/rows/{SERIES_ID_A}",
+    )
+    assert delete.status_code == 204
+
+    events = db_session.query(PlaylistPruneEvent).all()
+    assert len(events) == 1
+    event = events[0]
+    assert event.event_type == "manual_removed"
+    assert event.reason == "operator"
+    assert event.series_id == SERIES_ID_A
+    assert event.playlist_id == playlist_id
+
+
+def test_prune_events_in_detail(base_client: TestClient, db_session) -> None:
+    """GET playlist detail embeds recent_prune_events newest-first."""
+    from datetime import UTC, datetime, timedelta
+
+    from wheeloffish.db.models.playlist_prune_event import PlaylistPruneEvent
+
+    user = _make_user(db_session)
+    _set_user(user)
+
+    resp = base_client.post("/api/v1/playlists", json=_create_body())
+    assert resp.status_code == 201, resp.text
+    playlist_id = resp.json()["id"]
+
+    now = datetime.now(UTC)
+    older = PlaylistPruneEvent(
+        playlist_id=playlist_id,
+        series_id=SERIES_ID_B,
+        event_type="auto_pruned",
+        reason="catalog_sync",
+        event_metadata={"absence_count": 2, "trigger": "catalog_sync"},
+        timestamp=now - timedelta(hours=1),
+    )
+    newer = PlaylistPruneEvent(
+        playlist_id=playlist_id,
+        series_id=SERIES_ID_A,
+        event_type="auto_pruned",
+        reason="catalog_sync",
+        event_metadata={"absence_count": 3, "trigger": "catalog_sync"},
+        timestamp=now,
+    )
+    db_session.add_all([older, newer])
+    db_session.commit()
+
+    detail = base_client.get(f"/api/v1/playlists/{playlist_id}")
+    assert detail.status_code == 200
+    events = detail.json()["recent_prune_events"]
+    assert len(events) == 2
+    assert events[0]["series_id"] == SERIES_ID_A
+    assert events[0]["event_type"] == "auto_pruned"
+    assert events[0]["event_metadata"] == {
+        "absence_count": 3,
+        "trigger": "catalog_sync",
+    }
+    assert events[1]["series_id"] == SERIES_ID_B
+    assert events[1]["event_metadata"]["absence_count"] == 2
