@@ -27,6 +27,7 @@ from wheeloffish.integrations.errors import ProviderError, ProviderNotFound
 # ---------------------------------------------------------------------------
 
 TEST_APP_USER_ID = "00000000-0000-4000-8000-000000000099"
+TEST_APP_USER_ID_2 = "00000000-0000-4000-8000-000000000088"
 TEST_CONNECTION_ID = "conn-aaaabbbb-1111-2222-3333-444455556666"
 TEST_PROVIDER = "plex"
 _ORCH = "wheeloffish.core.orchestrator"
@@ -74,10 +75,12 @@ def _seed_connection(db) -> Connection:
     return conn
 
 
-def _seed_user_media_link(db, connection_id: str = TEST_CONNECTION_ID) -> UserMediaLink:
+def _seed_user_media_link(
+    db, connection_id: str = TEST_CONNECTION_ID, *, app_user_id: str = TEST_APP_USER_ID
+) -> UserMediaLink:
     link = UserMediaLink(
         id=str(uuid.uuid4()),
-        app_user_id=TEST_APP_USER_ID,
+        app_user_id=app_user_id,
         connection_id=connection_id,
         provider_user_id="plex-uid-test",
         linked_at=datetime.now(UTC),
@@ -93,11 +96,12 @@ def _seed_playlist(
     series_ids: list[str],
     cadence: str = "daily",
     dow: int | None = None,
+    app_user_id: str = TEST_APP_USER_ID,
 ) -> PlaylistOrm:
     playlist_id = str(uuid.uuid4())
     pl = PlaylistOrm(
         id=playlist_id,
-        app_user_id=TEST_APP_USER_ID,
+        app_user_id=app_user_id,
         name="Test Playlist",
         episode_count=4,
         slot_allocation="wild",
@@ -750,3 +754,51 @@ async def test_nightly_expire_all_prevents_stale_absence_overwrite(db_session):
 
     db_session.expire_all()
     assert _row_for_series(db_session, pl.id, sid).absence_count == 3
+
+
+@pytest.mark.asyncio
+async def test_nightly_sync_per_app_user(db_session):
+    """Due playlists grouped by (connection, app_user); sync runs per owner (D-04/D-05)."""
+    _seed_app_user(db_session)
+    user2 = AppUser(
+        id=TEST_APP_USER_ID_2,
+        provider_user_id="plex-uid-test-2",
+    )
+    db_session.add(user2)
+    _seed_connection(db_session)
+    _seed_user_media_link(db_session, app_user_id=TEST_APP_USER_ID)
+    _seed_user_media_link(db_session, app_user_id=TEST_APP_USER_ID_2)
+    sid_a = _series_id("show-user-a")
+    sid_b = _series_id("show-user-b")
+    pl_a = _seed_playlist(
+        db_session, series_ids=[sid_a], cadence="daily", app_user_id=TEST_APP_USER_ID
+    )
+    pl_b = _seed_playlist(
+        db_session, series_ids=[sid_b], cadence="daily", app_user_id=TEST_APP_USER_ID_2
+    )
+    db_session.commit()
+
+    sync_calls: list[tuple[str, str]] = []
+
+    async def _sync_side_effect(connection_id, app_user_id):
+        sync_calls.append((connection_id, app_user_id))
+
+    mock_settings = MagicMock()
+    mock_settings.install_tz.return_value = zoneinfo.ZoneInfo("UTC")
+
+    with (
+        patch(f"{_ORCH}.SecretsVault", return_value=MagicMock()),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(
+            f"{_ORCH}.check_provider_reachable",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(f"{_ORCH}.run_chunked_sync", side_effect=_sync_side_effect),
+        patch(f"{_ORCH}.rebuild_playlist", new_callable=AsyncMock),
+    ):
+        await run_nightly_batch(db_session, mock_settings)
+
+    assert (TEST_CONNECTION_ID, TEST_APP_USER_ID) in sync_calls
+    assert (TEST_CONNECTION_ID, TEST_APP_USER_ID_2) in sync_calls
+    assert len(sync_calls) == 2

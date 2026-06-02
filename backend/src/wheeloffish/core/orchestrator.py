@@ -258,7 +258,7 @@ async def run_nightly_batch(db: Session, settings) -> None:
     due_playlists = [p for p in db.query(PlaylistOrm).all() if is_due(p, now_local)]
     logger.info("nightly_rebuild_start", due_count=len(due_playlists))
 
-    by_connection: dict[str, list[PlaylistOrm]] = {}
+    by_key: dict[tuple[str, str], list[PlaylistOrm]] = {}
     for p in due_playlists:
         if not p.rows:
             continue
@@ -266,9 +266,9 @@ async def run_nightly_batch(db: Session, settings) -> None:
             connection_id, _, _ = parse_composite_id(p.rows[0].series_id)
         except ValueError:
             continue
-        by_connection.setdefault(connection_id, []).append(p)
+        by_key.setdefault((connection_id, p.app_user_id), []).append(p)
 
-    for connection_id, playlists in by_connection.items():
+    for (connection_id, app_user_id), playlists in by_key.items():
         connection = (
             db.query(Connection).filter(Connection.id == connection_id).one_or_none()
         )
@@ -285,15 +285,16 @@ async def run_nightly_batch(db: Session, settings) -> None:
             db.commit()
             continue
 
-        first_link = (
+        link = (
             db.query(UserMediaLink)
-            .filter(UserMediaLink.connection_id == connection_id)
+            .filter(
+                UserMediaLink.connection_id == connection_id,
+                UserMediaLink.app_user_id == app_user_id,
+            )
             .first()
         )
-        if first_link is None:
+        if link is None:
             continue
-
-        app_user_id = first_link.app_user_id
 
         try:
             probe_provider = build_provider_for_user(
