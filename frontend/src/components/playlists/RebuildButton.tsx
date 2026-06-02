@@ -1,6 +1,7 @@
-import { RebuildWheelIcon } from "@/components/playlists/RebuildWheelIcon"
+import { WheelIcon } from "@/components/icons/WheelIcon"
 import {
   playlistActionButtonClass,
+  playlistActionIconFrameClass,
   playlistActionLabelClass,
 } from "@/components/playlists/playlistActionButton"
 import { Button } from "@/components/ui/button"
@@ -28,7 +29,9 @@ export function RebuildButton({
       aria-label={label}
       className={playlistActionButtonClass(className)}
     >
-      <RebuildWheelIcon spinning={spinning} />
+      <span className={playlistActionIconFrameClass}>
+        <WheelIcon spinning={spinning} className="size-full" />
+      </span>
       <span className={playlistActionLabelClass}>{label}</span>
     </Button>
   )

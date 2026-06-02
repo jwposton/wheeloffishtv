@@ -5,6 +5,7 @@ import deleteWheelIcon from "@/assets/playlists/delete-wheel.png"
 import {
   playlistActionButtonClass,
   playlistActionIconFrameClass,
+  playlistActionIconImgClass,
   playlistActionLabelClass,
 } from "@/components/playlists/playlistActionButton"
 import { buttonVariants } from "@/components/ui/button"
@@ -31,7 +32,7 @@ export function PlaylistDeleteTrigger({
         <img
           src={deleteWheelIcon}
           alt=""
-          className="size-full rounded-full object-contain"
+          className={cn(playlistActionIconImgClass, "rounded-full")}
         />
       </span>
       <span className={playlistActionLabelClass}>Delete</span>

@@ -64,31 +64,42 @@ export function WheelIcon({ spinning = false, className }: WheelIconProps) {
       aria-hidden="true"
       data-testid="wheel-icon"
       data-spinning={spinning ? "true" : "false"}
-      className={cn(
-        "size-4 shrink-0",
-        spinning && "motion-safe:animate-spin",
-        className,
-      )}
+      className={cn("size-4 shrink-0", className)}
     >
-      <circle cx="32" cy="32" r="30" fill={RIM} />
-      {Array.from({ length: 8 }, (_, index) => {
-        const start = index * 45
-        const end = start + 45
-        return (
-          <path
-            key={index}
-            d={wedgePath(32, 32, 9, 26, start, end)}
-            fill={SEGMENTS[index % SEGMENTS.length]}
-            stroke={OUTLINE}
-            strokeWidth="0.6"
-            strokeLinejoin="round"
+      <g data-testid="wheel-disc">
+        {spinning ? (
+          <animateTransform
+            attributeName="transform"
+            attributeType="XML"
+            type="rotate"
+            from="0 32 32"
+            to="360 32 32"
+            dur="1.1s"
+            repeatCount="indefinite"
           />
-        )
-      })}
-      {Array.from({ length: 12 }, (_, index) => {
-        const [x, y] = polar(32, 32, 28, index * 30)
-        return <circle key={index} cx={x} cy={y} r="1.3" fill="#fff8dc" opacity="0.95" />
-      })}
+        ) : null}
+        <circle cx="32" cy="32" r="30" fill={RIM} />
+        {Array.from({ length: 8 }, (_, index) => {
+          const start = index * 45
+          const end = start + 45
+          return (
+            <path
+              key={index}
+              d={wedgePath(32, 32, 9, 26, start, end)}
+              fill={SEGMENTS[index % SEGMENTS.length]}
+              stroke={OUTLINE}
+              strokeWidth="0.6"
+              strokeLinejoin="round"
+            />
+          )
+        })}
+        {Array.from({ length: 12 }, (_, index) => {
+          const [x, y] = polar(32, 32, 28, index * 30)
+          return <circle key={index} cx={x} cy={y} r="1.3" fill="#fff8dc" opacity="0.95" />
+        })}
+        <circle cx="32" cy="32" r="6" fill="#1e88e5" stroke={OUTLINE} strokeWidth="0.6" />
+        <circle cx="32" cy="32" r="2.5" fill="#e3f2fd" />
+      </g>
       <polygon
         points="32,3 37,13 27,13"
         fill={POINTER}
@@ -96,8 +107,6 @@ export function WheelIcon({ spinning = false, className }: WheelIconProps) {
         strokeWidth="0.6"
         strokeLinejoin="round"
       />
-      <circle cx="32" cy="32" r="6" fill="#1e88e5" stroke={OUTLINE} strokeWidth="0.6" />
-      <circle cx="32" cy="32" r="2.5" fill="#e3f2fd" />
     </svg>
   )
 }

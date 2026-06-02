@@ -12,12 +12,16 @@ describe("WheelIcon", () => {
   it("marks spinning state for styling", () => {
     render(<WheelIcon spinning />)
     expect(screen.getByTestId("wheel-icon")).toHaveAttribute("data-spinning", "true")
-    expect(screen.getByTestId("wheel-icon")).toHaveClass("motion-safe:animate-spin")
+    expect(
+      screen.getByTestId("wheel-disc").querySelector("animateTransform"),
+    ).toBeInTheDocument()
   })
 
   it("does not spin when idle", () => {
     render(<WheelIcon />)
     expect(screen.getByTestId("wheel-icon")).toHaveAttribute("data-spinning", "false")
-    expect(screen.getByTestId("wheel-icon")).not.toHaveClass("motion-safe:animate-spin")
+    expect(
+      screen.getByTestId("wheel-disc").querySelector("animateTransform"),
+    ).not.toBeInTheDocument()
   })
 })

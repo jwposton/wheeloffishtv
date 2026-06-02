@@ -11,4 +11,4 @@ Source artwork:
 - `reference_assets/main_logo.png` → `logo-hero.png`
 - `reference_assets/header.png` → `logo-header.png`
 
-Typography + SVG wheel remain the fallback when a path in `brandAssets.ts` is `null`.
+The inline SVG wheel in `WheelIcon.tsx` is used when `wheelIconSrc` is `null`.

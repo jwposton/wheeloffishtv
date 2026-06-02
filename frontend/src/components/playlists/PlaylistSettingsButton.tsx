@@ -2,6 +2,7 @@ import settingsMopBucketIcon from "@/assets/playlists/settings-mop-bucket.png"
 import {
   playlistActionButtonClass,
   playlistActionIconFrameClass,
+  playlistActionIconImgClass,
   playlistActionLabelClass,
 } from "@/components/playlists/playlistActionButton"
 import { Button } from "@/components/ui/button"
@@ -24,7 +25,7 @@ export function PlaylistSettingsButton({ onClick, className }: PlaylistSettingsB
         <img
           src={settingsMopBucketIcon}
           alt=""
-          className="size-full rounded-full object-cover"
+          className={playlistActionIconImgClass}
         />
       </span>
       <span className={playlistActionLabelClass}>Settings</span>
