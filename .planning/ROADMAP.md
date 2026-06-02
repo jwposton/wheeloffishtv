@@ -58,6 +58,16 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 **Requirements:** PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04  
 **Backlog:** BL-03
 
+**Plans:** 6 plans (4 waves)
+
+Plans:
+- [ ] 10-01-PLAN.md — DB schema: prune-state columns + playlist_prune_events table (wave 1)
+- [ ] 10-02-PLAN.md — catalog_prune service: evidence/reset/recovery/auto-prune/audit + unit tests (wave 2)
+- [ ] 10-03-PLAN.md — FetchResult typing + reachable-gated rebuild evidence + playlist-scoped auto-prune (wave 3)
+- [ ] 10-04-PLAN.md — catalog_sync integration: sync-completion evidence + failure resets (wave 3)
+- [ ] 10-05-PLAN.md — nightly batch sync-before-rebuild ordering (wave 4)
+- [ ] 10-06-PLAN.md — API embed recent_prune_events + manual_removed audit (wave 3)
+
 ---
 
 ### Phase 11: Sync & rebuild diagnostics
