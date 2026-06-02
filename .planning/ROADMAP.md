@@ -39,7 +39,7 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 
 | # | Phase | Goal | Requirements |
 |---|-------|------|--------------|
-| 10 | 5/6 | In Progress|  |
+| 10 | 6/6 | Complete   | 2026-06-02 |
 | 11 | Sync & rebuild diagnostics | Operators inspect partial/failed runs without shell or DB access | DIAG-01–05 |
 | 12 | Server-agnostic providers | Plex and Jellyfin work with or without a pinned media server URL in env | CONN-01–06 |
 | 13 | Playlist view toggle | Edit flow switches Available vs Output on desktop; three tabs on mobile | EDIT-01–05 |
@@ -58,7 +58,7 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 **Requirements:** PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04  
 **Backlog:** BL-03
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 Plans:
 **Wave 1**
 
@@ -76,7 +76,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 10-05-PLAN.md — nightly batch sync-before-rebuild ordering (wave 4)
+- [x] 10-05-PLAN.md — nightly batch sync-before-rebuild ordering (wave 4)
 
 ---
 
