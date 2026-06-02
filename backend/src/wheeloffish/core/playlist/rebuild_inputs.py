@@ -6,6 +6,7 @@ without making in-process HTTP requests.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 
 import structlog
 from sqlalchemy.orm import Session
@@ -15,9 +16,15 @@ from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import canonical_composite_id, parse_composite_id
 from wheeloffish.domain.playlist import SeriesRebuildInput
 from wheeloffish.integrations.base import MediaProvider
-from wheeloffish.integrations.errors import ProviderError
+from wheeloffish.integrations.errors import ProviderError, ProviderNotFound
 
 logger = structlog.get_logger("wheeloffish.rebuild_inputs")
+
+
+@dataclass
+class FetchResult:
+    input: SeriesRebuildInput | None
+    reason: str  # "ok" | "empty_snapshot" | "not_found" | "fetch_failure"
 
 
 def _get_provider_context(
@@ -94,11 +101,10 @@ async def fetch_rebuild_inputs_for_row(
     connection_id: str,  # noqa: ARG001 — reserved for future multi-connection support
     series_id: str,
     provider: MediaProvider,
-) -> SeriesRebuildInput | None:
+) -> FetchResult:
     """Fetch episodes + on_deck for one playlist row.
 
-    Returns None on ProviderError so caller can apply row-skip semantics (D-11).
-    Returns SeriesRebuildInput with episodes=[] on empty list (D-14 guard in orchestrator).
+    Returns FetchResult with reason taxonomy for orchestrator evidence (D-02).
     """
     rating_key, library_native_id = _get_provider_context(db, series_id, app_user_id)
     try:
@@ -113,21 +119,29 @@ async def fetch_rebuild_inputs_for_row(
         )
     except Exception as exc:
         logger.warning("fetch_rebuild_inputs_exception", series_id=series_id, error=str(exc))
-        return None
+        return FetchResult(None, "fetch_failure")
 
+    if isinstance(episodes_result, ProviderNotFound):
+        logger.warning(
+            "fetch_episodes_not_found", series_id=series_id, error=str(episodes_result)
+        )
+        return FetchResult(None, "not_found")
     if isinstance(episodes_result, ProviderError):
         logger.warning(
             "fetch_episodes_provider_error", series_id=series_id, error=str(episodes_result)
         )
-        return None
+        return FetchResult(None, "fetch_failure")
     if isinstance(episodes_result, BaseException):
         logger.warning("fetch_episodes_failed", series_id=series_id, error=str(episodes_result))
-        return None
+        return FetchResult(None, "fetch_failure")
 
     episodes: list[Episode] = episodes_result
     on_deck: Episode | None = None if isinstance(on_deck_result, BaseException) else on_deck_result
 
-    return SeriesRebuildInput(series_id=series_id, episodes=episodes, on_deck=on_deck)
+    inp = SeriesRebuildInput(series_id=series_id, episodes=episodes, on_deck=on_deck)
+    if not episodes:
+        return FetchResult(inp, "empty_snapshot")
+    return FetchResult(inp, "ok")
 
 
 async def check_provider_reachable(provider: MediaProvider) -> bool:
