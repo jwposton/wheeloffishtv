@@ -19,7 +19,7 @@ Build a dockerized FastAPI/Python service backing a SPA that nightly rebuilds us
 | 6 | 7/7 | Complete + gap closure    | 2026-05-26 |
 | 7 | Provider playlist writeback | Push rebuilt snapshots to native Plex/Jellyfin playlists | EXP-01 | Complete 2026-05-26 |
 | 8 | UX polish pass | Motion, dark mode, dashboards of last rebuild, QA | WEB-01 completion | post-v0.1.0 |
-| 9 | Series detail & watch from playlists | 8/8 | Complete   | 2026-06-02 |
+| 9 | Series detail & watch from playlists | 8/8 | Complete    | 2026-06-02 |
 
 *(Phase numbers align with REQ traceability columns — adjust if phasedown needed later.)*
 
