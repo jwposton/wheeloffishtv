@@ -91,6 +91,15 @@ class RebuildRunSummary(BaseModel):
     writeback_at: datetime | None = None
 
 
+class PruneEventResponse(BaseModel):
+    id: str
+    series_id: str
+    event_type: str
+    reason: str
+    event_metadata: dict | None = None
+    timestamp: datetime
+
+
 class SnapshotEpisode(BaseModel):
     episode_id: str
     title: str
@@ -121,6 +130,7 @@ class PlaylistDetailResponse(BaseModel):
     current_snapshot: list[SnapshotEpisode]
     last_rebuild: RebuildRunSummary | None
     recent_runs: list[RebuildRunSummary]
+    recent_prune_events: list[PruneEventResponse] = Field(default_factory=list)
     provider_playlist_id: str | None = None
     provider_kind: str | None = None
     provider_playlist_open_url: str | None = None
