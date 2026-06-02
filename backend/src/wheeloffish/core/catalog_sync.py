@@ -8,6 +8,12 @@ import structlog
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from wheeloffish.core.catalog_prune import (
+    clear_prune_state_for_recovered,
+    execute_auto_prune,
+    record_catalog_sync_absence,
+    reset_absence_counters_for_connection,
+)
 from wheeloffish.core.config import Settings, get_settings
 from wheeloffish.core.connections import build_plex_provider_for_user, build_provider_for_connection
 from wheeloffish.core.media_artwork import (
@@ -59,6 +65,7 @@ def _mark_sync_stale_failed(
     state.status = "failed"
     state.error_message = "Sync stalled — try again"
     state.updated_at = now
+    reset_absence_counters_for_connection(db, state.connection_id, state.app_user_id)
     db.commit()
 
 
@@ -558,6 +565,25 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
         ).delete()
         db.commit()
 
+        try:
+            clear_prune_state_for_recovered(db, connection_id, app_user_id)
+            record_catalog_sync_absence(db, connection_id, app_user_id)
+            db.commit()
+            execute_auto_prune(
+                db,
+                app_user_id=app_user_id,
+                connection_id=connection_id,
+                trigger="catalog_sync",
+            )
+            db.commit()
+        except Exception as prune_err:
+            logger.exception(
+                "catalog_sync_prune_error",
+                connection_id=connection_id,
+                app_user_id=app_user_id,
+                error=str(prune_err),
+            )
+
         logger.info(
             "catalog_sync_complete",
             connection_id=connection_id,
@@ -584,6 +610,7 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
                 "Plex session invalid — log out and sign in with Plex again"
             )
         state.updated_at = datetime.now(UTC)
+        reset_absence_counters_for_connection(db, connection_id, app_user_id)
         db.commit()
         logger.exception(
             "catalog_sync_failed",
@@ -597,6 +624,7 @@ async def run_chunked_sync(connection_id: str, app_user_id: str) -> None:
         state.status = "failed"
         state.error_message = str(err)
         state.updated_at = datetime.now(UTC)
+        reset_absence_counters_for_connection(db, connection_id, app_user_id)
         db.commit()
         logger.exception(
             "catalog_sync_failed",
