@@ -15,7 +15,12 @@ from wheeloffish.core.connections import build_provider_for_user
 from wheeloffish.core.playlist.builder import PlaylistBuilder
 from wheeloffish.core.playlist.cadence import is_due, now_in_tz
 from wheeloffish.core.playlist.mappers import orm_to_playlist
+from wheeloffish.core.catalog_prune import (
+    execute_auto_prune,
+    record_rebuild_row_absence,
+)
 from wheeloffish.core.playlist.rebuild_inputs import (
+    FetchResult,
     check_provider_reachable,
     fetch_rebuild_inputs_for_row,
 )
@@ -116,24 +121,41 @@ async def rebuild_playlist(db: Session, playlist_id: str, *, trigger: str) -> Re
         db.commit()
         return run
 
+    reachable = await check_provider_reachable(provider)
     domain_playlist = orm_to_playlist(playlist_orm)
+    orm_rows_by_series = {r.series_id: r for r in playlist_orm.rows}
     valid_inputs: list[SeriesRebuildInput] = []
     fetch_warnings: list[dict] = []
 
     for row in domain_playlist.rows:
-        inp = await fetch_rebuild_inputs_for_row(
+        result = await fetch_rebuild_inputs_for_row(
             db, app_user_id, connection_id, row.series_id, provider
         )
-        if inp is None:
+        orm_row = orm_rows_by_series[row.series_id]
+
+        if result.reason == "fetch_failure":
             fetch_warnings.append({"series_id": row.series_id, "reason": "fetch_failure"})
             log.warning("row_fetch_failed", series_id=row.series_id)
-        elif not inp.episodes:
-            # D-14: empty snapshot is a warning, not silent REMOVE
+        elif result.reason == "not_found":
+            fetch_warnings.append({"series_id": row.series_id, "reason": "not_found"})
+            log.warning("row_not_found", series_id=row.series_id)
+            if reachable:
+                record_rebuild_row_absence(db, orm_row)
+        elif result.reason == "empty_snapshot":
             fetch_warnings.append({"series_id": row.series_id, "reason": "empty_snapshot"})
             log.warning("row_empty_snapshot", series_id=row.series_id)
-            # Do NOT add to valid_inputs — exclude from builder without triggering REMOVE semantics
+            if reachable:
+                record_rebuild_row_absence(db, orm_row)
+        elif result.reason == "ok" and result.input is not None:
+            valid_inputs.append(result.input)
+            if orm_row.absence_count > 0:
+                orm_row.absence_count = 0
+                orm_row.first_absence_at = None
+                orm_row.last_absence_at = None
+                orm_row.last_evidence_source = None
         else:
-            valid_inputs.append(inp)
+            fetch_warnings.append({"series_id": row.series_id, "reason": "fetch_failure"})
+            log.warning("row_fetch_unexpected", series_id=row.series_id, reason=result.reason)
 
     any_row_skipped = bool(fetch_warnings)
     all_rows_failed = any_row_skipped and not valid_inputs
@@ -205,6 +227,18 @@ async def rebuild_playlist(db: Session, playlist_id: str, *, trigger: str) -> Re
 
     prune_rebuild_history(db, playlist_id, keep=3)
     db.commit()
+
+    if run.status in ("succeeded", "partial"):
+        try:
+            execute_auto_prune(
+                db,
+                app_user_id=app_user_id,
+                trigger="rebuild",
+                playlist_id=playlist_id,
+            )
+            db.commit()
+        except Exception as exc:
+            log.warning("auto_prune_failed", error=str(exc))
 
     log.info("rebuild_complete", status=run.status, slots_filled=run.slots_filled)
     return run

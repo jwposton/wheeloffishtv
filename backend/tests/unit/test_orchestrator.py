@@ -9,10 +9,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from wheeloffish.core.orchestrator import prune_rebuild_history, rebuild_playlist, run_nightly_batch
+from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
 from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
+from wheeloffish.db.models.playlist_prune_event import PlaylistPruneEvent
 from wheeloffish.db.models.rebuild_run import RebuildRun
 from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Episode
@@ -214,8 +216,8 @@ async def test_row_skip_on_fetch_failure(db_session):
 
     async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
         if series_id == sid_a:
-            return good_input
-        return None  # sid_b fails
+            return FetchResult(good_input, "ok")
+        return FetchResult(None, "fetch_failure")
 
     with (
         patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
@@ -265,7 +267,7 @@ async def test_all_excluded_marks_failed(db_session):
     db_session.commit()
 
     async def _mock_fetch_all_fail(db, app_user_id, connection_id, series_id, provider):
-        return None  # both rows fail
+        return FetchResult(None, "fetch_failure")
 
     with (
         patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
@@ -298,7 +300,9 @@ async def test_empty_snapshot_row_warning(db_session):
     empty_input = SeriesRebuildInput(series_id=sid_b, episodes=[])
 
     async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
-        return good_input if series_id == sid_a else empty_input
+        if series_id == sid_a:
+            return FetchResult(good_input, "ok")
+        return FetchResult(empty_input, "empty_snapshot")
 
     with (
         patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
@@ -312,6 +316,214 @@ async def test_empty_snapshot_row_warning(db_session):
     assert any(
         w["series_id"] == sid_b and w["reason"] == "empty_snapshot" for w in fetch_warnings
     ), f"Expected empty_snapshot warning for {sid_b} in {fetch_warnings}"
+
+
+def _row_for_series(db, playlist_id: str, series_id: str) -> PlaylistSeriesRowOrm:
+    return (
+        db.query(PlaylistSeriesRowOrm)
+        .filter(
+            PlaylistSeriesRowOrm.playlist_id == playlist_id,
+            PlaylistSeriesRowOrm.series_id == series_id,
+        )
+        .one()
+    )
+
+
+@pytest.mark.asyncio
+async def test_not_found_increments(db_session):
+    """Reachable provider + not_found row increments absence_count (D-02)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid_a = _series_id("show-found")
+    sid_b = _series_id("show-gone")
+    pl = _seed_playlist(db_session, series_ids=[sid_a, sid_b])
+    db_session.commit()
+
+    good_input = SeriesRebuildInput(
+        series_id=sid_a,
+        episodes=[_ep("a1"), _ep("a2"), _ep("a3")],
+    )
+
+    async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
+        if series_id == sid_a:
+            return FetchResult(good_input, "ok")
+        return FetchResult(None, "not_found")
+
+    with (
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+    ):
+        await rebuild_playlist(db_session, pl.id, trigger="test")
+
+    row_b = _row_for_series(db_session, pl.id, sid_b)
+    assert row_b.absence_count == 1
+    assert row_b.last_evidence_source == "rebuild"
+
+
+@pytest.mark.asyncio
+async def test_no_increment_when_unreachable(db_session):
+    """Unreachable provider → not_found does not increment absence_count (D-04)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid = _series_id("show-unreachable")
+    pl = _seed_playlist(db_session, series_ids=[sid])
+    db_session.commit()
+
+    provider = _mock_provider()
+    provider.ping = AsyncMock(side_effect=ConnectionError("down"))
+
+    async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
+        return FetchResult(None, "not_found")
+
+    with (
+        patch(f"{_ORCH}.build_provider_for_user", return_value=provider),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+    ):
+        await rebuild_playlist(db_session, pl.id, trigger="test")
+
+    row = _row_for_series(db_session, pl.id, sid)
+    assert row.absence_count == 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_failure_no_increment(db_session):
+    """fetch_failure does not increment absence_count (T-10-06)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid_a = _series_id("show-ok")
+    sid_b = _series_id("show-fail")
+    pl = _seed_playlist(db_session, series_ids=[sid_a, sid_b])
+    db_session.commit()
+
+    good_input = SeriesRebuildInput(
+        series_id=sid_a,
+        episodes=[_ep("ok1"), _ep("ok2"), _ep("ok3")],
+    )
+
+    async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
+        if series_id == sid_a:
+            return FetchResult(good_input, "ok")
+        return FetchResult(None, "fetch_failure")
+
+    with (
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+    ):
+        await rebuild_playlist(db_session, pl.id, trigger="test")
+
+    row_b = _row_for_series(db_session, pl.id, sid_b)
+    assert row_b.absence_count == 0
+
+
+@pytest.mark.asyncio
+async def test_rebuild_recovery_clears_counter(db_session):
+    """Successful fetch clears prior absence_count on the row (D-11)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid = _series_id("show-recover")
+    pl = _seed_playlist(db_session, series_ids=[sid])
+    row = _row_for_series(db_session, pl.id, sid)
+    row.absence_count = 2
+    row.last_evidence_source = "rebuild"
+    db_session.commit()
+
+    good_input = SeriesRebuildInput(
+        series_id=sid,
+        episodes=[_ep("r1"), _ep("r2"), _ep("r3")],
+    )
+
+    async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
+        return FetchResult(good_input, "ok")
+
+    with (
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+    ):
+        await rebuild_playlist(db_session, pl.id, trigger="test")
+
+    db_session.refresh(row)
+    assert row.absence_count == 0
+    assert row.last_evidence_source is None
+
+
+@pytest.mark.asyncio
+async def test_rebuild_auto_prune_at_threshold(db_session):
+    """Succeeded rebuild auto-prunes at-threshold rows for this playlist only (D-06)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid_a = _series_id("show-keep")
+    sid_b = _series_id("show-prune")
+    pl = _seed_playlist(db_session, series_ids=[sid_a, sid_b])
+    row_b = _row_for_series(db_session, pl.id, sid_b)
+    row_b.absence_count = 3
+    db_session.commit()
+
+    input_a = SeriesRebuildInput(
+        series_id=sid_a,
+        episodes=[_ep("k1"), _ep("k2"), _ep("k3")],
+    )
+    async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
+        if series_id == sid_a:
+            return FetchResult(input_a, "ok")
+        # fetch_failure: no recovery clear; row stays at threshold for auto-prune
+        return FetchResult(None, "fetch_failure")
+
+    with (
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+    ):
+        run = await rebuild_playlist(db_session, pl.id, trigger="test")
+
+    assert run.status in ("succeeded", "partial")
+    remaining = (
+        db_session.query(PlaylistSeriesRowOrm)
+        .filter(PlaylistSeriesRowOrm.playlist_id == pl.id)
+        .all()
+    )
+    assert len(remaining) == 1
+    assert remaining[0].series_id == sid_a
+    events = (
+        db_session.query(PlaylistPruneEvent)
+        .filter(
+            PlaylistPruneEvent.playlist_id == pl.id,
+            PlaylistPruneEvent.event_type == "auto_pruned",
+        )
+        .all()
+    )
+    assert len(events) == 1
+    assert events[0].series_id == sid_b
+
+
+@pytest.mark.asyncio
+async def test_failed_rebuild_no_auto_prune(db_session):
+    """Failed rebuild does not auto-prune at-threshold rows."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid_a = _series_id("show-fail-a")
+    sid_b = _series_id("show-fail-b")
+    pl = _seed_playlist(db_session, series_ids=[sid_a, sid_b])
+    row_b = _row_for_series(db_session, pl.id, sid_b)
+    row_b.absence_count = 3
+    db_session.commit()
+
+    async def _mock_fetch_all_fail(db, app_user_id, connection_id, series_id, provider):
+        return FetchResult(None, "fetch_failure")
+
+    with (
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch_all_fail),
+    ):
+        run = await rebuild_playlist(db_session, pl.id, trigger="test")
+
+    assert run.status == "failed"
+    db_session.refresh(row_b)
+    assert row_b.absence_count == 3
+    events = (
+        db_session.query(PlaylistPruneEvent)
+        .filter(PlaylistPruneEvent.playlist_id == pl.id)
+        .all()
+    )
+    assert events == []
 
 
 def test_prune_keeps_last_three_runs(db_session):

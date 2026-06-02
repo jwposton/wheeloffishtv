@@ -19,6 +19,7 @@ from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as Playl
 from wheeloffish.db.models.rebuild_run import RebuildRun
 from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import format_composite_id
+from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.domain.playlist import SeriesRebuildInput
 
 _ORCH = "wheeloffish.core.orchestrator"
@@ -128,7 +129,10 @@ async def test_rebuild_persists_snapshot(db_session, e2e_playlist):
     }
 
     async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
-        return inputs_map.get(series_id)
+        inp = inputs_map.get(series_id)
+        if inp is None:
+            return FetchResult(None, "fetch_failure")
+        return FetchResult(inp, "ok")
 
     mock_provider = MagicMock()
     mock_provider.ping = AsyncMock(return_value=None)

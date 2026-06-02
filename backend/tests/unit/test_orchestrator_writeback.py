@@ -15,6 +15,7 @@ from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
 from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import format_composite_id
+from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.domain.playlist import SeriesRebuildInput
 
 TEST_APP_USER_ID = "00000000-0000-4000-8000-000000000099"
@@ -81,7 +82,7 @@ async def test_rebuild_sets_writeback_status(db_session):
     )
 
     async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
-        return good_input
+        return FetchResult(good_input, "ok")
 
     with (
         patch(
