@@ -58,12 +58,12 @@ const defaultProgressState: WatchMutationProgressState = {
 let watchMutationProgressState: WatchMutationProgressState = defaultProgressState
 const watchMutationProgressListeners = new Set<() => void>()
 let watchMutationProgressEpoch = 0
-let watchMutationProgressDismissTimer: ReturnType<typeof setTimeout> | null = null
+let watchMutationProgressDismissTimer: number | null = null
 
 function cancelWatchMutationProgressDismiss() {
   watchMutationProgressEpoch += 1
   if (watchMutationProgressDismissTimer !== null) {
-    clearTimeout(watchMutationProgressDismissTimer)
+    window.clearTimeout(watchMutationProgressDismissTimer)
     watchMutationProgressDismissTimer = null
   }
 }
