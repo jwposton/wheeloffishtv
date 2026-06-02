@@ -87,21 +87,16 @@ export function SeriesDetailPage() {
 
   const authReady = !authLoading && Boolean(connectionId)
   const isPlaylistOrigin = origin === "playlist-edit" || origin === "playlist-view"
-  const backHref = isPlaylistOrigin && from && from.startsWith("/") ? from : "/browse"
+  const playlistBackPath =
+    from && from.startsWith("/") && !from.startsWith("//") ? from : null
+  const backHref = isPlaylistOrigin && playlistBackPath ? playlistBackPath : "/browse"
   const backLabel = isPlaylistOrigin ? "Back to Playlist" : "Back to Library"
 
   const seriesQuery = useSeriesDetail(connectionId, seriesId, { enabled: authReady })
   const series = seriesQuery.data
 
   const resumeQuery = useSeriesResume(connectionId, seriesId)
-  const needsEpisodeTitle = Boolean(
-    resumeQuery.data?.episode_id && !resumeQuery.data.series_complete,
-  )
-  const episodesQuery = useSeriesEpisodes(
-    connectionId,
-    seriesId,
-    needsEpisodeTitle,
-  )
+  const episodesQuery = useSeriesEpisodes(connectionId, seriesId, authReady)
 
   const matchedEpisode = useMemo(() => {
     const episodeId = resumeQuery.data?.episode_id

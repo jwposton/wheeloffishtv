@@ -203,6 +203,12 @@ export function useSeriesEpisodes(
           scope: "episode",
           action: watched ? "watched" : "unwatched",
         })
+        if (result.status !== "succeeded") {
+          queryClient.setQueryData(
+            seriesEpisodesQueryKey(connectionId ?? "", seriesId ?? ""),
+            prior,
+          )
+        }
         setWatchMutationProgressResult(result, "episode")
         await reconcileAfterMutation()
         return result
