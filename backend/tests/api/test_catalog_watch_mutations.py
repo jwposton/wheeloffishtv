@@ -97,6 +97,35 @@ async def test_watch_mutation_rejects_invalid_scope_and_action(
 
 
 @pytest.mark.asyncio
+async def test_watch_mutation_requires_app_authentication(
+    db_session,
+    connection_factory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WOF_ENABLED_PROVIDERS", "plex,jellyfin")
+    get_settings.cache_clear()
+
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    connection = await connection_factory()
+    target_id = f"{connection.id}:plex:rating-key-1"
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/api/v1/connections/{connection.id}/watch-state",
+            json={"target_id": target_id, "scope": "episode", "action": "watched"},
+        )
+
+    app.dependency_overrides.clear()
+    get_settings.cache_clear()
+
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "unauthenticated"
+
+
+@pytest.mark.asyncio
 async def test_watch_mutation_maps_unauthorized_provider_session(
     catalog_client,
     connection_factory,
