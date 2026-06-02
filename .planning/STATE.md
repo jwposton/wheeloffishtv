@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.2.0
-milestone_name: Operator reliability & backlog
-status: planning
-last_updated: "2026-06-02T21:48:42.672Z"
-last_activity: 2026-06-02
+milestone_name: phases
+status: Defining requirements
+last_updated: "2026-06-02T22:02:42.531Z"
+last_activity: 2026-06-02 — Milestone v0.2.0 started
 progress:
   total_phases: 4
   completed_phases: 0
