@@ -20,9 +20,11 @@ from wheeloffish.api.schemas.playlists import (
     PlaylistListItem,
     PlaylistSeriesRowResponse,
     PlaylistUpdateRequest,
+    PruneEventResponse,
     RebuildRunSummary,
     SnapshotEpisode,
 )
+from wheeloffish.core.catalog_prune import write_prune_event
 from wheeloffish.core.config import get_settings
 from wheeloffish.core.connections import build_provider_for_user
 from wheeloffish.core.media_artwork import series_artwork_url
@@ -34,6 +36,7 @@ from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.cached_series import CachedSeries
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
+from wheeloffish.db.models.playlist_prune_event import PlaylistPruneEvent
 from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.db.models.rebuild_run import RebuildRun
 from wheeloffish.domain.ids import parse_composite_id
@@ -212,6 +215,25 @@ def _playlist_to_detail(
     )
     recent_runs = [_rebuild_run_to_summary(r) for r in recent_runs_orm]
 
+    prune_events_orm = (
+        db.query(PlaylistPruneEvent)
+        .filter(PlaylistPruneEvent.playlist_id == playlist.id)
+        .order_by(PlaylistPruneEvent.timestamp.desc())
+        .limit(20)
+        .all()
+    )
+    recent_prune_events = [
+        PruneEventResponse(
+            id=e.id,
+            series_id=e.series_id,
+            event_type=e.event_type,
+            reason=e.reason,
+            event_metadata=e.event_metadata,
+            timestamp=e.timestamp,
+        )
+        for e in prune_events_orm
+    ]
+
     return PlaylistDetailResponse(
         id=playlist.id,
         name=playlist.name,
@@ -224,6 +246,7 @@ def _playlist_to_detail(
         current_snapshot=snapshot_out,
         last_rebuild=last_rebuild,
         recent_runs=recent_runs,
+        recent_prune_events=recent_prune_events,
         provider_playlist_id=playlist.provider_playlist_id,
         provider_kind=playlist.provider_kind,
         provider_playlist_open_url=_playlist_open_url(db, playlist),
@@ -482,7 +505,15 @@ def remove_playlist_row(
     """Remove one series row without full PUT replacement (D-20)."""
     playlist = _get_owned_playlist(db, playlist_id, user.id)
     row = _get_playlist_row(db, playlist_id, series_id)
+    removed_series_id = row.series_id
     db.delete(row)
+    write_prune_event(
+        db,
+        playlist_id,
+        removed_series_id,
+        event_type="manual_removed",
+        reason="operator",
+    )
     playlist.updated_at = datetime.now(UTC)
     db.commit()
 
