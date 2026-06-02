@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from wheeloffish.db.models.base import Base
@@ -35,5 +36,15 @@ class PlaylistSeriesRow(Base):
         String(32), nullable=False, default="series_complete"
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    absence_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    first_absence_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_absence_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_evidence_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     playlist: Mapped[Playlist] = relationship("Playlist", back_populates="rows")
