@@ -18,7 +18,9 @@ from wheeloffish.core.playlist.mappers import orm_to_playlist
 from wheeloffish.core.catalog_prune import (
     execute_auto_prune,
     record_rebuild_row_absence,
+    reset_absence_counters_for_connection,
 )
+from wheeloffish.core.catalog_sync import run_chunked_sync
 from wheeloffish.core.playlist.rebuild_inputs import (
     FetchResult,
     check_provider_reachable,
@@ -249,29 +251,61 @@ async def run_nightly_batch(db: Session, settings) -> None:
     vault = SecretsVault(db, settings)
     now_local = now_in_tz(settings.install_tz())
 
-    first_connection = db.query(Connection).order_by(Connection.created_at).first()
-    if first_connection is None:
+    if db.query(Connection).order_by(Connection.created_at).first() is None:
         logger.info("nightly_no_connections")
         return
 
-    first_link = (
-        db.query(UserMediaLink)
-        .filter(UserMediaLink.connection_id == first_connection.id)
-        .first()
-    )
-    if first_link is not None:
+    due_playlists = [p for p in db.query(PlaylistOrm).all() if is_due(p, now_local)]
+    logger.info("nightly_rebuild_start", due_count=len(due_playlists))
+
+    by_connection: dict[str, list[PlaylistOrm]] = {}
+    for p in due_playlists:
+        if not p.rows:
+            continue
+        try:
+            connection_id, _, _ = parse_composite_id(p.rows[0].series_id)
+        except ValueError:
+            continue
+        by_connection.setdefault(connection_id, []).append(p)
+
+    for connection_id, playlists in by_connection.items():
+        connection = (
+            db.query(Connection).filter(Connection.id == connection_id).one_or_none()
+        )
+        if connection is None:
+            for p in playlists:
+                run = RebuildRun(
+                    playlist_id=p.id,
+                    status="failed",
+                    error_message=f"Connection {connection_id!r} not found",
+                    started_at=datetime.now(UTC),
+                    finished_at=datetime.now(UTC),
+                )
+                db.add(run)
+            db.commit()
+            continue
+
+        first_link = (
+            db.query(UserMediaLink)
+            .filter(UserMediaLink.connection_id == connection_id)
+            .first()
+        )
+        if first_link is None:
+            continue
+
+        app_user_id = first_link.app_user_id
+
         try:
             probe_provider = build_provider_for_user(
-                db, vault, first_connection, first_link.app_user_id, settings=settings
+                db, vault, connection, app_user_id, settings=settings
             )
             reachable = await check_provider_reachable(probe_provider)
         except Exception:
             reachable = False
 
         if not reachable:
-            logger.error("nightly_provider_unreachable", connection_id=first_connection.id)
-            due_playlists = [p for p in db.query(PlaylistOrm).all() if is_due(p, now_local)]
-            for p in due_playlists:
+            logger.error("nightly_provider_unreachable", connection_id=connection_id)
+            for p in playlists:
                 run = RebuildRun(
                     playlist_id=p.id,
                     status="failed",
@@ -280,18 +314,17 @@ async def run_nightly_batch(db: Session, settings) -> None:
                     finished_at=datetime.now(UTC),
                 )
                 db.add(run)
+            reset_absence_counters_for_connection(db, connection_id, app_user_id)
             db.commit()
-            return
+            continue
 
-    all_playlists = db.query(PlaylistOrm).all()
-    due_playlists = [p for p in all_playlists if is_due(p, now_local)]
-    logger.info("nightly_rebuild_start", due_count=len(due_playlists))
+        await run_chunked_sync(connection_id, app_user_id)
 
-    for p in due_playlists:
-        try:
-            await rebuild_playlist(db, p.id, trigger="nightly")
-        except Exception as exc:
-            logger.error("nightly_rebuild_error", playlist_id=p.id, error=str(exc))
+        for p in playlists:
+            try:
+                await rebuild_playlist(db, p.id, trigger="nightly")
+            except Exception as exc:
+                logger.error("nightly_rebuild_error", playlist_id=p.id, error=str(exc))
 
 
 async def run_nightly_rebuilds() -> None:
