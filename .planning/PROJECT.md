@@ -2,77 +2,79 @@
 
 ## What This Is
 
-Self-hosted Dockerized **plex/jellyfin “random TV roulette”**. Users connect their **Plex** or **Jellyfin** library, configure **multiple playlists**, pick which shows feed each playlist (from a **Library** browse experience), set **episode count per refresh**, and get a rebuilt list daily. For **ordered** shows, playback respects **(series order)** starting from **up-next / earliest unwatched / in-progress**. For **disordered** show entries, episodes from that show are **feathered in randomly**. **Multipart** arcs keep **continuation parts contiguous** within a refresh.
+Self-hosted Dockerized **Plex/Jellyfin “random TV roulette”**. Users connect their media server, configure **multiple playlists**, pick shows from a **Library** browse experience, set **episode count per refresh**, and get a rebuilt list daily. **Ordered** shows respect resume/up-next; **disordered** rows feather episodes randomly. **Multipart** arcs stay contiguous within a refresh. Rebuilt output **writes back** to native Plex/Jellyfin playlists for playback in existing clients.
 
 ## Core Value
 
 **Pick N random slots across chosen shows — but binge each ordered show from true “resume” — with a slick web UI.**
 
+## Current State (v0.1.0 — shipped 2026-06-02)
+
+- Dockerized FastAPI + React SPA with Plex/Jellyfin OAuth, catalog sync, and nightly rebuild orchestration
+- Deterministic playlist mathematics (ordered/disordered, completion policies, multipart adjacency)
+- Library-centric membership UX + two-pane playlist editor
+- Provider playlist writeback (`{name} [WoF]`) after each rebuild
+- Series detail with season-grouped watch state and provider-backed mutations from Library, view-playlist, and edit-playlist flows
+
+## Next Milestone Goals (v0.2.0 — TBD)
+
+- Visual/UX polish pass (WEB-01 completion beyond functional MVP)
+- Backlog items BL-03–BL-06: catalog prune, sync diagnostics modal, Plex server-agnostic mode, playlist view toggle
+- Remaining human UAT/verification debt from v0.1.0 (see STATE.md Deferred Items)
+
 ## Requirements
 
-### Validated
+### Validated (v0.1.0)
 
-- ✓ Dockerized deployment (Python FastAPI service, Compose stack, CI) — Phase 1
-- ✓ Media ingestion & catalogs (Plex/Jellyfin sync, resume service, cached series/episodes) — Phase 2
-- ✓ Minimal operator SPA shell (auth, protected routes, catalog browsing, artwork) — Phase 3
-- ✓ Playlist mathematics (domain models, ordered/disordered pickers, completion policies, `PlaylistBuilder.build()`) — Phase 4
-- ✓ Library-centric playlist membership UX (add from catalog tiles + two-pane editor) — Phase 6
+- ✓ Dockerized deployment (Compose, CI, migrations) — Phase 1
+- ✓ Plex/Jellyfin integration, catalog sync, resume metadata — Phases 2–3
+- ✓ Playlist CRUD, membership, tuning, manual rebuild, job status — Phases 4–6
+- ✓ Daily scheduled rebuilds with multipart handling — Phase 5
+- ✓ Provider playlist writeback (EXP-01) — Phase 7
+- ✓ Series detail + watch-state mutations from playlists — Phase 9
+- ✓ Per-user library scope (BL-02) and remove confirmation skip (BL-01)
 
-### Active
+### Active (v0.2.0+)
 
-- [ ] Modern, polished SPA web UI *(functional complete; visual polish deferred to Phase 8 / v0.2.0)*
-
-### Validated (post–v0.1.0 backlog)
-
-- ✓ Per-user library scope in **Settings → Libraries** (no admin RBAC) — BL-02, 2026-05-26
-- ✓ Playlist remove confirmation “don’t ask again” (session-scoped) — BL-01, 2026-05-26
-- ✓ Connect Plex/Jellyfin; list libraries & shows for playlists — Phases 2–3, 6
-- ✓ Push rebuilt playlists to native Plex/Jellyfin playlists (EXP-01) — Phase 7
-- ✓ Ordered vs disordered per playlist × show; completion policies; daily rebuild — Phases 4–5
+- [ ] Modern, polished SPA web UI (motion, dark mode, dashboards, visual QA)
+- [ ] BL-03: Safe catalog prune for removed server shows
+- [ ] BL-04: Detailed sync/rebuild diagnostics modal
+- [ ] BL-05: Env-driven Plex server-agnostic vs server-specific mode
+- [ ] BL-06: Playlist view toggle (Available vs Output)
 
 ### Out of Scope
 
-- Replacing Plex/Jellyfin as the playback client (this system **authors playlists** consumed in those apps, not a bespoke video player) — narrow if you intend first-class in-app playback
-- Offline downloads / DRM circumvention — legal Plex/Jellyfin API usage only
-- Multi-region cloud SaaS tenancy — assumes self-hosted deployment
+- First-class in-app video playback (author in WheelOfFish, play in Plex/Jellyfin)
+- Licensed content scraping outside configured servers
+- Hosted multi-tenant SaaS billing
+- Global admin WheelOfFish playlist (cancelled 2026-05-25)
 
 ## Context
 
-Inspired by communal “shuffle TV” (**Wheel Of Fish**) where variety matters but serialization matters for dramas. Plex “On Deck” / Jellyfin “Next Up” semantics differ slightly; unify on **canonical “resume index”**: earliest incomplete episode unless user marked disordered row.
-
-Technical notes for later phases:
-
-- **Plex**: token + server URL; REST where stable
-- **Jellyfin**: API key / user pairing; richer metadata for multi-part specials
-- **Multipart**: derive from backend metadata (`Part` index, specials grouping, consecutive S##E## or explicit links) — MUST define deterministic rule in planning
+Shipped v0.1.0 with 9 phases and 51 plans (2026-05-25 → 2026-06-02). Stack: Python/FastAPI, SQLAlchemy/Alembic, APScheduler, React/Vite, TanStack Query, shadcn/ui. Self-hosted Docker Compose deployment.
 
 ## Constraints
 
-- **Tech**: Prefer **Python** backend — fits FastAPI/Starlette ecosystem; pair with SPA (React/Vue/Svelte acceptable)
-- **Deploy**: Docker **required** (`compose` expected for DB + app + optional worker)
-- **UX**: “Modern slick” — invest in design system (tokens, motion restraint, dark-mode ready)
-- **Self-hosted**: Secrets (API keys) must not ship in images; env/volume mounts
+- **Tech**: Python backend + SPA frontend
+- **Deploy**: Docker Compose required
+- **UX**: Modern, accessible, dark-mode ready
+- **Self-hosted**: Secrets via env/volume mounts, never baked into images
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Python backend | User preference + strong async HTTP client story | — Pending |
-| Daily batch rebuild | Predictable load; simpler than continuous mutation | — Pending |
-| No global WheelOfFish playlist | User creates their own mixed playlists; admin global pool cancelled (2026-05-25) | — Decided |
-| v0.1.0 before polish | Provider writeback (Phase 7) gates first release; UX polish is Phase 8 / v0.2.0 | — Decided 2026-05-25 |
+| Python backend | Async HTTP + FastAPI ecosystem | ✓ Good |
+| Daily batch rebuild | Predictable load vs continuous mutation | ✓ Good |
+| No global WheelOfFish playlist | Users manage own playlists | ✓ Decided |
+| v0.1.0 before polish | Writeback gates first release | ✓ Shipped v0.1.0 |
+| Plex-first writeback | Jellyfin parity in 07-02 | ✓ Both providers |
+| Library UX over search-box picker | Phase 6 two-pane editor | ✓ Shipped |
+| Specials (S0) after seasons 1…N | Phase 9 series detail | ✓ Shipped |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. “What This Is” still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd-complete-milestone`):
 
@@ -82,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-25 after roadmap amendment (Phase 7 writeback = v0.1.0; Phase 8 polish)*
+*Last updated: 2026-06-02 after v0.1.0 milestone close*
