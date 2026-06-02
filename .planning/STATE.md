@@ -23,19 +23,19 @@ See: `.planning/PROJECT.md` (updated 2026-06-02)
 
 **Core value:** Pick N random slots across chosen shows — binge each ordered show from true resume — with a slick web UI.
 
-**Current focus:** v0.2.0 requirements defined — `/gsd-discuss-phase 10` or `/gsd-plan-phase 10`
+**Current focus:** Phase 10 context gathered — `/gsd-plan-phase 10`
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 10 — Safe catalog prune (context gathered)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-02 — Milestone v0.2.0 started
+Status: Ready for planning
+Last activity: 2026-06-02 — Phase 10 discuss complete
 
 ## Operator Next Steps
 
-- `/gsd-discuss-phase 10` — safe catalog prune (BL-03)
-- `/gsd-plan-phase 10` — skip discussion, plan directly
+- `/gsd-plan-phase 10` — plan safe catalog prune (BL-03)
+- Review `.planning/phases/10-safe-catalog-prune/10-CONTEXT.md` before planning if desired
 - Backlog reference: `.planning/BACKLOG.md` (BL-03–BL-06)
 
 ## Deferred Items
