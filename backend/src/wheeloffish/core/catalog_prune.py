@@ -22,6 +22,13 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _connection_id_for_row(row: PlaylistSeriesRow) -> str | None:
+    try:
+        return parse_composite_id(row.series_id)[0]
+    except ValueError:
+        return None
+
+
 def _cached_series_ids(
     db: Session, connection_id: str, app_user_id: str
 ) -> set[str]:
@@ -48,7 +55,7 @@ def _rows_for_connection(
     return [
         row
         for row in rows
-        if parse_composite_id(row.series_id)[0] == connection_id
+        if _connection_id_for_row(row) == connection_id
     ]
 
 
@@ -183,7 +190,7 @@ def execute_auto_prune(
         rows = [
             row
             for row in rows
-            if parse_composite_id(row.series_id)[0] == connection_id
+            if _connection_id_for_row(row) == connection_id
         ]
 
     deleted: list[str] = []

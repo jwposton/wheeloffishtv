@@ -317,3 +317,46 @@ def test_record_catalog_sync_absence(db_session):
     )
     assert n2 == 1
     assert _row_for_series(db_session, pl.id, sid_absent).absence_count == 2
+
+
+def test_malformed_series_id_skipped_in_connection_filter(db_session):
+    """Malformed series_id rows are skipped without aborting connection prune ops."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    _seed_user_media_link(db_session)
+    sid_valid = _series_id("valid-show")
+    pl = _seed_playlist(db_session, series_ids=[sid_valid])
+    malformed = PlaylistSeriesRowOrm(
+        id=str(uuid.uuid4()),
+        playlist_id=pl.id,
+        series_id="not-a-composite-id",
+        mode="ordered",
+        completion_policy="remove",
+        completion_event="series_complete",
+        sort_order=99,
+    )
+    db_session.add(malformed)
+    db_session.flush()
+
+    n = record_catalog_sync_absence(
+        db_session, TEST_CONNECTION_ID, TEST_APP_USER_ID
+    )
+    assert n == 1
+    assert _row_for_series(db_session, pl.id, sid_valid).absence_count == 1
+
+    malformed.absence_count = PRUNE_THRESHOLD
+    db_session.flush()
+
+    deleted = execute_auto_prune(
+        db_session,
+        app_user_id=TEST_APP_USER_ID,
+        trigger="catalog_sync",
+        connection_id=TEST_CONNECTION_ID,
+    )
+    assert deleted == []
+    assert (
+        db_session.query(PlaylistSeriesRowOrm)
+        .filter(PlaylistSeriesRowOrm.id == malformed.id)
+        .count()
+        == 1
+    )
