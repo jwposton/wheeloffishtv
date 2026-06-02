@@ -39,7 +39,7 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 
 | # | Phase | Goal | Requirements |
 |---|-------|------|--------------|
-| 10 | 3/6 | In Progress|  |
+| 10 | 5/6 | In Progress|  |
 | 11 | Sync & rebuild diagnostics | Operators inspect partial/failed runs without shell or DB access | DIAG-01–05 |
 | 12 | Server-agnostic providers | Plex and Jellyfin work with or without a pinned media server URL in env | CONN-01–06 |
 | 13 | Playlist view toggle | Edit flow switches Available vs Output on desktop; three tabs on mobile | EDIT-01–05 |
@@ -58,7 +58,7 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 **Requirements:** PRUNE-01, PRUNE-02, PRUNE-03, PRUNE-04  
 **Backlog:** BL-03
 
-**Plans:** 3/6 plans executed
+**Plans:** 5/6 plans executed
 Plans:
 **Wave 1**
 
@@ -71,8 +71,8 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 10-03-PLAN.md — FetchResult typing + reachable-gated rebuild evidence + playlist-scoped auto-prune (wave 3)
-- [ ] 10-04-PLAN.md — catalog_sync integration: sync-completion evidence + failure resets (wave 3)
-- [ ] 10-06-PLAN.md — API embed recent_prune_events + manual_removed audit (wave 3)
+- [x] 10-04-PLAN.md — catalog_sync integration: sync-completion evidence + failure resets (wave 3)
+- [x] 10-06-PLAN.md — API embed recent_prune_events + manual_removed audit (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
