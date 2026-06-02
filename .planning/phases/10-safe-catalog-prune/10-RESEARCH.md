@@ -596,22 +596,16 @@ No new external dependencies. All required tools available. [VERIFIED: codebase 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`run_nightly_batch` multi-connection scope**
-   - What we know: Current code uses `first_connection` for reachability and rebuilds ALL playlists regardless of connection. Phase 10 needs per-connection sync-before-rebuild.
-   - What's unclear: Whether the operator's deployment ever has more than one connection; scope of refactor needed.
-   - Recommendation: Planner should implement connection-grouped nightly loop for correctness per D-05; the app supports multi-connection even if uncommon.
+   - RESOLVED: Implement connection-grouped nightly loop per D-05 (plan 10-05); multi-connection is supported even if uncommon.
 
 2. **`_mark_sync_stale_failed` and D-04 coverage**
-   - What we know: Stale sync (180s timeout) is set to "failed" lazily via `get_sync_status`. The counter reset in D-04 is primarily triggered by `run_chunked_sync` exception handlers.
-   - What's unclear: Should stale-failed detection via `get_sync_status` also reset counters?
-   - Recommendation: Planner adds reset to `_mark_sync_stale_failed` — it requires adding `connection_id` and `app_user_id` parameters (they're available on `CatalogSyncState`).
+   - RESOLVED: Add counter reset to `_mark_sync_stale_failed` with `connection_id` / `app_user_id` from `CatalogSyncState` (plan 10-04).
 
 3. **`execute_auto_prune` granularity: playlist-scoped vs connection-scoped after rebuild**
-   - What we know: Rebuild is playlist-scoped; catalog sync is connection-scoped. D-06 says prune at end of successful rebuild.
-   - What's unclear: Does "rebuild prune trigger" check all rows in the rebuilt playlist, or all rows on the connection?
-   - Recommendation: Scope prune to the rebuilt playlist only. Connection-scoped prune happens at catalog sync time.
+   - RESOLVED: Playlist-scoped prune after rebuild; connection-scoped prune at catalog sync end (plans 10-03, 10-04).
 
 ---
 
