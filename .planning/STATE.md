@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.1.0
-milestone_name: feature-complete MVP (provider writeback)
-status: Awaiting next milestone
-last_updated: 2026-06-02T21:32:41.676Z
-last_activity: 2026-06-02 — Milestone v0.1.0 completed and archived
+milestone: v0.2.0
+milestone_name: Operator reliability & backlog
+status: planning
+last_updated: "2026-06-02T21:48:42.672Z"
+last_activity: 2026-06-02
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 51
-  completed_plans: 51
-  percent: 100
-stopped_at: Milestone v0.1.0 complete — archived 2026-06-02
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # State — Wheel of Fish TV
@@ -24,22 +23,20 @@ See: `.planning/PROJECT.md` (updated 2026-06-02)
 
 **Core value:** Pick N random slots across chosen shows — binge each ordered show from true resume — with a slick web UI.
 
-**Current focus:** Plan v0.2.0 via `/gsd-new-milestone`
+**Current focus:** v0.2.0 requirements defined — `/gsd-discuss-phase 10` or `/gsd-plan-phase 10`
 
 ## Current Position
 
-| | |
-|---|---|
-| **Milestone** | v0.1.0 complete (shipped 2026-06-02) |
-| **Phases** | 9/9 |
-| **Plans** | 51/51 |
-| **Status** | Awaiting next milestone |
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-06-02 — Milestone v0.2.0 started
 
 ## Operator Next Steps
 
-- Start v0.2.0 planning: `/gsd-new-milestone`
-- Review backlog: `.planning/BACKLOG.md` (BL-03–BL-06)
-- Optional: `/gsd-verify-work` for remaining human UAT from v0.1.0
+- `/gsd-discuss-phase 10` — safe catalog prune (BL-03)
+- `/gsd-plan-phase 10` — skip discussion, plan directly
+- Backlog reference: `.planning/BACKLOG.md` (BL-03–BL-06)
 
 ## Deferred Items
 

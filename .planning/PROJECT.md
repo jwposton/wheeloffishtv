@@ -6,7 +6,7 @@ Self-hosted Dockerized **Plex/Jellyfin “random TV roulette”**. Users connect
 
 ## Core Value
 
-**Pick N random slots across chosen shows — but binge each ordered show from true “resume” — with a slick web UI.**
+**Pick N random slots across chosen shows — but binge each ordered show from true resume — with a slick web UI.**
 
 ## Current State (v0.1.0 — shipped 2026-06-02)
 
@@ -15,12 +15,18 @@ Self-hosted Dockerized **Plex/Jellyfin “random TV roulette”**. Users connect
 - Library-centric membership UX + two-pane playlist editor
 - Provider playlist writeback (`{name} [WoF]`) after each rebuild
 - Series detail with season-grouped watch state and provider-backed mutations from Library, view-playlist, and edit-playlist flows
+- UX polish pass (WEB-01) delivered across Phases 3–8 (motion, dark mode, status surfaces, visual QA sufficient for v0.1.0)
 
-## Next Milestone Goals (v0.2.0 — TBD)
+## Current Milestone: v0.2.0 Operator reliability & backlog
 
-- Visual/UX polish pass (WEB-01 completion beyond functional MVP)
-- Backlog items BL-03–BL-06: catalog prune, sync diagnostics modal, Plex server-agnostic mode, playlist view toggle
-- Remaining human UAT/verification debt from v0.1.0 (see STATE.md Deferred Items)
+**Goal:** Ship deferred operator backlog (BL-03–BL-06) so catalog hygiene, failure visibility, flexible provider connection, and playlist editing workflows are production-ready without another UX milestone.
+
+**Target features:**
+
+- **BL-03** — Safe two-way catalog prune for shows confidently removed from the provider
+- **BL-04** — Detailed sync/rebuild diagnostics modal for partial/failed runs
+- **BL-05** — Server-agnostic mode for **both Plex and Jellyfin** when media server URL is unset in env/Compose; optional env-pinned server for backward-compatible installs
+- **BL-06** — Playlist view toggle (Available vs Output) with responsive tabbed layout
 
 ## Requirements
 
@@ -33,14 +39,14 @@ Self-hosted Dockerized **Plex/Jellyfin “random TV roulette”**. Users connect
 - ✓ Provider playlist writeback (EXP-01) — Phase 7
 - ✓ Series detail + watch-state mutations from playlists — Phase 9
 - ✓ Per-user library scope (BL-02) and remove confirmation skip (BL-01)
+- ✓ SPA UX polish (WEB-01) — Phases 3–8
 
-### Active (v0.2.0+)
+### Active (v0.2.0)
 
-- [ ] Modern, polished SPA web UI (motion, dark mode, dashboards, visual QA)
-- [ ] BL-03: Safe catalog prune for removed server shows
-- [ ] BL-04: Detailed sync/rebuild diagnostics modal
-- [ ] BL-05: Env-driven Plex server-agnostic vs server-specific mode
-- [ ] BL-06: Playlist view toggle (Available vs Output)
+- [ ] BL-03: Safe catalog prune (PRUNE-*)
+- [ ] BL-04: Sync/rebuild diagnostics modal (DIAG-*)
+- [ ] BL-05: Server-agnostic Plex + Jellyfin when URL unset (CONN-*)
+- [ ] BL-06: Playlist Available vs Output toggle (EDIT-*)
 
 ### Out of Scope
 
@@ -48,10 +54,13 @@ Self-hosted Dockerized **Plex/Jellyfin “random TV roulette”**. Users connect
 - Licensed content scraping outside configured servers
 - Hosted multi-tenant SaaS billing
 - Global admin WheelOfFish playlist (cancelled 2026-05-25)
+- Additional v0.2.0 UX polish milestone (WEB-01 complete for current release bar)
 
 ## Context
 
 Shipped v0.1.0 with 9 phases and 51 plans (2026-05-25 → 2026-06-02). Stack: Python/FastAPI, SQLAlchemy/Alembic, APScheduler, React/Vite, TanStack Query, shadcn/ui. Self-hosted Docker Compose deployment.
+
+v0.2.0 continues phase numbering from Phase 10. Remaining human UAT from v0.1.0 may be closed opportunistically during implementation but is not a dedicated milestone phase.
 
 ## Constraints
 
@@ -71,6 +80,8 @@ Shipped v0.1.0 with 9 phases and 51 plans (2026-05-25 → 2026-06-02). Stack: Py
 | Plex-first writeback | Jellyfin parity in 07-02 | ✓ Both providers |
 | Library UX over search-box picker | Phase 6 two-pane editor | ✓ Shipped |
 | Specials (S0) after seasons 1…N | Phase 9 series detail | ✓ Shipped |
+| v0.2.0 skips new UX milestone | WEB-01 satisfied in v0.1.0 | ✓ Decided 2026-06-02 |
+| BL-05 both providers server-agnostic | Optional URL in env/Compose | ✓ Decided 2026-06-02 |
 
 ## Evolution
 
@@ -84,4 +95,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-02 after v0.1.0 milestone close*
+*Last updated: 2026-06-02 — v0.2.0 milestone started*
