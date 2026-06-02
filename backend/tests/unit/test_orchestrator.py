@@ -574,6 +574,85 @@ def test_prune_keeps_last_three_runs(db_session):
 
 
 @pytest.mark.asyncio
+async def test_nightly_sync_before_rebuild_order(db_session):
+    """run_chunked_sync is awaited before rebuild_playlist for due playlists (D-05)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    _seed_user_media_link(db_session)
+    sid = _series_id("show-nightly-order")
+    pl = _seed_playlist(db_session, series_ids=[sid], cadence="daily")
+    db_session.commit()
+
+    calls: list[str] = []
+
+    async def _sync_side_effect(connection_id, app_user_id):
+        calls.append("sync")
+
+    async def _rebuild_side_effect(db, playlist_id, *, trigger):
+        calls.append("rebuild")
+
+    mock_settings = MagicMock()
+    mock_settings.install_tz.return_value = zoneinfo.ZoneInfo("UTC")
+
+    with (
+        patch(f"{_ORCH}.SecretsVault", return_value=MagicMock()),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(
+            f"{_ORCH}.check_provider_reachable",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(f"{_ORCH}.run_chunked_sync", side_effect=_sync_side_effect),
+        patch(f"{_ORCH}.rebuild_playlist", side_effect=_rebuild_side_effect),
+    ):
+        await run_nightly_batch(db_session, mock_settings)
+
+    assert "sync" in calls
+    assert "rebuild" in calls
+    assert calls.index("sync") < calls.index("rebuild")
+
+
+@pytest.mark.asyncio
+async def test_nightly_unreachable_resets_counters(db_session):
+    """Unreachable provider resets absence counters and skips sync (D-04)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    _seed_user_media_link(db_session)
+    sid = _series_id("show-nightly-reset")
+    pl = _seed_playlist(db_session, series_ids=[sid], cadence="daily")
+    row = _row_for_series(db_session, pl.id, sid)
+    row.absence_count = 2
+    db_session.commit()
+
+    mock_sync = AsyncMock()
+    mock_settings = MagicMock()
+    mock_settings.install_tz.return_value = zoneinfo.ZoneInfo("UTC")
+
+    with (
+        patch(f"{_ORCH}.SecretsVault", return_value=MagicMock()),
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(
+            f"{_ORCH}.check_provider_reachable",
+            new_callable=AsyncMock,
+            return_value=False,
+        ),
+        patch(f"{_ORCH}.run_chunked_sync", mock_sync),
+    ):
+        await run_nightly_batch(db_session, mock_settings)
+
+    db_session.refresh(row)
+    assert row.absence_count == 0
+    mock_sync.assert_not_awaited()
+    failed_runs = (
+        db_session.query(RebuildRun)
+        .filter(RebuildRun.playlist_id == pl.id, RebuildRun.status == "failed")
+        .all()
+    )
+    assert len(failed_runs) == 1
+    assert failed_runs[0].error_message == "Provider unreachable — nightly batch aborted"
+
+
+@pytest.mark.asyncio
 async def test_nightly_skips_non_due_weekly(db_session):
     """Weekly playlist not due today is excluded from the nightly rebuild loop (D-03)."""
     _seed_app_user(db_session)
@@ -604,7 +683,8 @@ async def test_nightly_skips_non_due_weekly(db_session):
             new_callable=AsyncMock,
             return_value=True,
         ),
-        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", new_callable=AsyncMock),
+        patch(f"{_ORCH}.run_chunked_sync", new_callable=AsyncMock),
+        patch(f"{_ORCH}.rebuild_playlist", new_callable=AsyncMock),
     ):
         await run_nightly_batch(db_session, mock_settings)
 
