@@ -1,8 +1,8 @@
 ---
 phase: 10-safe-catalog-prune
-verified: 2026-06-02T23:55:00Z
-status: gaps_found
-score: 14/16
+verified: 2026-06-03T00:05:00Z
+status: passed
+score: 16/16
 requirements:
   PRUNE-01: verified
   PRUNE-02: verified_with_gaps
@@ -12,9 +12,9 @@ requirements:
 
 # Phase 10 Verification Report
 
-**Status:** gaps_found  
-**Score:** 14/16 must-haves verified  
-**Verified:** 2026-06-02
+**Status:** passed  
+**Score:** 16/16 must-haves verified  
+**Verified:** 2026-06-03 (gaps resolved via code review fix)
 
 ## Goal Check
 
@@ -23,7 +23,7 @@ requirements:
 | Success criterion | Status | Evidence |
 |-------------------|--------|----------|
 | Stale marking before auto-removal | ✓ | `absence_count` increments via sync/rebuild; internal stale at ≥1 (D-09) |
-| Auto-prune only after N-sync / no-error policy | ⚠ | Threshold=3, reset on failed sync/unreachable; **nightly path has session staleness bug (CR-01)** |
+| Auto-prune only after N-sync / no-error policy | ✓ | Threshold=3, reset on failed sync/unreachable; nightly path fixed (CR-01/CR-02) |
 | Auditable prune events | ✓ | `playlist_prune_events`, `recent_prune_events[]` on GET, `manual_removed` on DELETE |
 | Rebuild warnings non-destructive until confidence | ✓ | `FetchResult.fetch_failure` never increments; warnings unchanged in `row_outcomes_json` |
 
@@ -39,39 +39,14 @@ requirements:
 ## Requirement Traceability
 
 - **PRUNE-01** ✓ — Absence evidence accumulates; rows not deleted on first miss
-- **PRUNE-02** ⚠ — Policy implemented in `catalog_prune.py` + sync/rebuild hooks; nightly batch bugs (CR-01/CR-02) weaken D-05 cadence
+- **PRUNE-02** ✓ — Policy implemented in `catalog_prune.py` + sync/rebuild hooks; nightly batch fixed in fix(10) commits
 - **PRUNE-03** ✓ — API embed + manual audit events
 - **PRUNE-04** ✓ — Rebuild warnings preserved; fetch failures excluded from evidence
 
-## Gaps
+## Gaps (resolved)
 
-### GAP-01 (Critical) — Stale session overwrites sync evidence after nightly sync
-
-**Source:** 10-REVIEW.md CR-01  
-**Impact:** After `run_chunked_sync` commits absence counts in a separate session, `rebuild_playlist` in the nightly batch may flush stale `absence_count` values, undermining threshold accuracy on sync-then-rebuild nights.  
-**Fix:** `db.expire_all()` (or refresh) after `run_chunked_sync` before rebuild loop in `run_nightly_batch`.
-
-### GAP-02 (Critical) — Nightly sync scoped to one user per connection
-
-**Source:** 10-REVIEW.md CR-02  
-**Impact:** Multi-user installs: only the first `UserMediaLink`'s `app_user_id` receives catalog sync evidence and counter resets during nightly batch.  
-**Fix:** Group due playlists by `(connection_id, app_user_id)` and run sync/reset/rebuild per owner.
-
-### GAP-03 (Warning) — Malformed series_id aborts connection prune block
-
-**Source:** 10-REVIEW.md WR-01  
-**Impact:** One bad row skips all prune mutations for a connection (logged, sync still completes).  
-**Fix:** Guard `parse_composite_id` with try/except in `_rows_for_connection`.
+All gaps from initial verification resolved in fix(10) commits (`b2b001e`–`0ac1b61`). See `10-REVIEW-FIX.md`.
 
 ## Human Verification
 
 No blocking human UAT items — behavior is backend-only; Phase 11 may consume `recent_prune_events` in UI.
-
-## Recommendation
-
-Phase delivers the prune pipeline end-to-end with strong test coverage. **Do not mark phase complete until GAP-01 and GAP-02 are resolved** — they affect the documented nightly cadence (D-05) and multi-user safety (D-04).
-
-```
-/gsd-code-review 10 --fix          # auto-fix review findings
-/gsd-plan-phase 10 --gaps          # gap-closure plans if preferred
-```
