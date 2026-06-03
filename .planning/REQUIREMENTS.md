@@ -16,11 +16,11 @@ Backlog BL-03–BL-06. Each maps to one roadmap phase (10–13).
 
 ### Sync diagnostics (BL-04)
 
-- [ ] **DIAG-01**: Operator can open a structured diagnostics view from partial/failed rebuild or writeback warning states
-- [ ] **DIAG-02**: Diagnostics list rebuild-level errors, per-show fetch warnings, and per-episode writeback warnings/errors from the latest run API payload
-- [ ] **DIAG-03**: Each diagnostic row shows a friendly label with raw identifiers when labels are unavailable
-- [ ] **DIAG-04**: Diagnostics include remediation hints (removed from server, out-of-scope library, provider auth issue, etc.)
-- [ ] **DIAG-05**: Compact status badges on playlist detail remain unchanged; diagnostics are on-demand detail only
+- [x] **DIAG-01**: Operator can open a structured diagnostics view from partial/failed rebuild or writeback warning states
+- [x] **DIAG-02**: Diagnostics list rebuild-level errors, per-show fetch warnings, and per-episode writeback warnings/errors from the latest run API payload
+- [x] **DIAG-03**: Each diagnostic row shows a friendly label with raw identifiers when labels are unavailable
+- [x] **DIAG-04**: Diagnostics include remediation hints (removed from server, out-of-scope library, provider auth issue, etc.)
+- [x] **DIAG-05**: Compact status badges on playlist detail remain unchanged; diagnostics are on-demand detail only
 
 ### Provider connection modes (BL-05)
 
@@ -64,11 +64,11 @@ Deferred beyond v0.2.0.
 | PRUNE-02 | Phase 10 | Complete |
 | PRUNE-03 | Phase 10 | Complete |
 | PRUNE-04 | Phase 10 | Complete |
-| DIAG-01 | Phase 11 | Pending |
-| DIAG-02 | Phase 11 | Pending |
-| DIAG-03 | Phase 11 | Pending |
-| DIAG-04 | Phase 11 | Pending |
-| DIAG-05 | Phase 11 | Pending |
+| DIAG-01 | Phase 11 | Complete |
+| DIAG-02 | Phase 11 | Complete |
+| DIAG-03 | Phase 11 | Complete |
+| DIAG-04 | Phase 11 | Complete |
+| DIAG-05 | Phase 11 | Complete |
 | CONN-01 | Phase 12 | Pending |
 | CONN-02 | Phase 12 | Pending |
 | CONN-03 | Phase 12 | Pending |

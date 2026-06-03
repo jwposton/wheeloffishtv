@@ -40,7 +40,7 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 | # | Phase | Goal | Requirements |
 |---|-------|------|--------------|
 | 10 | 6/6 | Complete   | 2026-06-02 |
-| 11 | Sync & rebuild diagnostics | Operators inspect partial/failed runs without shell or DB access | DIAG-01–05 |
+| 11 | 5/5 | Complete    | 2026-06-03 |
 | 12 | Server-agnostic providers | Plex and Jellyfin work with or without a pinned media server URL in env | CONN-01–06 |
 | 13 | Playlist view toggle | Edit flow switches Available vs Output on desktop; three tabs on mobile | EDIT-01–05 |
 
@@ -95,21 +95,21 @@ Plans:
 **Requirements:** DIAG-01, DIAG-02, DIAG-03, DIAG-04, DIAG-05  
 **Backlog:** BL-04
 
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 Plans:
 **Wave 0**
 
-- [ ] 11-01-PLAN.md — Diagnostic contracts (backend Pydantic models + frontend TS types) + RED resolver test scaffold
+- [x] 11-01-PLAN.md — Diagnostic contracts (backend Pydantic models + frontend TS types) + RED resolver test scaffold
 
 **Wave 1** *(blocked on Wave 0)*
 
-- [ ] 11-02-PLAN.md — Backend diagnostics resolver + reason catalog (TDD)
-- [ ] 11-04-PLAN.md — Diagnostics modal + action helper lib (frontend)
+- [x] 11-02-PLAN.md — Backend diagnostics resolver + reason catalog (TDD)
+- [x] 11-04-PLAN.md — Diagnostics modal + action helper lib (frontend)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 11-03-PLAN.md — Embed diagnostics on playlist detail GET + integration test
-- [ ] 11-05-PLAN.md — RebuildBanner trigger + WritebackStatus strip + page wiring
+- [x] 11-03-PLAN.md — Embed diagnostics on playlist detail GET + integration test
+- [x] 11-05-PLAN.md — RebuildBanner trigger + WritebackStatus strip + page wiring
 
 ---
 
