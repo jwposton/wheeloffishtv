@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -77,6 +78,30 @@ class PatchRowRequest(BaseModel):
         return self
 
 
+class DiagnosticAction(BaseModel):
+    type: Literal["remove_row", "open_provider", "open_series"]
+    label: str
+    series_id: str | None = None
+    episode_id: str | None = None
+    url: str | None = None
+
+
+class DiagnosticIssueRow(BaseModel):
+    label: str
+    reason_code: str
+    reason_text: str
+    remediation_hint: str
+    series_id: str | None = None
+    episode_id: str | None = None
+    actions: list[DiagnosticAction] = Field(default_factory=list)
+
+
+class RebuildDiagnostics(BaseModel):
+    rebuild_error: DiagnosticIssueRow | None = None
+    show_issues: list[DiagnosticIssueRow] = Field(default_factory=list)
+    episode_issues: list[DiagnosticIssueRow] = Field(default_factory=list)
+
+
 class RebuildRunSummary(BaseModel):
     id: str
     status: str
@@ -89,6 +114,7 @@ class RebuildRunSummary(BaseModel):
     writeback_error: str | None = None
     writeback_warnings: list[dict] | None = None
     writeback_at: datetime | None = None
+    diagnostics: RebuildDiagnostics | None = None
 
 
 class PruneEventResponse(BaseModel):
