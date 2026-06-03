@@ -69,7 +69,7 @@ Each task was committed atomically:
 
 **Prior RED gate (Plan 01):** `12d31af` (test)
 
-**Plan metadata:** pending docs commit
+**Plan metadata:** `aba1663` (docs: complete plan)
 
 ## TDD Gate Compliance
 
