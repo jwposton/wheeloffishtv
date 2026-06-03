@@ -596,3 +596,95 @@ def test_prune_events_in_detail(base_client: TestClient, db_session) -> None:
     }
     assert events[1]["series_id"] == SERIES_ID_B
     assert events[1]["event_metadata"]["absence_count"] == 2
+
+
+def test_playlist_detail_diagnostics(base_client: TestClient, db_session) -> None:
+    """GET detail embeds diagnostics on last_rebuild only (DIAG-02, D-24)."""
+    from datetime import UTC, datetime, timedelta
+
+    user = _make_user(db_session)
+    _set_user(user)
+
+    resp = base_client.post("/api/v1/playlists", json=_create_body())
+    assert resp.status_code == 201, resp.text
+    playlist_id = resp.json()["id"]
+
+    now = datetime.now(UTC)
+    older_run = RebuildRun(
+        id=str(uuid.uuid4()),
+        playlist_id=playlist_id,
+        status="succeeded",
+        started_at=now - timedelta(hours=2),
+        finished_at=now - timedelta(hours=1),
+    )
+    latest_run = RebuildRun(
+        id=str(uuid.uuid4()),
+        playlist_id=playlist_id,
+        status="partial",
+        row_outcomes_json={
+            "outcomes": [],
+            "fetch_warnings": [
+                {"series_id": SERIES_ID_A, "reason": "fetch_failure"},
+            ],
+        },
+        writeback_warnings=[
+            {"episode_id": "c::plex::e1", "reason": "not found (404)"},
+            {"episode_id": None, "reason": "info notice"},
+        ],
+        started_at=now - timedelta(minutes=30),
+        finished_at=now,
+    )
+    db_session.add_all([older_run, latest_run])
+    db_session.commit()
+
+    detail = base_client.get(f"/api/v1/playlists/{playlist_id}")
+    assert detail.status_code == 200
+    body = detail.json()
+
+    assert body["last_rebuild"] is not None
+    diag = body["last_rebuild"]["diagnostics"]
+    assert diag is not None
+
+    fetch_rows = [r for r in diag["show_issues"] if r["reason_code"] == "fetch_failure"]
+    assert len(fetch_rows) == 1
+    assert len(fetch_rows[0]["actions"]) > 0
+
+    assert len(diag["episode_issues"]) == 1
+    assert diag["episode_issues"][0]["reason_code"] == "episode_not_found"
+
+    for run in body["recent_runs"]:
+        assert run["diagnostics"] is None
+
+
+def test_failed_run_diagnostics_has_rebuild_error(
+    base_client: TestClient, db_session
+) -> None:
+    """Failed latest run surfaces rebuild_error in last_rebuild diagnostics."""
+    from datetime import UTC, datetime
+
+    user = _make_user(db_session)
+    _set_user(user)
+
+    resp = base_client.post("/api/v1/playlists", json=_create_body())
+    assert resp.status_code == 201, resp.text
+    playlist_id = resp.json()["id"]
+
+    now = datetime.now(UTC)
+    failed_run = RebuildRun(
+        id=str(uuid.uuid4()),
+        playlist_id=playlist_id,
+        status="failed",
+        error_message="boom",
+        row_outcomes_json={"outcomes": [], "fetch_warnings": []},
+        writeback_warnings=[],
+        started_at=now,
+        finished_at=now,
+    )
+    db_session.add(failed_run)
+    db_session.commit()
+
+    detail = base_client.get(f"/api/v1/playlists/{playlist_id}")
+    assert detail.status_code == 200
+    rebuild_error = detail.json()["last_rebuild"]["diagnostics"]["rebuild_error"]
+    assert rebuild_error is not None
+    assert rebuild_error["reason_code"] == "rebuild_failed"
