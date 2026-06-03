@@ -61,16 +61,25 @@ describe("runDiagnosticAction", () => {
   let onRemoveRow: ReturnType<typeof vi.fn>
   let navigate: ReturnType<typeof vi.fn>
   let openSpy: ReturnType<typeof vi.spyOn>
-  let assignSpy: ReturnType<typeof vi.spyOn>
+  let assignSpy: ReturnType<typeof vi.fn>
+  const originalLocation = window.location
 
   beforeEach(() => {
     onRemoveRow = vi.fn()
     navigate = vi.fn()
     openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
-    assignSpy = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    assignSpy = vi.fn()
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...originalLocation, assign: assignSpy },
+    })
   })
 
   afterEach(() => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: originalLocation,
+    })
     vi.restoreAllMocks()
   })
 
