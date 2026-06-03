@@ -1,6 +1,11 @@
+import { useState } from "react"
+
 import { StatusBadge } from "@/components/playlists/StatusBadge"
+import { RebuildDiagnosticsDialog } from "@/components/playlists/RebuildDiagnosticsDialog"
 import { WritebackStatus } from "@/components/playlists/WritebackStatus"
-import type { RebuildRunSummary, SnapshotEpisode } from "@/api/playlists"
+import { Button } from "@/components/ui/button"
+import { shouldShowDiagnostics } from "@/lib/rebuildDiagnostics"
+import type { PruneEvent, RebuildRunSummary } from "@/api/playlists"
 import type { RebuildStatus, WritebackStatus as WritebackStatusValue } from "@/api/types"
 
 function formatRelativeTime(isoString: string | null): string {
@@ -22,27 +27,26 @@ function providerLabel(providerKind: string | null | undefined): string {
 
 interface RebuildBannerProps {
   lastRebuild: RebuildRunSummary | null
-  snapshot?: SnapshotEpisode[]
   providerKind?: string | null
   providerPlaylistOpenUrl?: string | null
-}
-
-function episodeTitlesById(snapshot: SnapshotEpisode[] | undefined): Record<string, string> {
-  if (!snapshot?.length) return {}
-  return Object.fromEntries(snapshot.map((ep) => [ep.episode_id, ep.title]))
+  pruneEvents?: PruneEvent[]
+  onRemoveRow?: (seriesId: string) => void
 }
 
 export function RebuildBanner({
   lastRebuild,
-  snapshot,
   providerKind,
   providerPlaylistOpenUrl,
+  pruneEvents = [],
+  onRemoveRow,
 }: RebuildBannerProps) {
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const status = (lastRebuild?.status ?? null) as RebuildStatus
   const writebackStatus = (lastRebuild?.writeback_status ?? null) as WritebackStatusValue
   const provider = providerLabel(providerKind)
   const slotsFilled = lastRebuild?.slots_filled
   const slotsRequested = lastRebuild?.slots_requested
+  const showDetails = shouldShowDiagnostics(lastRebuild)
 
   return (
     <div className="wof-panel flex flex-col gap-4 p-4">
@@ -67,11 +71,6 @@ export function RebuildBanner({
             Filled {slotsFilled} of {slotsRequested} requested slots
           </p>
         ) : null}
-        {status === "failed" && lastRebuild?.error_message ? (
-          <p className="text-sm text-destructive">
-            {lastRebuild.error_message}. Your previous output list below is unchanged.
-          </p>
-        ) : null}
         {status === "partial" ? (
           <p className="text-sm text-amber-600">
             Completed with warnings — some shows were skipped during the rebuild.
@@ -89,11 +88,29 @@ export function RebuildBanner({
           status={writebackStatus}
           error={lastRebuild?.writeback_error}
           warnings={lastRebuild?.writeback_warnings}
-          episodeTitlesById={episodeTitlesById(snapshot)}
           providerKind={providerKind}
           openUrl={providerPlaylistOpenUrl}
         />
       </section>
+
+      {showDetails ? (
+        <Button
+          type="button"
+          variant="link"
+          className="h-auto px-0 self-start"
+          onClick={() => setDiagnosticsOpen(true)}
+        >
+          View details
+        </Button>
+      ) : null}
+
+      <RebuildDiagnosticsDialog
+        open={diagnosticsOpen}
+        onOpenChange={setDiagnosticsOpen}
+        lastRebuild={lastRebuild}
+        pruneEvents={pruneEvents}
+        actionContext={{ onRemoveRow: onRemoveRow ?? (() => {}) }}
+      />
     </div>
   )
 }
