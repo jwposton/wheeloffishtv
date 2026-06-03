@@ -49,6 +49,41 @@ export interface PlaylistSeriesRowResponse {
   thumb_url: string | null
 }
 
+export type DiagnosticActionType = "remove_row" | "open_provider" | "open_series"
+
+export interface DiagnosticAction {
+  type: DiagnosticActionType
+  label: string
+  series_id?: string | null
+  episode_id?: string | null
+  url?: string | null
+}
+
+export interface DiagnosticIssueRow {
+  label: string
+  reason_code: string
+  reason_text: string
+  remediation_hint: string
+  series_id?: string | null
+  episode_id?: string | null
+  actions: DiagnosticAction[]
+}
+
+export interface RebuildDiagnostics {
+  rebuild_error: DiagnosticIssueRow | null
+  show_issues: DiagnosticIssueRow[]
+  episode_issues: DiagnosticIssueRow[]
+}
+
+export interface PruneEvent {
+  id: string
+  series_id: string
+  event_type: string
+  reason: string
+  event_metadata?: Record<string, unknown> | null
+  timestamp: string
+}
+
 export interface RebuildRunSummary {
   id: string
   status: Exclude<RebuildStatus, null>
@@ -61,6 +96,7 @@ export interface RebuildRunSummary {
   writeback_error?: string | null
   writeback_warnings?: Array<{ episode_id?: string | null; reason?: string }> | null
   writeback_at?: string | null
+  diagnostics?: RebuildDiagnostics | null
 }
 
 export interface PlaylistDetailResponse {
@@ -75,6 +111,7 @@ export interface PlaylistDetailResponse {
   current_snapshot: SnapshotEpisode[]
   last_rebuild: RebuildRunSummary | null
   recent_runs: RebuildRunSummary[]
+  recent_prune_events: PruneEvent[]
   provider_playlist_id?: string | null
   provider_kind?: string | null
   provider_playlist_open_url?: string | null
