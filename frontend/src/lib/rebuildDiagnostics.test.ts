@@ -115,15 +115,15 @@ describe("shouldShowDiagnostics", () => {
 
 describe("runDiagnosticAction", () => {
   const seriesId = "conn:plex:show-1"
-  let onRemoveRow: ReturnType<typeof vi.fn>
-  let navigate: ReturnType<typeof vi.fn>
+  let onRemoveRow: ReturnType<typeof vi.fn<(seriesId: string) => void>>
+  let navigate: ReturnType<typeof vi.fn<(to: string) => void>>
   let openMock: ReturnType<typeof vi.fn<Window["open"]>>
   let assignSpy: ReturnType<typeof vi.fn>
   const originalLocation = window.location
 
   beforeEach(() => {
-    onRemoveRow = vi.fn()
-    navigate = vi.fn()
+    onRemoveRow = vi.fn<(seriesId: string) => void>()
+    navigate = vi.fn<(to: string) => void>()
     openMock = vi.fn<Window["open"]>(() => null)
     vi.stubGlobal("open", openMock)
     assignSpy = vi.fn()
