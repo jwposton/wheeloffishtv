@@ -64,7 +64,7 @@ Each task was committed atomically:
 1. **Task 1: Embed diagnostics on last_rebuild in _playlist_to_detail** - `abe74d1` (feat)
 2. **Task 2: Integration test for diagnostics embed + D-24 scoping** - `6363093` (test)
 
-**Plan metadata:** pending (docs: complete plan)
+**Plan metadata:** `f604316` (docs: complete plan)
 
 ## Files Created/Modified
 
