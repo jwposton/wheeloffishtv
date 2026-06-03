@@ -20,24 +20,9 @@ interface WritebackStatusProps {
   status: WritebackStatusValue
   error?: string | null
   warnings?: WritebackWarning[] | null
-  episodeTitlesById?: Record<string, string>
   providerKind?: string | null
   openUrl?: string | null
   compact?: boolean
-}
-
-function warningLabel(
-  warning: WritebackWarning,
-  episodeTitlesById: Record<string, string>,
-): string {
-  const episodeId = warning.episode_id
-  if (episodeId && episodeTitlesById[episodeId]) {
-    return episodeTitlesById[episodeId]
-  }
-  if (episodeId) {
-    return episodeId
-  }
-  return "Note"
 }
 
 function statusLabel(status: WritebackStatusValue): string {
@@ -57,14 +42,12 @@ export function WritebackStatus({
   status,
   error,
   warnings,
-  episodeTitlesById = {},
   providerKind,
   openUrl,
   compact = false,
 }: WritebackStatusProps) {
   const warningItems = warnings?.filter((w) => w.reason) ?? []
   const episodeWarnings = warningItems.filter((w) => w.episode_id)
-  const infoNotices = warningItems.filter((w) => !w.episode_id)
 
   if (status === null && !openUrl) {
     return null
@@ -110,30 +93,6 @@ export function WritebackStatus({
         <p className="text-sm text-amber-600">
           Some episodes could not be synced to your media server.
         </p>
-      ) : null}
-      {episodeWarnings.length > 0 && !compact ? (
-        <ul
-          aria-label="Sync warnings"
-          className="list-disc space-y-1 pl-5 text-sm text-amber-700"
-        >
-          {episodeWarnings.map((warning, index) => (
-            <li key={`${warning.episode_id}-${index}`}>
-              <span className="font-medium">{warningLabel(warning, episodeTitlesById)}</span>
-              {": "}
-              {warning.reason}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {infoNotices.length > 0 && !compact ? (
-        <ul
-          aria-label="Sync notes"
-          className="list-disc space-y-1 pl-5 text-sm text-muted-foreground"
-        >
-          {infoNotices.map((notice, index) => (
-            <li key={`info-${index}`}>{notice.reason}</li>
-          ))}
-        </ul>
       ) : null}
     </div>
   )
