@@ -25,6 +25,10 @@ from wheeloffish.api.schemas.playlists import (
     SnapshotEpisode,
 )
 from wheeloffish.core.catalog_prune import write_prune_event
+from wheeloffish.core.rebuild_diagnostics import (
+    DiagnosticsContext,
+    build_rebuild_diagnostics,
+)
 from wheeloffish.core.config import get_settings
 from wheeloffish.core.connections import build_provider_for_user
 from wheeloffish.core.media_artwork import series_artwork_url
@@ -201,9 +205,34 @@ def _playlist_to_detail(
             for e in latest_good_run.snapshot_json
         ]
 
+    provider_open_url = _playlist_open_url(db, playlist)
+
     # Most recent run (any status) for last_rebuild field (D-21)
     latest_run = _latest_run(db, playlist.id)
     last_rebuild = _rebuild_run_to_summary(latest_run) if latest_run else None
+    if latest_run is not None:
+        diag_series_ids = list(row_series_ids)
+        for warning in (latest_run.row_outcomes_json or {}).get("fetch_warnings", []):
+            if isinstance(warning, dict):
+                sid = warning.get("series_id")
+                if sid and sid not in diag_series_ids:
+                    diag_series_ids.append(sid)
+        episode_title_map: dict[str, str] = {}
+        for entry in latest_run.snapshot_json or []:
+            if isinstance(entry, dict):
+                episode_id = entry.get("episode_id")
+                title = entry.get("title")
+                if episode_id and title:
+                    episode_title_map[episode_id] = title
+        for ep in snapshot_out:
+            if ep.title and ep.episode_id not in episode_title_map:
+                episode_title_map[ep.episode_id] = ep.title
+        ctx = DiagnosticsContext(
+            series_title_map=_series_title_map(db, app_user_id, diag_series_ids),
+            episode_title_map=episode_title_map,
+            provider_open_url=provider_open_url,
+        )
+        last_rebuild.diagnostics = build_rebuild_diagnostics(latest_run, ctx)
 
     # Last 3 runs (D-16)
     recent_runs_orm = (
@@ -249,7 +278,7 @@ def _playlist_to_detail(
         recent_prune_events=recent_prune_events,
         provider_playlist_id=playlist.provider_playlist_id,
         provider_kind=playlist.provider_kind,
-        provider_playlist_open_url=_playlist_open_url(db, playlist),
+        provider_playlist_open_url=provider_open_url,
     )
 
 
