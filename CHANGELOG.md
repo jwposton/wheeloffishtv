@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+v0.2.0 milestone work: safe catalog prune (Phase 10), sync/rebuild diagnostics (Phase 11), plus Phase 9 gap closure after `v1.0.0` (series detail, watch-state, playlist edit parity).
+
+### Added
+
+- **Brand / actions:** refreshed wheel icon and playlist action button artwork (rebuild, settings, delete)
+- **Series detail routes:** **View series** and origin-aware back navigation from view-playlist (same pattern as edit-playlist)
+- **Safe catalog prune:** series removed from Plex/Jellyfin are marked stale and auto-removed from playlists only after the configured N-sync / no-error policy; prune events are audited (reason + timestamp) and rebuild fetch warnings stay non-destructive until confidence is met
+- **Playlist detail:** `recent_prune_events` (newest 20) on owner-gated `GET /playlists/{id}`; row delete records a `manual_removed` prune audit in the same transaction
+- **Nightly rebuild:** batch job runs catalog sync before rebuild so prune evidence is current
+- **Rebuild diagnostics:** partial/failed rebuild or writeback on playlist detail shows **View details**, opening a modal with rebuild errors, per-show fetch warnings, per-episode writeback issues, and prune history
+- **Rebuild diagnostics API:** `last_rebuild.diagnostics` on playlist detail (resolved labels, reason text, remediation hints, and actions such as remove row, open series, open provider); `recent_runs` remain summary-only
+
+### Changed
+
+- **Playlist edit:** add, remove, and reorder membership changes are staged locally until the edit form **Save**; **Cancel** discards staged membership without row-level API calls (settings panel still uses **Save Settings** / **Cancel** for config only)
+- **Rebuild panel:** failed rebuild `error_message` and per-episode writeback bullet lists moved into the diagnostics modal; detail **WritebackStatus** keeps badges and one-liners only (compact card badges unchanged)
+
+### Fixed
+
+- **Series detail:** episodes load for watch-state controls whenever auth is ready (not only when an on-deck resume pointer exists)
+- **Series detail:** optimistic episode watch cache rolls back when the mutation envelope is not `succeeded`
+- **Series detail:** reject protocol-relative `from` back URLs (`//…`)
+- **Series detail:** show per-scope provider-error caveat on failed season/series bulk mutations; progress banner timers no longer clear a newer in-flight mutation
+- **Playlist edit:** scroll position preserved when session-added rows reorder to the top of the in-playlist pane
+- **Watch-state API:** guardrail coverage for unauthenticated requests (401), provider auth failures, and cross-connection targets
+
 ## [1.0.0] - 2026-05-28
 
 Stable release: catalog watch-state mutations, series detail controls, and playlist edit parity shipped since `v0.1.8`.
