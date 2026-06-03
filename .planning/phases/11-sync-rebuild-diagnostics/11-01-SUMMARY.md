@@ -64,7 +64,7 @@ Each task was committed atomically:
 2. **Task 2: Mirror diagnostics types in the frontend API layer** - `8843296` (feat)
 3. **Task 3: Create RED resolver unit-test scaffold** - `12d31af` (test)
 
-**Plan metadata:** pending docs commit via gsd-sdk
+**Plan metadata:** `52ca0be` (docs: complete plan)
 
 ## Files Created/Modified
 

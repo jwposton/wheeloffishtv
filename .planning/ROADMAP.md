@@ -40,7 +40,7 @@ Full details: [`.planning/milestones/v0.1.0-ROADMAP.md`](milestones/v0.1.0-ROADM
 | # | Phase | Goal | Requirements |
 |---|-------|------|--------------|
 | 10 | 6/6 | Complete   | 2026-06-02 |
-| 11 | 5/5 | Complete    | 2026-06-03 |
+| 11 | 8/8 | Complete    | 2026-06-03 |
 | 12 | Server-agnostic providers | Plex and Jellyfin work with or without a pinned media server URL in env | CONN-01–06 |
 | 13 | Playlist view toggle | Edit flow switches Available vs Output on desktop; three tabs on mobile | EDIT-01–05 |
 
@@ -95,7 +95,7 @@ Plans:
 **Requirements:** DIAG-01, DIAG-02, DIAG-03, DIAG-04, DIAG-05  
 **Backlog:** BL-04
 
-**Plans:** 5/5 executed + 3 gap-closure plans (06–08)
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 0**
@@ -116,12 +116,12 @@ Plans:
 
 **Wave 1**
 
-- [ ] 11-06-PLAN.md — Resolver completeness (WR-01 failed empty message, WR-02 writeback-only failure, WR-03 fetch fallback)
+- [x] 11-06-PLAN.md — Resolver completeness (WR-01 failed empty message, WR-02 writeback-only failure, WR-03 fetch fallback)
 
 **Wave 2** *(blocked on 11-06)*
 
-- [ ] 11-07-PLAN.md — Underfill partial status + slot_unfilled warnings + trigger (UAT Test 1)
-- [ ] 11-08-PLAN.md — Banner cleanup + SPA navigate for open_series (IN-01, IN-02)
+- [x] 11-07-PLAN.md — Underfill partial status + slot_unfilled warnings + trigger (UAT Test 1)
+- [x] 11-08-PLAN.md — Banner cleanup + SPA navigate for open_series (IN-01, IN-02)
 
 ---
 
