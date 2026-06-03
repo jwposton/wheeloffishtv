@@ -95,6 +95,22 @@ Plans:
 **Requirements:** DIAG-01, DIAG-02, DIAG-03, DIAG-04, DIAG-05  
 **Backlog:** BL-04
 
+**Plans:** 5 plans
+Plans:
+**Wave 0**
+
+- [ ] 11-01-PLAN.md — Diagnostic contracts (backend Pydantic models + frontend TS types) + RED resolver test scaffold
+
+**Wave 1** *(blocked on Wave 0)*
+
+- [ ] 11-02-PLAN.md — Backend diagnostics resolver + reason catalog (TDD)
+- [ ] 11-04-PLAN.md — Diagnostics modal + action helper lib (frontend)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 11-03-PLAN.md — Embed diagnostics on playlist detail GET + integration test
+- [ ] 11-05-PLAN.md — RebuildBanner trigger + WritebackStatus strip + page wiring
+
 ---
 
 ### Phase 12: Server-agnostic providers
