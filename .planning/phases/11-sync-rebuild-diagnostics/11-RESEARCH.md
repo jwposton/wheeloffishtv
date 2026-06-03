@@ -426,17 +426,13 @@ class RebuildRunSummary(BaseModel):
 
 **Note on A2:** [VERIFIED: codebase grep] `_finalize_writeback_result` returns `partial` when episode warnings exist, so trigger logic is consistent.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Prune section resolver parity**
-   - What we know: Backend already returns structured prune events; D-18 lists prune reasons.
-   - What's unclear: Whether to run prune events through `rebuild_diagnostics` for hints/actions or map client-side.
-   - Recommendation: **Phase 11 default:** client maps `event_type`/`reason` to UI-SPEC copy for speed; optional follow-up unifies in backend if duplication hurts.
+   - RESOLVED: Client maps `event_type`/`reason` to UI-SPEC copy in Plan 11-04 for Phase 11; backend unification deferred if duplication hurts later.
 
 2. **Writeback reason normalization depth**
-   - What we know: Many reasons are raw exception text.
-   - What's unclear: Full taxonomy of Plex/Jellyfin error strings in production.
-   - Recommendation: Ship substring rules (`404`, `not_found`, `ProviderNotFound`) + generic fallback; extend catalog as logs reveal patterns.
+   - RESOLVED: Ship substring rules (`404`, `not_found`, `ProviderNotFound`) plus generic `writeback_warning` fallback in Plan 11-02; extend catalog as production logs reveal patterns.
 
 ## Environment Availability
 
