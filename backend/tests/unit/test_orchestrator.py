@@ -238,6 +238,38 @@ async def test_row_skip_on_fetch_failure(db_session):
 
 
 @pytest.mark.asyncio
+async def test_underfill_marks_partial_and_slot_unfilled_warning(db_session):
+    """Catalog exhaustion with slots_filled < slots_requested → partial + slot_unfilled (UAT Test 1)."""
+    _seed_app_user(db_session)
+    _seed_connection(db_session)
+    sid = _series_id("short-catalog")
+    pl = _seed_playlist(db_session, series_ids=[sid])
+    pl.episode_count = 5
+    db_session.commit()
+
+    short_input = SeriesRebuildInput(
+        series_id=sid,
+        episodes=[_ep("sc-e1"), _ep("sc-e2")],
+    )
+
+    async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):
+        return FetchResult(short_input, "ok")
+
+    with (
+        patch(f"{_ORCH}.build_provider_for_user", return_value=_mock_provider()),
+        patch(f"{_ORCH}.fetch_rebuild_inputs_for_row", side_effect=_mock_fetch),
+    ):
+        run = await rebuild_playlist(db_session, pl.id, trigger="test")
+
+    assert run.status == "partial"
+    assert run.slots_filled is not None
+    assert run.slots_requested is not None
+    assert run.slots_filled < run.slots_requested
+    warnings = run.row_outcomes_json["fetch_warnings"]
+    assert any(w.get("reason") == "slot_unfilled" for w in warnings)
+
+
+@pytest.mark.asyncio
 async def test_all_excluded_marks_failed(db_session):
     """All rows empty or skipped → status failed; prior snapshot_json unchanged (D-12, D-17)."""
     _seed_app_user(db_session)

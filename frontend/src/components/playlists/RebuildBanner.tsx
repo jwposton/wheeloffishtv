@@ -31,6 +31,7 @@ interface RebuildBannerProps {
   providerPlaylistOpenUrl?: string | null
   pruneEvents?: PruneEvent[]
   onRemoveRow?: (seriesId: string) => void
+  navigate?: (to: string) => void
 }
 
 export function RebuildBanner({
@@ -39,6 +40,7 @@ export function RebuildBanner({
   providerPlaylistOpenUrl,
   pruneEvents = [],
   onRemoveRow,
+  navigate,
 }: RebuildBannerProps) {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const status = (lastRebuild?.status ?? null) as RebuildStatus
@@ -54,8 +56,6 @@ export function RebuildBanner({
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Last rebuild
         </h3>
-        <p className="text-sm text-muted-foreground">
-        </p>
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={status} />
           {lastRebuild?.finished_at ? (
@@ -82,8 +82,6 @@ export function RebuildBanner({
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {provider} Sync Status
         </h3>
-        <p className="text-sm text-muted-foreground">
-        </p>
         <WritebackStatus
           status={writebackStatus}
           error={lastRebuild?.writeback_error}
@@ -109,7 +107,10 @@ export function RebuildBanner({
         onOpenChange={setDiagnosticsOpen}
         lastRebuild={lastRebuild}
         pruneEvents={pruneEvents}
-        actionContext={{ onRemoveRow: onRemoveRow ?? (() => {}) }}
+        actionContext={{
+          onRemoveRow: onRemoveRow ?? (() => {}),
+          navigate,
+        }}
       />
     </div>
   )

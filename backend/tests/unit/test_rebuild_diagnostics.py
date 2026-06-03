@@ -34,6 +34,8 @@ def _run(
     error_message: str | None = None,
     row_outcomes_json: dict | None = None,
     writeback_warnings: list[dict] | None = None,
+    writeback_status: str | None = None,
+    writeback_error: str | None = None,
     snapshot_json: list[dict] | None = None,
 ) -> RebuildRun:
     return RebuildRun(
@@ -43,6 +45,8 @@ def _run(
         error_message=error_message,
         row_outcomes_json=row_outcomes_json,
         writeback_warnings=writeback_warnings,
+        writeback_status=writeback_status,
+        writeback_error=writeback_error,
         snapshot_json=snapshot_json,
         started_at=datetime.now(UTC),
         finished_at=datetime.now(UTC),
@@ -231,6 +235,68 @@ def test_failed_rebuild_populates_rebuild_error() -> None:
     assert diagnostics.rebuild_error is not None
     assert diagnostics.rebuild_error.reason_code == "rebuild_failed"
     assert "Provider timeout" in diagnostics.rebuild_error.reason_text
+
+
+def test_failed_rebuild_without_error_message_uses_catalog_fallback() -> None:
+    run = _run(status="failed", error_message=None)
+    ctx = _ctx()
+
+    diagnostics = build_rebuild_diagnostics(run, ctx)
+
+    assert diagnostics.rebuild_error is not None
+    assert diagnostics.rebuild_error.reason_code == "rebuild_failed"
+    assert diagnostics.rebuild_error.reason_text == REASON_CATALOG["rebuild_failed"]["reason_text"]
+
+
+def test_writeback_failed_without_episode_warnings() -> None:
+    run = _run(
+        writeback_status="failed",
+        writeback_error="Plex API timeout",
+        writeback_warnings=[],
+    )
+    ctx = _ctx(provider_open_url="https://app.plex.tv/playlist/1")
+
+    diagnostics = build_rebuild_diagnostics(run, ctx)
+
+    assert len(diagnostics.episode_issues) == 1
+    row = diagnostics.episode_issues[0]
+    assert row.reason_code == "writeback_failed"
+    assert row.label == "Provider sync failed"
+    assert "Plex API timeout" in row.reason_text
+
+
+def test_slot_unfilled_maps_to_show_issue() -> None:
+    run = _run(
+        row_outcomes_json={
+            "outcomes": [],
+            "fetch_warnings": [{"series_id": SERIES_ID, "reason": "slot_unfilled"}],
+        },
+    )
+    ctx = _ctx(series_titles={SERIES_ID: "Short Series"})
+
+    diagnostics = build_rebuild_diagnostics(run, ctx)
+
+    assert len(diagnostics.show_issues) == 1
+    row = diagnostics.show_issues[0]
+    assert row.reason_code == "slot_unfilled"
+    assert row.reason_text == REASON_CATALOG["slot_unfilled"]["reason_text"]
+
+
+def test_unknown_fetch_reason_uses_fetch_failure_catalog() -> None:
+    run = _run(
+        row_outcomes_json={
+            "outcomes": [],
+            "fetch_warnings": [{"series_id": SERIES_ID, "reason": "legacy_unknown_code"}],
+        },
+    )
+    ctx = _ctx()
+
+    diagnostics = build_rebuild_diagnostics(run, ctx)
+
+    assert len(diagnostics.show_issues) == 1
+    row = diagnostics.show_issues[0]
+    assert row.reason_code == "fetch_failure"
+    assert row.reason_text == REASON_CATALOG["fetch_failure"]["reason_text"]
 
 
 def test_non_failed_run_has_no_rebuild_error() -> None:

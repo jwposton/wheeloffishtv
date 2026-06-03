@@ -43,6 +43,14 @@ REASON_CATALOG: dict[str, dict[str, Any]] = {
             {"type": "remove_row", "label": "Remove from playlist"},
         ],
     },
+    "slot_unfilled": {
+        "reason_text": "This show had no eligible episodes for its slot in this rebuild.",
+        "remediation_hint": "Mark episodes unwatched on the provider, adjust completion policy, or remove the row.",
+        "action_templates": [
+            {"type": "open_series", "label": "Open show"},
+            {"type": "remove_row", "label": "Remove from playlist"},
+        ],
+    },
     "rebuild_failed": {
         "reason_text": "",  # filled from run.error_message
         "remediation_hint": "Review the error below, fix provider connectivity or playlist configuration, then rebuild.",
@@ -179,7 +187,7 @@ def _build_actions(
 def _resolve_show_issue(warning: dict, ctx: DiagnosticsContext) -> DiagnosticIssueRow:
     series_id = warning.get("series_id")
     raw_reason = warning.get("reason", "fetch_failure")
-    reason_code = raw_reason if raw_reason in REASON_CATALOG else "writeback_warning"
+    reason_code = raw_reason if raw_reason in REASON_CATALOG else "fetch_failure"
     entry = _catalog_entry(reason_code)
     label = (
         ctx.series_title_map.get(series_id, UNKNOWN_SHOW_LABEL)
@@ -271,8 +279,29 @@ def build_rebuild_diagnostics(
             _resolve_episode_issue(warning, ctx, episode_titles)
         )
 
+    if (
+        run.writeback_status == "failed"
+        and not episode_issues
+        and run.writeback_error
+    ):
+        entry = _catalog_entry("writeback_failed")
+        episode_issues.append(
+            DiagnosticIssueRow(
+                label="Provider sync failed",
+                reason_code="writeback_failed",
+                reason_text=str(run.writeback_error),
+                remediation_hint=entry["remediation_hint"],
+                actions=_build_actions(
+                    entry["action_templates"],
+                    series_id=None,
+                    episode_id=None,
+                    provider_open_url=ctx.provider_open_url,
+                ),
+            )
+        )
+
     rebuild_error: DiagnosticIssueRow | None = None
-    if run.status == "failed" and run.error_message:
+    if run.status == "failed":
         rebuild_error = _resolve_rebuild_error(run, ctx)
 
     return RebuildDiagnostics(

@@ -138,4 +138,55 @@ describe("RebuildBanner", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove from playlist" }))
     expect(onRemoveRow).toHaveBeenCalledWith("s-1")
   })
+
+  it("shows View details when slots are underfilled", () => {
+    render(
+      <RebuildBanner
+        lastRebuild={makeRun({
+          status: "succeeded",
+          writeback_status: "succeeded",
+          slots_filled: 19,
+          slots_requested: 20,
+        })}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument()
+  })
+
+  it("uses navigate for open_series from the diagnostics modal", () => {
+    const navigate = vi.fn()
+    render(
+      <RebuildBanner
+        lastRebuild={makeRun({
+          status: "partial",
+          diagnostics: {
+            rebuild_error: null,
+            show_issues: [
+              {
+                label: "Show A",
+                reason_code: "slot_unfilled",
+                reason_text: "No eligible episodes",
+                remediation_hint: "",
+                series_id: "s-1",
+                actions: [
+                  {
+                    type: "open_series",
+                    label: "Open show",
+                    series_id: "s-1",
+                  },
+                ],
+              },
+            ],
+            episode_issues: [],
+          },
+        })}
+        navigate={navigate}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "View details" }))
+    fireEvent.click(screen.getByRole("button", { name: "Open show" }))
+    expect(navigate).toHaveBeenCalled()
+  })
 })

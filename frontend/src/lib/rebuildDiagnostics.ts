@@ -6,6 +6,18 @@ export interface DiagnosticActionContext {
   navigate?: (to: string) => void
 }
 
+function hasStructuredDiagnosticRows(last: RebuildRunSummary): boolean {
+  const diagnostics = last.diagnostics
+  if (!diagnostics) {
+    return false
+  }
+  return (
+    diagnostics.rebuild_error != null ||
+    diagnostics.show_issues.length > 0 ||
+    diagnostics.episode_issues.length > 0
+  )
+}
+
 export function shouldShowDiagnostics(last: RebuildRunSummary | null): boolean {
   if (!last) {
     return false
@@ -14,8 +26,14 @@ export function shouldShowDiagnostics(last: RebuildRunSummary | null): boolean {
   const rebuildWarn = last.status === "partial" || last.status === "failed"
   const writebackWarn =
     last.writeback_status === "partial" || last.writeback_status === "failed"
+  const underfilled =
+    last.slots_filled != null &&
+    last.slots_requested != null &&
+    last.slots_filled < last.slots_requested
 
-  return rebuildWarn || writebackWarn
+  return (
+    rebuildWarn || writebackWarn || underfilled || hasStructuredDiagnosticRows(last)
+  )
 }
 
 export function runDiagnosticAction(

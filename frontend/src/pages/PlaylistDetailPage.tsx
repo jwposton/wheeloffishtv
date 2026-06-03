@@ -134,6 +134,7 @@ export function PlaylistDetailPage() {
         providerPlaylistOpenUrl={playlist.provider_playlist_open_url}
         pruneEvents={playlist.recent_prune_events}
         onRemoveRow={(seriesId) => void handleRemoveRow(seriesId)}
+        navigate={navigate}
       />
 
       <PlaylistForm mode="edit" playlist={playlist} sections="series" />

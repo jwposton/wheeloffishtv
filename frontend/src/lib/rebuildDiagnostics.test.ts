@@ -54,20 +54,78 @@ describe("shouldShowDiagnostics", () => {
       ),
     ).toBe(false)
   })
+
+  it("returns true when slots_filled is less than slots_requested", () => {
+    expect(
+      shouldShowDiagnostics(
+        makeRun({
+          status: "succeeded",
+          writeback_status: "succeeded",
+          slots_filled: 19,
+          slots_requested: 20,
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it("returns true when diagnostics has structured rows", () => {
+    expect(
+      shouldShowDiagnostics(
+        makeRun({
+          status: "succeeded",
+          writeback_status: "succeeded",
+          slots_filled: 20,
+          slots_requested: 20,
+          diagnostics: {
+            rebuild_error: null,
+            show_issues: [
+              {
+                label: "Show",
+                reason_code: "slot_unfilled",
+                reason_text: "No episodes",
+                remediation_hint: "Fix it",
+                actions: [],
+              },
+            ],
+            episode_issues: [],
+          },
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it("returns false when succeeded with full slots and empty diagnostics", () => {
+    expect(
+      shouldShowDiagnostics(
+        makeRun({
+          status: "succeeded",
+          writeback_status: "succeeded",
+          slots_filled: 20,
+          slots_requested: 20,
+          diagnostics: {
+            rebuild_error: null,
+            show_issues: [],
+            episode_issues: [],
+          },
+        }),
+      ),
+    ).toBe(false)
+  })
 })
 
 describe("runDiagnosticAction", () => {
   const seriesId = "conn:plex:show-1"
   let onRemoveRow: ReturnType<typeof vi.fn>
   let navigate: ReturnType<typeof vi.fn>
-  let openSpy: ReturnType<typeof vi.spyOn>
+  let openMock: ReturnType<typeof vi.fn<Window["open"]>>
   let assignSpy: ReturnType<typeof vi.fn>
   const originalLocation = window.location
 
   beforeEach(() => {
     onRemoveRow = vi.fn()
     navigate = vi.fn()
-    openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    openMock = vi.fn<Window["open"]>(() => null)
+    vi.stubGlobal("open", openMock)
     assignSpy = vi.fn()
     Object.defineProperty(window, "location", {
       configurable: true,
@@ -80,6 +138,7 @@ describe("runDiagnosticAction", () => {
       configurable: true,
       value: originalLocation,
     })
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
@@ -141,7 +200,7 @@ describe("runDiagnosticAction", () => {
       { onRemoveRow, navigate },
     )
 
-    expect(openSpy).toHaveBeenCalledWith(url, "_blank", "noopener,noreferrer")
+    expect(openMock).toHaveBeenCalledWith(url, "_blank", "noopener,noreferrer")
   })
 
   it("no-ops open_provider without url", () => {
@@ -150,6 +209,6 @@ describe("runDiagnosticAction", () => {
       { onRemoveRow, navigate },
     )
 
-    expect(openSpy).not.toHaveBeenCalled()
+    expect(openMock).not.toHaveBeenCalled()
   })
 })

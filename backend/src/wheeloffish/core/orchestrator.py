@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from wheeloffish.core.config import get_settings
 from wheeloffish.core.connections import build_provider_for_user
-from wheeloffish.core.playlist.builder import PlaylistBuilder
+from wheeloffish.core.playlist.builder import PlaylistBuilder, allocate_slots, make_build_rng
 from wheeloffish.core.playlist.cadence import is_due, now_in_tz
 from wheeloffish.core.playlist.mappers import orm_to_playlist
 from wheeloffish.core.catalog_prune import (
@@ -194,6 +194,28 @@ async def rebuild_playlist(db: Session, playlist_id: str, *, trigger: str) -> Re
         for be in result.episodes
     ]
 
+    filled_slot_indices = {be.slot_index for be in result.episodes}
+    active_series_ids = [
+        o.series_id for o in result.row_outcomes if not o.excluded
+    ]
+    if active_series_ids:
+        rng = make_build_rng(domain_playlist.id, rebuild_seed)
+        slot_assignments = allocate_slots(
+            active_series_ids,
+            domain_playlist.episode_count,
+            domain_playlist.slot_allocation,
+            rng,
+        )
+        existing_warning_keys = {(w["series_id"], w["reason"]) for w in fetch_warnings}
+        for slot_index, series_id in enumerate(slot_assignments):
+            if slot_index not in filled_slot_indices:
+                key = (series_id, "slot_unfilled")
+                if key not in existing_warning_keys:
+                    fetch_warnings.append(
+                        {"series_id": series_id, "reason": "slot_unfilled"}
+                    )
+                    existing_warning_keys.add(key)
+
     fetch_warning_by_series = {w["series_id"]: w["reason"] for w in fetch_warnings}
     row_outcomes = []
     for o in result.row_outcomes:
@@ -203,7 +225,12 @@ async def rebuild_playlist(db: Session, playlist_id: str, *, trigger: str) -> Re
         row_outcomes.append(outcome)
 
     # D-15: persist snapshot + outcomes; D-17: only on success/partial
-    run.status = "partial" if any_row_skipped else "succeeded"
+    underfilled = result.slots_filled < result.slots_requested
+    run.status = (
+        "partial"
+        if (fetch_warnings or underfilled)
+        else "succeeded"
+    )
     run.rebuild_seed = rebuild_seed
     run.snapshot_json = snapshot
     run.row_outcomes_json = {"outcomes": row_outcomes, "fetch_warnings": fetch_warnings}
