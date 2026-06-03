@@ -10,19 +10,18 @@ from datetime import UTC, datetime
 import structlog
 from sqlalchemy.orm import Session
 
-from wheeloffish.core.config import get_settings
-from wheeloffish.core.connections import build_provider_for_user
-from wheeloffish.core.playlist.builder import PlaylistBuilder, allocate_slots, make_build_rng
-from wheeloffish.core.playlist.cadence import is_due, now_in_tz
-from wheeloffish.core.playlist.mappers import orm_to_playlist
 from wheeloffish.core.catalog_prune import (
     execute_auto_prune,
     record_rebuild_row_absence,
     reset_absence_counters_for_connection,
 )
 from wheeloffish.core.catalog_sync import run_chunked_sync
+from wheeloffish.core.config import get_settings
+from wheeloffish.core.connections import build_provider_for_user
+from wheeloffish.core.playlist.builder import PlaylistBuilder, allocate_slots, make_build_rng
+from wheeloffish.core.playlist.cadence import is_due, now_in_tz
+from wheeloffish.core.playlist.mappers import orm_to_playlist
 from wheeloffish.core.playlist.rebuild_inputs import (
-    FetchResult,
     check_provider_reachable,
     fetch_rebuild_inputs_for_row,
 )

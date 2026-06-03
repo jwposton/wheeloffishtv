@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from wheeloffish.core.orchestrator import rebuild_playlist
+from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.core.provider_writeback import WritebackResult
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
@@ -15,7 +16,6 @@ from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
 from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import format_composite_id
-from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.domain.playlist import SeriesRebuildInput
 
 TEST_APP_USER_ID = "00000000-0000-4000-8000-000000000099"
@@ -78,7 +78,10 @@ async def test_rebuild_sets_writeback_status(db_session):
 
     good_input = SeriesRebuildInput(
         series_id=sid,
-        episodes=[_ep(format_composite_id(TEST_CONNECTION_ID, "plex", "1001"))],
+        episodes=[
+            _ep(format_composite_id(TEST_CONNECTION_ID, "plex", "1001")),
+            _ep(format_composite_id(TEST_CONNECTION_ID, "plex", "1002")),
+        ],
     )
 
     async def _mock_fetch(db, app_user_id, connection_id, series_id, provider):

@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from wheeloffish.core.orchestrator import rebuild_playlist
+from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
@@ -19,7 +20,6 @@ from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as Playl
 from wheeloffish.db.models.rebuild_run import RebuildRun
 from wheeloffish.domain.dto import Episode
 from wheeloffish.domain.ids import format_composite_id
-from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.domain.playlist import SeriesRebuildInput
 
 _ORCH = "wheeloffish.core.orchestrator"

@@ -4,8 +4,6 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-import pytest
-
 from wheeloffish.core.catalog_prune import (
     MAX_AUDIT_EVENTS_PER_PLAYLIST,
     PRUNE_THRESHOLD,

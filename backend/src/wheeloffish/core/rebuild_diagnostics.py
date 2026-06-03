@@ -21,7 +21,10 @@ UNKNOWN_EPISODE_LABEL = "Unknown episode"
 REASON_CATALOG: dict[str, dict[str, Any]] = {
     "fetch_failure": {
         "reason_text": "Could not load episodes for this show from your media server.",
-        "remediation_hint": "Check that the series still exists on the provider, then remove the row or retry rebuild.",
+        "remediation_hint": (
+            "Check that the series still exists on the provider, "
+            "then remove the row or retry rebuild."
+        ),
         "action_templates": [
             {"type": "open_series", "label": "Open show"},
             {"type": "remove_row", "label": "Remove from playlist"},
@@ -29,7 +32,10 @@ REASON_CATALOG: dict[str, dict[str, Any]] = {
     },
     "empty_snapshot": {
         "reason_text": "No unwatched episodes were available for this show.",
-        "remediation_hint": "Mark episodes unwatched on the provider, adjust completion policy, or remove the row.",
+        "remediation_hint": (
+            "Mark episodes unwatched on the provider, adjust completion policy, "
+            "or remove the row."
+        ),
         "action_templates": [
             {"type": "open_series", "label": "Open show"},
             {"type": "remove_row", "label": "Remove from playlist"},
@@ -37,7 +43,9 @@ REASON_CATALOG: dict[str, dict[str, Any]] = {
     },
     "not_found": {
         "reason_text": "This show was not found on your media server.",
-        "remediation_hint": "Confirm the series exists on the provider or remove the row from the playlist.",
+        "remediation_hint": (
+            "Confirm the series exists on the provider or remove the row from the playlist."
+        ),
         "action_templates": [
             {"type": "open_series", "label": "Open show"},
             {"type": "remove_row", "label": "Remove from playlist"},
@@ -45,7 +53,10 @@ REASON_CATALOG: dict[str, dict[str, Any]] = {
     },
     "slot_unfilled": {
         "reason_text": "This show had no eligible episodes for its slot in this rebuild.",
-        "remediation_hint": "Mark episodes unwatched on the provider, adjust completion policy, or remove the row.",
+        "remediation_hint": (
+            "Mark episodes unwatched on the provider, adjust completion policy, "
+            "or remove the row."
+        ),
         "action_templates": [
             {"type": "open_series", "label": "Open show"},
             {"type": "remove_row", "label": "Remove from playlist"},
@@ -53,33 +64,46 @@ REASON_CATALOG: dict[str, dict[str, Any]] = {
     },
     "rebuild_failed": {
         "reason_text": "",  # filled from run.error_message
-        "remediation_hint": "Review the error below, fix provider connectivity or playlist configuration, then rebuild.",
+        "remediation_hint": (
+            "Review the error below, fix provider connectivity or playlist configuration, "
+            "then rebuild."
+        ),
         "action_templates": [
             {"type": "open_provider", "label": "Open provider playlist"},
         ],
     },
     "writeback_failed": {
         "reason_text": "Episode sync to the provider playlist failed.",
-        "remediation_hint": "Open the provider playlist and verify permissions, then retry writeback or rebuild.",
+        "remediation_hint": (
+            "Open the provider playlist and verify permissions, then retry writeback or rebuild."
+        ),
         "action_templates": [
             {"type": "open_provider", "label": "Open provider playlist"},
         ],
     },
     "episode_not_found": {
         "reason_text": "An episode in the rebuild snapshot was not found on the provider.",
-        "remediation_hint": "Confirm the episode still exists on the provider or remove the show row if it was deleted.",
+        "remediation_hint": (
+            "Confirm the episode still exists on the provider or remove the show row "
+            "if it was deleted."
+        ),
         "action_templates": [
             {"type": "open_series", "label": "Open show"},
         ],
     },
     "missing_episode_id": {
         "reason_text": "A snapshot row is missing an episode identifier.",
-        "remediation_hint": "Rebuild the playlist; if the issue persists, remove and re-add the affected show.",
+        "remediation_hint": (
+            "Rebuild the playlist; if the issue persists, remove and re-add the affected show."
+        ),
         "action_templates": [],
     },
     "writeback_warning": {
         "reason_text": "Episode sync reported a warning that could not be classified.",
-        "remediation_hint": "Check server logs for details, verify the episode on the provider, then rebuild if needed.",
+        "remediation_hint": (
+            "Check server logs for details, verify the episode on the provider, "
+            "then rebuild if needed."
+        ),
         "action_templates": [
             {"type": "open_series", "label": "Open show"},
         ],

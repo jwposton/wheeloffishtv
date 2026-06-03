@@ -13,8 +13,8 @@ from wheeloffish.core.playlist.rebuild_inputs import FetchResult
 from wheeloffish.db.models.app_user import AppUser
 from wheeloffish.db.models.connection import Connection
 from wheeloffish.db.models.playlist import Playlist as PlaylistOrm
-from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.db.models.playlist_prune_event import PlaylistPruneEvent
+from wheeloffish.db.models.playlist_series_row import PlaylistSeriesRow as PlaylistSeriesRowOrm
 from wheeloffish.db.models.rebuild_run import RebuildRun
 from wheeloffish.db.models.user_media_link import UserMediaLink
 from wheeloffish.domain.dto import Episode
@@ -239,7 +239,7 @@ async def test_row_skip_on_fetch_failure(db_session):
 
 @pytest.mark.asyncio
 async def test_underfill_marks_partial_and_slot_unfilled_warning(db_session):
-    """Catalog exhaustion with slots_filled < slots_requested → partial + slot_unfilled (UAT Test 1)."""
+    """Underfill: slots_filled < slots_requested → partial + slot_unfilled."""
     _seed_app_user(db_session)
     _seed_connection(db_session)
     sid = _series_id("short-catalog")
@@ -616,7 +616,7 @@ async def test_nightly_sync_before_rebuild_order(db_session):
     _seed_connection(db_session)
     _seed_user_media_link(db_session)
     sid = _series_id("show-nightly-order")
-    pl = _seed_playlist(db_session, series_ids=[sid], cadence="daily")
+    _seed_playlist(db_session, series_ids=[sid], cadence="daily")
     db_session.commit()
 
     calls: list[str] = []
@@ -802,10 +802,10 @@ async def test_nightly_sync_per_app_user(db_session):
     _seed_user_media_link(db_session, app_user_id=TEST_APP_USER_ID_2)
     sid_a = _series_id("show-user-a")
     sid_b = _series_id("show-user-b")
-    pl_a = _seed_playlist(
+    _seed_playlist(
         db_session, series_ids=[sid_a], cadence="daily", app_user_id=TEST_APP_USER_ID
     )
-    pl_b = _seed_playlist(
+    _seed_playlist(
         db_session, series_ids=[sid_b], cadence="daily", app_user_id=TEST_APP_USER_ID_2
     )
     db_session.commit()
