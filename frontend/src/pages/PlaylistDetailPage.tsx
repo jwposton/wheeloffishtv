@@ -12,7 +12,12 @@ import { PlaylistSettingsSheet } from "@/components/playlists/PlaylistSettingsSh
 import { RebuildButton } from "@/components/playlists/RebuildButton"
 import { RebuildBanner } from "@/components/playlists/RebuildBanner"
 import { OutputList } from "@/components/playlists/OutputList"
-import { usePlaylist, useDeletePlaylist, useRebuildPlaylist } from "@/api/playlists"
+import {
+  usePlaylist,
+  useDeletePlaylist,
+  useRebuildPlaylist,
+  useRemovePlaylistRow,
+} from "@/api/playlists"
 import { isRebuildInProgress } from "@/lib/rebuild"
 
 export function PlaylistDetailPage() {
@@ -21,6 +26,7 @@ export function PlaylistDetailPage() {
   const { data: playlist, isLoading, isError } = usePlaylist(id!)
   const deleteMutation = useDeletePlaylist()
   const rebuildMutation = useRebuildPlaylist()
+  const removeRowMutation = useRemovePlaylistRow()
   const [isDeleting, setIsDeleting] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -38,6 +44,16 @@ export function PlaylistDetailPage() {
     } catch {
       toast.error("Failed to delete playlist")
       setIsDeleting(false)
+    }
+  }
+
+  async function handleRemoveRow(seriesId: string) {
+    if (!id) return
+    try {
+      await removeRowMutation.mutateAsync({ playlistId: id, seriesId })
+      toast.success("Show removed from playlist")
+    } catch {
+      toast.error("Failed to remove show — it may have already been removed")
     }
   }
 
@@ -114,9 +130,10 @@ export function PlaylistDetailPage() {
 
       <RebuildBanner
         lastRebuild={playlist.last_rebuild}
-        snapshot={playlist.current_snapshot}
         providerKind={playlist.provider_kind}
         providerPlaylistOpenUrl={playlist.provider_playlist_open_url}
+        pruneEvents={playlist.recent_prune_events}
+        onRemoveRow={(seriesId) => void handleRemoveRow(seriesId)}
       />
 
       <PlaylistForm mode="edit" playlist={playlist} sections="series" />

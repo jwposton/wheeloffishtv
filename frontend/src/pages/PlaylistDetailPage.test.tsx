@@ -84,6 +84,7 @@ const MOCK_PLAYLIST: PlaylistDetailResponse = {
     writeback_error: null,
   },
   recent_runs: [],
+  recent_prune_events: [],
   provider_playlist_id: "555",
   provider_kind: "plex",
   provider_playlist_open_url:
@@ -175,7 +176,7 @@ describe("PlaylistDetailPage", () => {
     expect(screen.getByRole("link", { name: /Open in Plex/i })).toBeInTheDocument()
   })
 
-  it("lists writeback warnings with episode titles", () => {
+  it("shows writeback partial summary without inline warning lists", () => {
     mockUsePlaylist.mockReturnValue({
       data: {
         ...MOCK_PLAYLIST,
@@ -200,12 +201,11 @@ describe("PlaylistDetailPage", () => {
     expect(
       screen.getByText("Some episodes could not be synced to your media server."),
     ).toBeInTheDocument()
-    const warningList = screen.getByRole("list", { name: "Sync warnings" })
-    expect(warningList).toHaveTextContent("The Pilot")
-    expect(warningList).toHaveTextContent("No metadata found for guid: plex://episode/abc")
+    expect(screen.queryByRole("list", { name: "Sync warnings" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument()
   })
 
-  it("shows sync notes without partial badge for orphan recovery", () => {
+  it("shows succeeded writeback without inline sync notes list", () => {
     mockUsePlaylist.mockReturnValue({
       data: {
         ...MOCK_PLAYLIST,
@@ -231,10 +231,8 @@ describe("PlaylistDetailPage", () => {
     expect(
       screen.queryByText("Some episodes could not be synced to your media server."),
     ).not.toBeInTheDocument()
-    const notes = screen.getByRole("list", { name: "Sync notes" })
-    expect(notes).toHaveTextContent(
-      "The linked Plex playlist was missing; a new one was created.",
-    )
+    expect(screen.queryByRole("list", { name: "Sync notes" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "View details" })).not.toBeInTheDocument()
   })
 
   it("renders Delete button to trigger confirmation", () => {
