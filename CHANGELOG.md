@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-v0.2.0 milestone work: safe catalog prune (Phase 10), sync/rebuild diagnostics (Phase 11), plus Phase 9 gap closure after `v1.0.0` (series detail, watch-state, playlist edit parity).
-
 ### Added
 
 - **Brand / actions:** refreshed wheel icon and playlist action button artwork (rebuild, settings, delete)
@@ -16,15 +14,22 @@ v0.2.0 milestone work: safe catalog prune (Phase 10), sync/rebuild diagnostics (
 - **Safe catalog prune:** series removed from Plex/Jellyfin are marked stale and auto-removed from playlists only after the configured N-sync / no-error policy; prune events are audited (reason + timestamp) and rebuild fetch warnings stay non-destructive until confidence is met
 - **Playlist detail:** `recent_prune_events` (newest 20) on owner-gated `GET /playlists/{id}`; row delete records a `manual_removed` prune audit in the same transaction
 - **Nightly rebuild:** batch job runs catalog sync before rebuild so prune evidence is current
-- **Rebuild diagnostics:** partial/failed rebuild or writeback on playlist detail shows **View details**, opening a modal with rebuild errors, per-show fetch warnings, per-episode writeback issues, and prune history
+- **Rebuild diagnostics:** partial/failed rebuild or writeback on playlist detail shows **View details**, opening a modal with rebuild errors, per-show fetch warnings, per-episode writeback issues, and prune history; also when `slots_filled` is less than `slots_requested` or the latest run already has structured diagnostic rows
 - **Rebuild diagnostics API:** `last_rebuild.diagnostics` on playlist detail (resolved labels, reason text, remediation hints, and actions such as remove row, open series, open provider); `recent_runs` remain summary-only
+- **Rebuild underfill:** unfilled slot assignments emit `slot_unfilled` fetch warnings and appear in the diagnostics modal **Shows skipped** section
 
 ### Changed
 
 - **Playlist edit:** add, remove, and reorder membership changes are staged locally until the edit form **Save**; **Cancel** discards staged membership without row-level API calls (settings panel still uses **Save Settings** / **Cancel** for config only)
 - **Rebuild panel:** failed rebuild `error_message` and per-episode writeback bullet lists moved into the diagnostics modal; detail **WritebackStatus** keeps badges and one-liners only (compact card badges unchanged)
+- **Rebuild status:** runs mark **Partial** when any fetch warnings exist or filled slots are fewer than requested (not only when a show row is skipped)
+- **Diagnostics actions:** **Open show** from the modal uses in-app navigation on playlist detail (no full page reload)
 
 ### Fixed
+
+- **Rebuild diagnostics:** failed rebuilds without `error_message` still show the catalog rebuild-failed row in the modal
+- **Rebuild diagnostics:** writeback-only failures surface a provider sync row when there are no per-episode writeback warnings
+- **Rebuild diagnostics:** unknown show fetch warning codes resolve to `fetch_failure` catalog copy instead of a generic writeback warning
 
 - **Series detail:** episodes load for watch-state controls whenever auth is ready (not only when an on-deck resume pointer exists)
 - **Series detail:** optimistic episode watch cache rolls back when the mutation envelope is not `succeeded`
